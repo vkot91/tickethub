@@ -1,0 +1,30 @@
+{
+  "name": "@tickethub/outbox",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "lint": "eslint src",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@nestjs/common": "catalog:",
+    "@nestjs/microservices": "catalog:",
+    "@tickethub/db": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "rxjs": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./seed": {
+      "types": "./dist/seed/index.d.ts",
+      "default": "./dist/seed/index.js"
+    },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "default": "./dist/testing/index.js"
@@ -26,6 +30,7 @@
     "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "seed": "tsx src/seed/index.ts"
   },
   "dependencies": {

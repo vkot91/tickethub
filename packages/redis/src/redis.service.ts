@@ -27,4 +27,27 @@ export class RedisService {
 
     return { allowed: count <= limit, remaining: Math.max(0, limit - count) };
   }
+
+  // All-or-nothing seat locks (SET NX EX). Returns false and releases any locks
+  // already taken if one is held by another buyer — the cheap first oversell barrier.
+  async acquireSeatLocks(keys: string[], ttlSec: number): Promise<boolean> {
+    const acquired: string[] = [];
+
+    for (const key of keys) {
+      const ok = await this.client.set(key, '1', 'EX', ttlSec, 'NX');
+
+      if (ok !== 'OK') {
+        await this.releaseSeatLocks(acquired);
+        return false;
+      }
+
+      acquired.push(key);
+    }
+
+    return true;
+  }
+
+  async releaseSeatLocks(keys: string[]): Promise<void> {
+    if (keys.length) await this.client.del(...keys);
+  }
 }

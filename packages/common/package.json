@@ -17,6 +17,7 @@
     "nestjs-pino": "catalog:",
     "pino-http": "^10.0.0",
     "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

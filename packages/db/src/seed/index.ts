@@ -7,7 +7,13 @@ import { users, organizers, venues, sections, rows, seats, events, ticketTypes }
 // bcrypt hash of "password123" — regenerated with real bcrypt (Task 9 setup).
 const PW_HASH = '$2b$10$7zJ/BFOmvCksYTw8T67EMeOhM5D9xz9EhVW9AoUT.YfenRwBk1mMa';
 
-export async function seed(db: Db): Promise<{ eventId: string; gaEventId: string }> {
+export async function seed(db: Db): Promise<{
+  eventId: string;
+  gaEventId: string;
+  flashEventId: string;
+  flashSeatId: string;
+  flashTicketTypeId: string;
+}> {
   await db
     .insert(users)
     .values([
@@ -101,7 +107,81 @@ export async function seed(db: Db): Promise<{ eventId: string; gaEventId: string
       .values({ eventId: gaRow.id, name: 'GA', priceCents: 3000, quota: 50 });
   }
 
-  return { eventId: seatedRow.id, gaEventId: gaRow.id };
+  // Flash-sale target: its own venue/section/row with exactly ONE seat, published
+  // event — the contended seat for the k6 oversell test. Idempotent via select-first.
+  const flashTitle = 'Flash Sale (1 seat)';
+  const existingFlashVenue = await db.select().from(venues).where(eq(venues.name, 'Flash Arena'));
+  const flashVenue =
+    existingFlashVenue[0] ??
+    (
+      await db
+        .insert(venues)
+        .values({
+          organizerId: orgRow.id,
+          name: 'Flash Arena',
+          address: '1 Flash St',
+          city: 'Kyiv',
+        })
+        .returning()
+    )[0];
+
+  let flashSeatRow = (
+    await db
+      .select({ id: seats.id })
+      .from(seats)
+      .innerJoin(rows, eq(seats.rowId, rows.id))
+      .innerJoin(sections, eq(rows.sectionId, sections.id))
+      .where(eq(sections.venueId, flashVenue.id))
+  )[0];
+  if (!flashSeatRow) {
+    const [flashSection] = await db
+      .insert(sections)
+      .values({ venueId: flashVenue.id, name: 'Pit' })
+      .returning();
+    const [flashRow] = await db
+      .insert(rows)
+      .values({ sectionId: flashSection.id, number: 1 })
+      .returning();
+    flashSeatRow = (
+      await db.insert(seats).values({ rowId: flashRow.id, number: 1 }).returning()
+    )[0];
+  }
+
+  const [flashEvent] = await db
+    .insert(events)
+    .values({
+      organizerId: orgRow.id,
+      venueId: flashVenue.id,
+      title: flashTitle,
+      description: 'Oversell test',
+      startsAt: new Date('2026-12-20T20:00:00Z'),
+      status: 'published',
+    })
+    .onConflictDoNothing()
+    .returning();
+  const flashEventRow =
+    flashEvent ?? (await db.select().from(events).where(eq(events.title, flashTitle)))[0];
+
+  const existingFlashType = await db
+    .select()
+    .from(ticketTypes)
+    .where(eq(ticketTypes.eventId, flashEventRow.id));
+  const flashType =
+    existingFlashType[0] ??
+    (
+      await db
+        .insert(ticketTypes)
+        .values({ eventId: flashEventRow.id, name: 'Flash', priceCents: 5000 })
+        .returning()
+    )[0];
+
+  return {
+    eventId: seatedRow.id,
+    gaEventId: gaRow.id,
+    flashEventId: flashEventRow.id,
+    flashSeatId: flashSeatRow.id,
+    flashTicketTypeId: flashType.id,
+  };
 }
 
 if (require.main === module) {

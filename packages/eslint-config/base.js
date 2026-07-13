@@ -22,7 +22,7 @@ module.exports = {
       'error',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
-    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-explicit-any': 'error',
   },
   overrides: [
     {
@@ -31,7 +31,6 @@ module.exports = {
       env: { jest: true },
       rules: {
         'no-console': 'off',
-        '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-var-requires': 'off',
       },
     },

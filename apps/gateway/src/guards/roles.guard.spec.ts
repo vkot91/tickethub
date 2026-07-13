@@ -1,12 +1,12 @@
 import { RolesGuard } from './roles.guard';
 import { Reflector } from '@nestjs/core';
 
-function ctx(user: any) {
+function ctx(user: { role: string }) {
   return {
     switchToHttp: () => ({ getRequest: () => ({ user }) }),
     getHandler: () => ({}),
     getClass: () => ({}),
-  } as any;
+  } as never;
 }
 
 describe('RolesGuard', () => {

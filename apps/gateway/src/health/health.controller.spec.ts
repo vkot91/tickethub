@@ -5,7 +5,7 @@ describe('HealthController', () => {
     const health = { check: jest.fn().mockResolvedValue({ status: 'ok' }) };
     const mq = { pingCheck: jest.fn() };
     const config = { get: jest.fn().mockReturnValue('amqp://localhost') };
-    const controller = new HealthController(health as any, mq as any, config as any);
+    const controller = new HealthController(health as never, mq as never, config as never);
 
     const res = await controller.check();
 
