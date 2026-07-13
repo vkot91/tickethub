@@ -13,7 +13,7 @@ import {
 } from '@tickethub/contracts';
 import { RPC } from '../tokens';
 
-const P = MESSAGE_PATTERNS.auth;
+const message_keys = MESSAGE_PATTERNS.auth;
 
 @Controller('auth')
 export class GatewayAuthController {
@@ -22,18 +22,18 @@ export class GatewayAuthController {
   @Post('register')
   @UsePipes(new ZodValidationPipe(registerSchema))
   register(@Body() dto: RegisterDto) {
-    return firstValueFrom(this.auth.send(P.register, dto));
+    return firstValueFrom(this.auth.send(message_keys.register, dto));
   }
 
   @Post('login')
   @UsePipes(new ZodValidationPipe(loginSchema))
   login(@Body() dto: LoginDto) {
-    return firstValueFrom(this.auth.send(P.login, dto));
+    return firstValueFrom(this.auth.send(message_keys.login, dto));
   }
 
   @Post('refresh')
   @UsePipes(new ZodValidationPipe(refreshSchema))
   refresh(@Body() dto: RefreshDto) {
-    return firstValueFrom(this.auth.send(P.refresh, dto));
+    return firstValueFrom(this.auth.send(message_keys.refresh, dto));
   }
 }

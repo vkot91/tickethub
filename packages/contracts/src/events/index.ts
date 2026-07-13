@@ -9,7 +9,9 @@ export const EVENT_ROUTING_KEYS = {
 export const QUEUES = {
   authRpc: 'auth.rpc',
   eventsRpc: 'events.rpc',
+  ordersRpc: 'orders.rpc',
   authEvents: 'auth.events',
+  ordersEvents: 'orders.events',
 } as const;
 
 // RPC message patterns: each pairs a service handler (@MessagePattern) with a caller (.send).
@@ -24,6 +26,11 @@ export const MESSAGE_PATTERNS = {
     catalog: 'events.catalog',
     detail: 'events.detail',
     seatMap: 'events.seatMap',
+  },
+  orders: {
+    create: 'orders.create',
+    get: 'orders.get',
+    confirmTest: 'orders.confirmTest',
   },
 } as const;
 

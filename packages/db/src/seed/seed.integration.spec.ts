@@ -14,4 +14,12 @@ describe('seed (integration, idempotent)', () => {
     expect((await db.select().from(users)).length).toBe(usersAfter1);
     expect((await db.select().from(events)).length).toBe(eventsAfter1);
   });
+
+  it('seeds a single-seat flash-sale event and is idempotent', async () => {
+    const first = await seed(db);
+    const second = await seed(db);
+    expect(first.flashSeatId).toBe(second.flashSeatId);
+    expect(first.flashEventId).toBeDefined();
+    expect(first.flashTicketTypeId).toBeDefined();
+  });
 });

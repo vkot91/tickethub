@@ -3,7 +3,7 @@ import { GatewayEventsController } from './events.controller';
 
 describe('GatewayEventsController', () => {
   const events = { send: jest.fn().mockReturnValue(of('result')) };
-  const controller = new GatewayEventsController(events as any);
+  const controller = new GatewayEventsController(events as never);
 
   it('parses the query and forwards catalog over RPC', async () => {
     await controller.catalog({ limit: '5' });

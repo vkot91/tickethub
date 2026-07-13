@@ -8,16 +8,16 @@ describe('AuthController', () => {
     refresh: jest.fn().mockResolvedValue('ref'),
     validate: jest.fn().mockResolvedValue('val'),
   };
-  const controller = new AuthController(service as any);
+  const controller = new AuthController(service as never);
 
   it('delegates register/login/refresh to the service', async () => {
     await expect(
-      controller.register({ email: 'a@b.com', password: 'password123' } as any),
+      controller.register({ email: 'a@b.com', password: 'password123' } as never),
     ).resolves.toBe('reg');
     await expect(
-      controller.login({ email: 'a@b.com', password: 'password123' } as any),
+      controller.login({ email: 'a@b.com', password: 'password123' } as never),
     ).resolves.toBe('log');
-    await expect(controller.refresh({ refreshToken: 't' } as any)).resolves.toBe('ref');
+    await expect(controller.refresh({ refreshToken: 't' } as never)).resolves.toBe('ref');
     expect(service.login).toHaveBeenCalled();
   });
 

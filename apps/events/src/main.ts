@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { RequestIdInterceptor } from '@tickethub/rmq';
+import { HttpToRpcExceptionFilter } from '@tickethub/common';
 import { QUEUES } from '@tickethub/contracts';
 import { Logger } from 'nestjs-pino';
 import { EventsModule } from './events.module';
@@ -15,6 +16,7 @@ async function bootstrap() {
   });
   app.useLogger(app.get(Logger));
   app.useGlobalInterceptors(new RequestIdInterceptor());
+  app.useGlobalFilters(new HttpToRpcExceptionFilter());
   await app.listen();
 }
 bootstrap();

@@ -6,10 +6,10 @@ describe('EventsController', () => {
     detail: jest.fn().mockResolvedValue('det'),
     seatMap: jest.fn().mockResolvedValue('map'),
   };
-  const controller = new EventsController(svc as any);
+  const controller = new EventsController(svc as never);
 
   it('delegates catalog to the service', async () => {
-    await controller.catalog({ limit: 20 } as any);
+    await controller.catalog({ limit: 20 } as never);
     expect(svc.catalog).toHaveBeenCalledWith({ limit: 20 });
   });
 

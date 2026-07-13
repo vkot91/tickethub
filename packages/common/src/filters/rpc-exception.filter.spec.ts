@@ -4,7 +4,7 @@ import { RpcToHttpExceptionFilter } from '../index';
 
 function mockHost() {
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
-  return { res, host: { switchToHttp: () => ({ getResponse: () => res }) } as any };
+  return { res, host: { switchToHttp: () => ({ getResponse: () => res }) } as never };
 }
 
 describe('RpcToHttpExceptionFilter', () => {
