@@ -1,0 +1,29 @@
+{
+  "name": "@tickethub/redis",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "lint": "eslint src",
+    "test": "jest --coverage",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false"
+  },
+  "dependencies": {
+    "@tickethub/env": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "ioredis": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

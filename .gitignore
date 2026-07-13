@@ -1,0 +1,28 @@
+# dependencies & build output
+node_modules
+dist
+coverage
+*.tsbuildinfo
+
+# turborepo
+.turbo
+
+# env — keep the committed template
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors & OS
+.DS_Store
+.idea
+.vscode
+*.swp
+
+docs
+design
+.claude

@@ -1,0 +1,33 @@
+{
+  "name": "@tickethub/rmq",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "lint": "eslint src",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@tickethub/env": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "@nestjs/microservices": "catalog:",
+    "amqplib": "catalog:",
+    "amqp-connection-manager": "catalog:",
+    "uuid": "catalog:",
+    "rxjs": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "@types/uuid": "catalog:",
+    "@types/node": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "typescript": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

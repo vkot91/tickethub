@@ -1,0 +1,43 @@
+{
+  "name": "@tickethub/gateway",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "node --watch -r ts-node/register src/main.ts",
+    "start": "node dist/main",
+    "lint": "eslint src",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "zod": "catalog:",
+    "@tickethub/contracts": "workspace:*",
+    "@tickethub/config": "workspace:*",
+    "@tickethub/common": "workspace:*",
+    "@tickethub/redis": "workspace:*",
+    "@tickethub/rmq": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "@nestjs/core": "catalog:",
+    "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/microservices": "catalog:",
+    "@nestjs/terminus": "^10.2.0",
+    "ioredis": "catalog:",
+    "nestjs-pino": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
+    "amqp-connection-manager": "catalog:",
+    "amqplib": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "@nestjs/cli": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "@tickethub/eslint-config": "workspace:*",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

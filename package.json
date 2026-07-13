@@ -1,0 +1,43 @@
+{
+  "name": "tickethub",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "db:seed": "pnpm --filter @tickethub/db seed",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "catalog:",
+    "prettier": "^3.3.0",
+    "eslint": "^8.57.0",
+    "@tickethub/eslint-config": "workspace:*",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "tsx": "catalog:",
+    "ts-node": "^10.9.0",
+    "tsconfig-paths": "^4.2.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,cjs,mjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": "prettier --write"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "bcrypt",
+      "esbuild"
+    ]
+  }
+}

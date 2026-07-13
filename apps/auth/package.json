@@ -1,0 +1,48 @@
+{
+  "name": "@tickethub/auth",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "node --watch -r ts-node/register src/main.ts",
+    "start": "node dist/main",
+    "lint": "eslint src",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+  },
+  "dependencies": {
+    "zod": "catalog:",
+    "@tickethub/contracts": "workspace:*",
+    "@tickethub/config": "workspace:*",
+    "@tickethub/common": "workspace:*",
+    "@tickethub/db": "workspace:*",
+    "@tickethub/redis": "workspace:*",
+    "@tickethub/rmq": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "@nestjs/core": "catalog:",
+    "@nestjs/microservices": "catalog:",
+    "@nestjs/jwt": "^10.2.0",
+    "bcrypt": "^5.1.0",
+    "uuid": "catalog:",
+    "drizzle-orm": "catalog:",
+    "ioredis": "catalog:",
+    "nestjs-pino": "catalog:",
+    "reflect-metadata": "catalog:",
+    "rxjs": "catalog:",
+    "amqp-connection-manager": "catalog:",
+    "amqplib": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "@nestjs/cli": "catalog:",
+    "@types/bcrypt": "^5.0.0",
+    "@types/node": "catalog:",
+    "@types/uuid": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "typescript": "catalog:",
+    "@tickethub/eslint-config": "workspace:*",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

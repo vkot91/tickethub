@@ -1,0 +1,49 @@
+{
+  "name": "@tickethub/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./testing/jest.setup": {
+      "types": "./dist/testing/jest.setup.d.ts",
+      "default": "./dist/testing/jest.setup.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
+    "lint": "eslint src",
+    "test": "jest --coverage",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "seed": "tsx src/seed/index.ts"
+  },
+  "dependencies": {
+    "@tickethub/env": "workspace:*",
+    "drizzle-orm": "catalog:",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "catalog:",
+    "@tickethub/tsconfig": "workspace:*",
+    "drizzle-kit": "^0.24.0",
+    "tsx": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "typescript": "catalog:",
+    "@types/node": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
+    "ts-node": "catalog:"
+  }
+}

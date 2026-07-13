@@ -1,0 +1,23 @@
+# Traefik dynamic config (file provider). Routes edge :8000 -> host apps/gateway :3000
+# with a coarse per-IP rate limit. ponytail: IP-level flood guard only; business
+# limits (per-user, per-route) stay in apps/gateway RateLimitGuard.
+http:
+  routers:
+    gateway:
+      rule: 'PathPrefix(`/`)'
+      entryPoints: [web]
+      service: gateway
+      middlewares: [ratelimit]
+
+  middlewares:
+    ratelimit:
+      rateLimit:
+        average: 100 # sustained req/s per source IP
+        burst: 50 # allowed spike above average
+        # sourceCriterion defaults to remote IP; set requestHeaderName if behind another proxy
+
+  services:
+    gateway:
+      loadBalancer:
+        servers:
+          - url: 'http://host.docker.internal:3000'

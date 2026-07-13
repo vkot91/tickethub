@@ -1,0 +1,67 @@
+services:
+  # Edge gateway: TLS/routing/coarse IP rate-limit in front of apps/gateway (host :3000).
+  # ponytail: file provider (not docker labels) because apps/gateway runs on the host, not in compose.
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --entrypoints.web.address=:80
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+    ports: ['8000:80', '8081:8080'] # 8000 = edge in, 8081 = traefik dashboard/api
+    extra_hosts: ['host.docker.internal:host-gateway'] # reach host apps/gateway on Linux
+    volumes: ['./traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro']
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: tickethub
+      POSTGRES_PASSWORD: tickethub
+      POSTGRES_DB: tickethub
+    ports: ['5432:5432']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tickethub']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes: ['pgdata:/var/lib/postgresql/data']
+  redis:
+    image: redis:7
+    ports: ['6379:6379']
+    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, retries: 10 }
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports: ['5672:5672', '15672:15672']
+    healthcheck: { test: ['CMD', 'rabbitmq-diagnostics', 'ping'], interval: 10s, retries: 10 }
+  # S3-compatible object storage (replaces LocalStack S3; Community LocalStack gates Lambda/CDK behind Pro).
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    ports: ['9000:9000', '9001:9001'] # 9000 API, 9001 web console
+    environment:
+      MINIO_ROOT_USER: tickethub
+      MINIO_ROOT_PASSWORD: tickethub
+    volumes: ['miniodata:/data']
+  # One-shot: create the posters/tickets buckets, then exit. ponytail: retries until MinIO is up.
+  minio-setup:
+    image: minio/mc
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 tickethub tickethub; do sleep 1; done &&
+      mc mb -p local/posters local/tickets &&
+      mc anonymous set download local/posters"
+  loki:
+    image: grafana/loki:3.0.0
+    ports: ['3100:3100']
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports: ['3001:3000']
+    environment: { GF_AUTH_ANONYMOUS_ENABLED: 'true', GF_AUTH_ANONYMOUS_ORG_ROLE: 'Admin' }
+  promtail:
+    image: grafana/promtail:3.0.0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+volumes:
+  pgdata:
+  miniodata:

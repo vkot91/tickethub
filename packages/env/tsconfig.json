@@ -1,0 +1,9 @@
+{
+  "extends": "@tickethub/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
