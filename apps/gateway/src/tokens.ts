@@ -3,4 +3,5 @@ export const RPC = {
   auth: 'AUTH_RPC',
   events: 'EVENTS_RPC',
   orders: 'ORDERS_RPC',
+  payments: 'PAYMENTS_RPC',
 } as const;

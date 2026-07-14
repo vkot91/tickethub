@@ -225,46 +225,178 @@ describe('OrdersService.release', () => {
   });
 });
 
-describe('OrdersService.confirmTest', () => {
-  function svcWith(db: unknown) {
-    const outbox = { enqueue: jest.fn() };
-    const svc = new OrdersService(db as never, {} as never, outbox as never, {} as never, 600);
-    return { svc, outbox };
-  }
+// Fake tx for the saga handlers: insert()→processed-messages guard (returning [] means
+// "already seen"); no-arg select→order lookup; select({...})→a rows list (held seats or paid orders).
+function sagaTx(opts: { order?: unknown; rows?: unknown[]; seen?: boolean; setCalls?: string[] }) {
+  const { order, rows = [], seen = false, setCalls = [] } = opts;
+  return {
+    insert: () => ({
+      values: () => ({
+        onConflictDoNothing: () => ({ returning: async () => (seen ? [] : [{ messageId: 'm1' }]) }),
+      }),
+    }),
+    select: (arg?: unknown) =>
+      arg
+        ? { from: () => ({ where: async () => rows }) }
+        : {
+            from: () => ({
+              where: () => ({ for: () => ({ limit: async () => (order ? [order] : []) }) }),
+            }),
+          },
+    update: () => ({
+      set: (v: { status: string }) => {
+        setCalls.push(v.status);
+        return { where: async () => undefined };
+      },
+    }),
+  };
+}
 
-  it('flips an awaiting_payment order to paid and confirms its seats', async () => {
+function sagaSvc(tx: unknown) {
+  const enqueued: Array<{ routingKey: string }> = [];
+  const outbox = {
+    enqueue: jest.fn(async (_tx: unknown, _t: unknown, m: { routingKey: string }) => {
+      enqueued.push(m);
+    }),
+  };
+  const redis = { releaseSeatLocks: jest.fn() };
+  const db = { transaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx) };
+  const svc = new OrdersService(
+    db as never,
+    redis as never,
+    outbox as never,
+    { add: jest.fn() } as never,
+    600,
+  );
+  return { svc, outbox, redis, enqueued };
+}
+
+describe('OrdersService saga handlers', () => {
+  it('markPaid flips an awaiting_payment order to paid + confirms seats', async () => {
     const setCalls: string[] = [];
-    const db = {
-      transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn(
-          stateChangeTx(
-            { id: 'ord1', eventId: 'e1', userId: 'u1', status: 'awaiting_payment' },
-            [{ seatId: 's1' }],
-            setCalls,
-          ),
-        ),
-    };
-    const { svc, outbox } = svcWith(db);
-    const res = await svc.confirmTest('ord1');
-    expect(res.status).toBe('paid');
+    const d = sagaSvc(
+      sagaTx({
+        order: { id: 'ord1', userId: 'u1', eventId: 'e1', status: 'awaiting_payment' },
+        rows: [{ seatId: 's1' }],
+        setCalls,
+      }),
+    );
+    await d.svc.markPaid({
+      messageId: 'm1',
+      orderId: 'ord1',
+      paymentIntentId: 'pi_1',
+      amountCents: 5000,
+    } as never);
     expect(setCalls).toEqual(expect.arrayContaining(['paid', 'confirmed']));
-    expect(outbox.enqueue).toHaveBeenCalledTimes(2); // order.paid + seat.confirmed
+    expect(d.enqueued.map((m) => m.routingKey)).toEqual(
+      expect.arrayContaining(['order.paid', 'seat.confirmed']),
+    );
   });
 
-  it('throws NotFound when the order does not exist', async () => {
-    const db = {
-      transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn(stateChangeTx(undefined, [], [])),
-    };
-    await expect(svcWith(db).svc.confirmTest('nope')).rejects.toBeInstanceOf(NotFoundException);
+  it('markPaid on an expired order requests a refund instead of resurrecting it', async () => {
+    const d = sagaSvc(
+      sagaTx({ order: { id: 'ord1', userId: 'u1', eventId: 'e1', status: 'expired' } }),
+    );
+    await d.svc.markPaid({
+      messageId: 'm1',
+      orderId: 'ord1',
+      paymentIntentId: 'pi_1',
+      amountCents: 5000,
+    } as never);
+    expect(d.enqueued.some((m) => m.routingKey === 'refund.requested')).toBe(true);
   });
 
-  it('rejects confirming an order that is not awaiting payment', async () => {
-    const db = {
-      transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn(stateChangeTx({ id: 'ord1', eventId: 'e1', userId: 'u1', status: 'expired' }, [], [])),
-    };
-    await expect(svcWith(db).svc.confirmTest('ord1')).rejects.toBeInstanceOf(ConflictException);
+  it('markPaid is a no-op when the message was already processed', async () => {
+    const d = sagaSvc(sagaTx({ order: { id: 'ord1', status: 'awaiting_payment' }, seen: true }));
+    await d.svc.markPaid({
+      messageId: 'm1',
+      orderId: 'ord1',
+      paymentIntentId: 'pi_1',
+      amountCents: 5000,
+    } as never);
+    expect(d.enqueued).toHaveLength(0);
+  });
+
+  it('markFailed cancels an awaiting_payment order and releases locks', async () => {
+    const setCalls: string[] = [];
+    const d = sagaSvc(
+      sagaTx({
+        order: { id: 'ord1', eventId: 'e1', status: 'awaiting_payment' },
+        rows: [{ seatId: 's1' }],
+        setCalls,
+      }),
+    );
+    await d.svc.markFailed({ messageId: 'm1', orderId: 'ord1', paymentIntentId: 'pi_1' } as never);
+    expect(setCalls).toEqual(expect.arrayContaining(['cancelled', 'released']));
+    expect(d.redis.releaseSeatLocks).toHaveBeenCalledWith(['seat-lock:e1:s1']);
+  });
+
+  it('markFailed on a paid order is a no-op', async () => {
+    const d = sagaSvc(sagaTx({ order: { id: 'ord1', eventId: 'e1', status: 'paid' } }));
+    await d.svc.markFailed({ messageId: 'm1', orderId: 'ord1', paymentIntentId: 'pi_1' } as never);
+    expect(d.redis.releaseSeatLocks).not.toHaveBeenCalled();
+  });
+
+  it('markRefunded flips a paid order to refunded and releases locks', async () => {
+    const setCalls: string[] = [];
+    const d = sagaSvc(
+      sagaTx({
+        order: { id: 'ord1', eventId: 'e1', status: 'paid' },
+        rows: [{ seatId: 's1' }],
+        setCalls,
+      }),
+    );
+    await d.svc.markRefunded({
+      messageId: 'm1',
+      orderId: 'ord1',
+      paymentIntentId: 'pi_1',
+      amountCents: 5000,
+    } as never);
+    expect(setCalls).toEqual(expect.arrayContaining(['refunded', 'released']));
+    expect(d.redis.releaseSeatLocks).toHaveBeenCalledWith(['seat-lock:e1:s1']);
+  });
+});
+
+describe('OrdersService.requestRefund', () => {
+  const paidOrder = {
+    id: 'ord1',
+    userId: 'u1',
+    eventId: 'e1',
+    status: 'paid',
+    totalCents: 5000,
+    currency: 'usd',
+    expiresAt: new Date(),
+  };
+
+  it('emits refund.requested for a paid order owned by the user', async () => {
+    const d = sagaSvc(sagaTx({ order: paidOrder }));
+    const res = await d.svc.requestRefund('u1', 'ord1');
+    expect(res.id).toBe('ord1');
+    expect(d.enqueued.some((m) => m.routingKey === 'refund.requested')).toBe(true);
+  });
+
+  it('throws NotFound when the order is missing', async () => {
+    const d = sagaSvc(sagaTx({ order: undefined }));
+    await expect(d.svc.requestRefund('u1', 'x')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects refunding an order that is not paid', async () => {
+    const d = sagaSvc(sagaTx({ order: { ...paidOrder, status: 'awaiting_payment' } }));
+    await expect(d.svc.requestRefund('u1', 'ord1')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('OrdersService.refundAllPaidForEvent', () => {
+  it('emits a refund.requested per paid order', async () => {
+    const d = sagaSvc(sagaTx({ rows: [{ id: 'o1' }, { id: 'o2' }] }));
+    await d.svc.refundAllPaidForEvent({ messageId: 'm1', eventId: 'e1' });
+    expect(d.enqueued.filter((m) => m.routingKey === 'refund.requested')).toHaveLength(2);
+  });
+
+  it('is a no-op when already processed', async () => {
+    const d = sagaSvc(sagaTx({ rows: [{ id: 'o1' }], seen: true }));
+    await d.svc.refundAllPaidForEvent({ messageId: 'm1', eventId: 'e1' });
+    expect(d.enqueued).toHaveLength(0);
   });
 });
 

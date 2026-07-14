@@ -7,14 +7,14 @@ const message_keys = MESSAGE_PATTERNS.events;
 
 @Controller()
 export class EventsController {
-  constructor(private readonly svc: EventsService) {}
+  constructor(private readonly eventsService: EventsService) {}
   @MessagePattern(message_keys.catalog) catalog(@Payload() q: CatalogQuery) {
-    return this.svc.catalog(q);
+    return this.eventsService.catalog(q);
   }
   @MessagePattern(message_keys.detail) detail(@Payload() p: { id: string }) {
-    return this.svc.detail(p.id);
+    return this.eventsService.detail(p.id);
   }
   @MessagePattern(message_keys.seatMap) seatMap(@Payload() p: { id: string }) {
-    return this.svc.seatMap(p.id);
+    return this.eventsService.seatMap(p.id);
   }
 }

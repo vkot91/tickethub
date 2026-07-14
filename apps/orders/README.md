@@ -12,15 +12,25 @@ transactional outbox.
 
 ## RPC (via the gateway)
 
-| HTTP (gateway)                  | RPC pattern          | Notes                                              |
-| ------------------------------- | -------------------- | -------------------------------------------------- |
-| `POST /orders`                  | `orders.create`      | Auth + `Idempotency-Key` header required           |
-| `GET /orders/:id`               | `orders.get`         | Owner only                                         |
-| `POST /orders/:id/confirm-test` | `orders.confirmTest` | Non-prod only — stands in for Stripe until Phase 3 |
+| HTTP (gateway)            | RPC pattern            | Notes                                    |
+| ------------------------- | ---------------------- | ---------------------------------------- |
+| `POST /orders`            | `orders.create`        | Auth + `Idempotency-Key` header required |
+| `GET /orders/:id`         | `orders.get`           | Owner only                               |
+| `POST /orders/:id/refund` | `orders.requestRefund` | Owner only; order must be `paid`         |
+
+## Saga consumers (Phase 3)
+
+Orders is a hybrid app: besides `orders.rpc` it consumes `payments.events`
+(`payment.succeeded → markPaid`, `payment.failed → markFailed`, `refund.succeeded → markRefunded`)
+and `catalog.events` (`event.cancelled → refundAllPaidForEvent`). Every transition goes through the
+`order-state` machine, so an out-of-order `payment.succeeded` on an already-`expired` order emits
+`refund.requested` instead of resurrecting it (the expire-then-pay race). The Phase 2 `confirmTest`
+hook is retired.
 
 ## Events (outbox → RabbitMQ, `orders.events`, with DLX)
 
-`order.awaiting_payment`, `order.paid`, `order.expired`, `seat.held`, `seat.released`, `seat.confirmed`.
+`order.awaiting_payment`, `order.paid`, `order.expired`, `order.cancelled`, `refund.requested`,
+`seat.held`, `seat.released`, `seat.confirmed`.
 
 ## Config
 

@@ -9,6 +9,7 @@ export const ORDER_ROUTING_KEYS = {
   seatHeld: 'seat.held',
   seatReleased: 'seat.released',
   seatConfirmed: 'seat.confirmed',
+  refundRequested: 'refund.requested',
 } as const;
 
 const uuid = z.string().uuid();
@@ -50,3 +51,11 @@ export type OrderExpiredEvent = z.infer<typeof orderExpiredSchema>;
 export type SeatHeldEvent = z.infer<typeof seatHeldSchema>;
 export type SeatReleasedEvent = z.infer<typeof seatReleasedSchema>;
 export type SeatConfirmedEvent = z.infer<typeof seatConfirmedSchema>;
+
+// paymentIntentId optional: REST-driven refunds omit it (Payments resolves it from its own row);
+// the expire-then-pay race carries it straight from the payment.succeeded event.
+export const refundRequestedSchema = base.extend({
+  orderId: uuid,
+  paymentIntentId: z.string().optional(),
+});
+export type RefundRequestedEvent = z.infer<typeof refundRequestedSchema>;

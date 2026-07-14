@@ -15,6 +15,7 @@ import { RPC } from './tokens';
 import { GatewayAuthController } from './auth/auth.controller';
 import { GatewayEventsController } from './events/events.controller';
 import { GatewayOrdersController } from './orders/orders.controller';
+import { GatewayPaymentsController } from './payments/payments.controller';
 import { HealthController } from './health/health.controller';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 import { schema, type Config } from './config';
@@ -78,6 +79,13 @@ const rpcClient = (name: string, queue: string) => ({
         useFactory: (config: ConfigService<Config, true>): RmqOptions =>
           rmqClientOptions(QUEUES.ordersRpc, config.get('RABBITMQ_URL', { infer: true })),
       },
+      // Payments declares payments.rpc with a DLX too; match its queueOptions.
+      {
+        name: RPC.payments,
+        inject: [ConfigService],
+        useFactory: (config: ConfigService<Config, true>): RmqOptions =>
+          rmqClientOptions(QUEUES.paymentsRpc, config.get('RABBITMQ_URL', { infer: true })),
+      },
     ]),
     ...queueDashboardImports,
   ],
@@ -85,6 +93,7 @@ const rpcClient = (name: string, queue: string) => ({
     GatewayAuthController,
     GatewayEventsController,
     GatewayOrdersController,
+    GatewayPaymentsController,
     HealthController,
   ],
   providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }],

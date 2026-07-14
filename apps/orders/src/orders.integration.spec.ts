@@ -83,9 +83,15 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     expect(fresh.status).toBe('awaiting_payment');
   });
 
-  it('confirmTest flips an order to paid and confirms its seats', async () => {
+  it('markPaid flips an order to paid and confirms its seats', async () => {
     const order = await svc.create('66666666-6666-6666-6666-666666666666', 'f', dtoFor() as never);
-    const paid = await svc.confirmTest(order.id);
+    await svc.markPaid({
+      messageId: '77777777-7777-7777-7777-777777777777',
+      orderId: order.id,
+      paymentIntentId: 'pi_test',
+      amountCents: order.totalCents,
+    } as never);
+    const paid = await svc.get('66666666-6666-6666-6666-666666666666', order.id);
     expect(paid.status).toBe('paid');
   });
 });

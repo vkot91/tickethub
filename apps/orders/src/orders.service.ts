@@ -2,20 +2,34 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { and, eq, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import type { Queue } from 'bullmq';
-import { orders, seatReservations, ordersOutbox, ticketTypes, type Db } from '@tickethub/db';
+import {
+  orders,
+  seatReservations,
+  ordersOutbox,
+  ordersProcessedMessages,
+  ticketTypes,
+  type Db,
+} from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository } from '@tickethub/outbox';
-import { ORDER_ROUTING_KEYS, type CreateOrderDto, type OrderResponse } from '@tickethub/contracts';
+import { OutboxRepository, alreadyProcessed } from '@tickethub/outbox';
+import {
+  ORDER_ROUTING_KEYS,
+  type CreateOrderDto,
+  type OrderResponse,
+  type PaymentSucceededEvent,
+  type PaymentFailedEvent,
+  type RefundSucceededEvent,
+} from '@tickethub/contracts';
 import { canTransition, type OrderStatus } from './order-state';
 
 export const seatLockKey = (eventId: string, seatId: string) => `seat-lock:${eventId}:${seatId}`;
 
-const toResponse = (o: typeof orders.$inferSelect): OrderResponse => ({
-  id: o.id,
-  status: o.status,
-  totalCents: o.totalCents,
-  currency: o.currency,
-  expiresAt: String(o.expiresAt),
+const toResponse = (order: typeof orders.$inferSelect): OrderResponse => ({
+  id: order.id,
+  status: order.status,
+  totalCents: order.totalCents,
+  currency: order.currency,
+  expiresAt: String(order.expiresAt),
 });
 
 @Injectable()
@@ -133,13 +147,13 @@ export class OrdersService {
   }
 
   async get(userId: string, orderId: string): Promise<OrderResponse> {
-    const [o] = await this.db
+    const [order] = await this.db
       .select()
       .from(orders)
       .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
       .limit(1);
-    if (!o) throw new NotFoundException('Order not found');
-    return toResponse(o);
+    if (!order) throw new NotFoundException('Order not found');
+    return toResponse(order);
   }
 
   // Unblock seats and mark the order as expired. Called by the release worker
@@ -180,47 +194,191 @@ export class OrdersService {
     });
   }
 
-  // ponytail: test hook standing in for Stripe's payment_intent.succeeded — replaced in Phase 3.
-  async confirmTest(orderId: string): Promise<OrderResponse> {
-    return this.db.transaction(async (tx) => {
+  // --- Saga event handlers (payments.events → order-state). All idempotent via
+  // processed_messages, and the state machine is the only authority on transitions. ---
+
+  // payment.succeeded → confirm the order. If it can no longer become paid (expire-then-pay
+  // race), auto-refund instead of resurrecting it.
+  async markPaid(e: PaymentSucceededEvent): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+
       const [order] = await tx
         .select()
         .from(orders)
-        .where(eq(orders.id, orderId))
+        .where(eq(orders.id, e.orderId))
         .for('update')
         .limit(1);
-      if (!order) throw new NotFoundException('Order not found');
+      if (!order) return;
+
       if (!canTransition(order.status as OrderStatus, 'paid')) {
-        throw new ConflictException(`Cannot confirm order in status ${order.status}`);
+        if (order.status === 'expired' || order.status === 'cancelled') {
+          await this.outbox.enqueue(tx, ordersOutbox, {
+            routingKey: ORDER_ROUTING_KEYS.refundRequested,
+            payload: { messageId: uuid(), orderId: order.id, paymentIntentId: e.paymentIntentId },
+          });
+        }
+        return;
       }
 
       const held = await tx
         .select({ seatId: seatReservations.seatId })
         .from(seatReservations)
-        .where(eq(seatReservations.orderId, orderId));
+        .where(eq(seatReservations.orderId, order.id));
 
-      const [paid] = await tx
-        .update(orders)
-        .set({ status: 'paid' })
-        .where(eq(orders.id, orderId))
-        .returning();
+      await tx.update(orders).set({ status: 'paid' }).where(eq(orders.id, order.id));
       await tx
         .update(seatReservations)
         .set({ status: 'confirmed' })
-        .where(eq(seatReservations.orderId, orderId));
+        .where(eq(seatReservations.orderId, order.id));
 
       await this.outbox.enqueue(tx, ordersOutbox, {
         routingKey: ORDER_ROUTING_KEYS.orderPaid,
-        payload: { messageId: uuid(), orderId, userId: order.userId, eventId: order.eventId },
+        payload: {
+          messageId: uuid(),
+          orderId: order.id,
+          userId: order.userId,
+          eventId: order.eventId,
+        },
       });
       for (const s of held) {
         await this.outbox.enqueue(tx, ordersOutbox, {
           routingKey: ORDER_ROUTING_KEYS.seatConfirmed,
-          payload: { messageId: uuid(), orderId, eventId: order.eventId, seatId: s.seatId },
+          payload: {
+            messageId: uuid(),
+            orderId: order.id,
+            eventId: order.eventId,
+            seatId: s.seatId,
+          },
+        });
+      }
+    });
+  }
+
+  // payment.failed → cancel the order, release its seats and locks.
+  async markFailed(e: PaymentFailedEvent): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(eq(orders.id, e.orderId))
+        .for('update')
+        .limit(1);
+      if (!order || !canTransition(order.status as OrderStatus, 'cancelled')) return;
+
+      const held = await tx
+        .select({ seatId: seatReservations.seatId })
+        .from(seatReservations)
+        .where(eq(seatReservations.orderId, order.id));
+
+      await tx.update(orders).set({ status: 'cancelled' }).where(eq(orders.id, order.id));
+      await tx
+        .update(seatReservations)
+        .set({ status: 'released' })
+        .where(eq(seatReservations.orderId, order.id));
+
+      await this.outbox.enqueue(tx, ordersOutbox, {
+        routingKey: ORDER_ROUTING_KEYS.orderCancelled,
+        payload: { messageId: uuid(), orderId: order.id, eventId: order.eventId },
+      });
+      for (const s of held) {
+        await this.outbox.enqueue(tx, ordersOutbox, {
+          routingKey: ORDER_ROUTING_KEYS.seatReleased,
+          payload: {
+            messageId: uuid(),
+            orderId: order.id,
+            eventId: order.eventId,
+            seatId: s.seatId,
+          },
         });
       }
 
-      return toResponse(paid);
+      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.eventId, h.seatId)));
+    });
+  }
+
+  // refund.succeeded → close out a paid order as refunded, release its seats and locks.
+  async markRefunded(e: RefundSucceededEvent): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(eq(orders.id, e.orderId))
+        .for('update')
+        .limit(1);
+      if (!order || !canTransition(order.status as OrderStatus, 'refunded')) return;
+
+      const held = await tx
+        .select({ seatId: seatReservations.seatId })
+        .from(seatReservations)
+        .where(eq(seatReservations.orderId, order.id));
+
+      await tx.update(orders).set({ status: 'refunded' }).where(eq(orders.id, order.id));
+      await tx
+        .update(seatReservations)
+        .set({ status: 'released' })
+        .where(eq(seatReservations.orderId, order.id));
+
+      for (const s of held) {
+        await this.outbox.enqueue(tx, ordersOutbox, {
+          routingKey: ORDER_ROUTING_KEYS.seatReleased,
+          payload: {
+            messageId: uuid(),
+            orderId: order.id,
+            eventId: order.eventId,
+            seatId: s.seatId,
+          },
+        });
+      }
+
+      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.eventId, h.seatId)));
+    });
+  }
+
+  // REST-driven refund: owner asks to refund a paid order → emit refund.requested (Payments
+  // does the Stripe refund; the charge.refunded webhook later drives markRefunded).
+  async requestRefund(userId: string, orderId: string): Promise<OrderResponse> {
+    return this.db.transaction(async (tx) => {
+      const [order] = await tx
+        .select()
+        .from(orders)
+        .where(and(eq(orders.id, orderId), eq(orders.userId, userId)))
+        .for('update')
+        .limit(1);
+      if (!order) throw new NotFoundException('Order not found');
+      if (order.status !== 'paid')
+        throw new ConflictException(`Cannot refund an order in status ${order.status}`);
+
+      // ponytail: refund window policy (N days before event) is a single guard; add it when the events RPC exposes startsAt.
+      await this.outbox.enqueue(tx, ordersOutbox, {
+        routingKey: ORDER_ROUTING_KEYS.refundRequested,
+        payload: { messageId: uuid(), orderId: order.id },
+      });
+      return toResponse(order);
+    });
+  }
+
+  // event.cancelled → refund every paid order for that event (each downstream refund reuses
+  // the same refund.requested → Payments → charge.refunded → markRefunded path).
+  async refundAllPaidForEvent(e: { messageId: string; eventId: string }): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+
+      const paid = await tx
+        .select({ id: orders.id })
+        .from(orders)
+        .where(and(eq(orders.eventId, e.eventId), eq(orders.status, 'paid')));
+
+      for (const o of paid) {
+        await this.outbox.enqueue(tx, ordersOutbox, {
+          routingKey: ORDER_ROUTING_KEYS.refundRequested,
+          payload: { messageId: uuid(), orderId: o.id },
+        });
+      }
     });
   }
 }
