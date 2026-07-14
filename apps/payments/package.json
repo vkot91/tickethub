@@ -1,5 +1,5 @@
 {
-  "name": "@tickethub/orders",
+  "name": "@tickethub/payments",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -16,7 +16,6 @@
     "@tickethub/config": "workspace:*",
     "@tickethub/common": "workspace:*",
     "@tickethub/db": "workspace:*",
-    "@tickethub/redis": "workspace:*",
     "@tickethub/outbox": "workspace:*",
     "@tickethub/rmq": "workspace:*",
     "@nestjs/common": "catalog:",
@@ -24,8 +23,7 @@
     "@nestjs/microservices": "catalog:",
     "@nestjs/platform-express": "catalog:",
     "drizzle-orm": "catalog:",
-    "bullmq": "catalog:",
-    "ioredis": "catalog:",
+    "stripe": "catalog:",
     "uuid": "catalog:",
     "nestjs-pino": "catalog:",
     "reflect-metadata": "catalog:",

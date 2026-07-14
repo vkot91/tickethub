@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const EVENT_ROUTING_KEYS = {
   userRegistered: 'user.registered',
   eventPublished: 'event.published',
+  eventCancelled: 'event.cancelled',
 } as const;
 
 // RMQ queue names shared between each service's server and its remote clients.
@@ -10,8 +11,11 @@ export const QUEUES = {
   authRpc: 'auth.rpc',
   eventsRpc: 'events.rpc',
   ordersRpc: 'orders.rpc',
+  paymentsRpc: 'payments.rpc',
   authEvents: 'auth.events',
   ordersEvents: 'orders.events',
+  paymentsEvents: 'payments.events',
+  catalogEvents: 'catalog.events',
 } as const;
 
 // RPC message patterns: each pairs a service handler (@MessagePattern) with a caller (.send).
@@ -30,7 +34,11 @@ export const MESSAGE_PATTERNS = {
   orders: {
     create: 'orders.create',
     get: 'orders.get',
-    confirmTest: 'orders.confirmTest',
+    requestRefund: 'orders.requestRefund',
+  },
+  payments: {
+    createIntent: 'payments.createIntent',
+    webhook: 'payments.webhook',
   },
 } as const;
 
