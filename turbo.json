@@ -20,6 +20,11 @@
       ]
     },
     "lint": {},
+    "test:integration": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "env": ["TEST_DATABASE_URL", "REDIS_URL", "RABBITMQ_URL"]
+    },
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],

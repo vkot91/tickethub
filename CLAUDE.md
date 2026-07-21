@@ -11,6 +11,12 @@ transactions (saga + outbox), concurrency.
   supertest + docker-compose for e2e saga flows; k6 for load (flash-sale / oversell).
 - Coverage gate in `turbo test` / CI — aim high on domain logic (order state machine,
   saga compensations, idempotency, seat-lock paths). Trivial glue code excepted.
+- Integration suites run against the **throwaway `TEST_DATABASE_URL` database, never the dev one**
+  — they TRUNCATE and re-seed on every run. Wiring: `--setupFiles @tickethub/db/testing/integration-env`
+  in each `test:integration` script repoints `DATABASE_URL` before any spec body runs. Run the lot with
+  `pnpm test:integration` (migrates the test db first, then runs the suites serially — they share it).
+  A new `*.integration.spec.ts` in a db-backed package needs no extra wiring; a new _package_ must copy
+  the `test:integration` script.
 - A phase is not "done" until its tests are green and `docker-compose up` boots from a clean clone.
 
 ## Conventions

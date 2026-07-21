@@ -48,3 +48,16 @@ export function requireEnv(name: string): string {
   if (!value) throw new Error(`Missing required env var: ${name}`);
   return value;
 }
+
+/**
+ * Repoint DATABASE_URL at the throwaway integration-test database (TEST_DATABASE_URL).
+ *
+ * Integration suites TRUNCATE and re-seed whatever DATABASE_URL points at, so they must
+ * never see the dev database. Called from the jest integration setup and from
+ * `drizzle.test.config.ts`, so both the tests and their migrations target the same throwaway.
+ */
+export function useTestDatabase(start = process.cwd()): void {
+  loadEnv(start);
+
+  process.env.DATABASE_URL = requireEnv('TEST_DATABASE_URL');
+}

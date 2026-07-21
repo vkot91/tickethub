@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadEnv, requireEnv } from './index';
+import { loadEnv, requireEnv, useTestDatabase } from './index';
 
 describe('requireEnv', () => {
   it('returns the value when set', () => {
@@ -65,5 +65,38 @@ describe('loadEnv', () => {
     dirs.push(empty);
 
     expect(() => loadEnv(empty)).not.toThrow();
+  });
+});
+
+describe('useTestDatabase', () => {
+  const original = { db: process.env.DATABASE_URL, test: process.env.TEST_DATABASE_URL };
+
+  afterEach(() => {
+    for (const [key, value] of [
+      ['DATABASE_URL', original.db],
+      ['TEST_DATABASE_URL', original.test],
+    ] as const) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  it('repoints DATABASE_URL at TEST_DATABASE_URL so suites never truncate the dev db', () => {
+    process.env.DATABASE_URL = 'postgres://dev/tickethub';
+    process.env.TEST_DATABASE_URL = 'postgres://dev/tickethub_test';
+
+    useTestDatabase();
+
+    expect(process.env.DATABASE_URL).toBe('postgres://dev/tickethub_test');
+  });
+
+  it('throws rather than silently falling back to the dev db', () => {
+    delete process.env.TEST_DATABASE_URL;
+    // Start the walk somewhere with no .env, so the repo's own one can't satisfy it.
+    const empty = mkdtempSync(join(tmpdir(), 'noenv-'));
+
+    expect(() => useTestDatabase(empty)).toThrow(/TEST_DATABASE_URL/);
+
+    rmSync(empty, { recursive: true, force: true });
   });
 });

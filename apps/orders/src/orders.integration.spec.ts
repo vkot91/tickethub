@@ -48,7 +48,9 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate ${seatReservations}, ${orders}, ${sql.raw('"orders"."outbox"')} restart identity cascade`,
+      // processed_messages included on purpose: markPaid below reuses a fixed messageId, and a
+      // leftover inbox row makes it dedupe itself into a no-op (order stuck at awaiting_payment).
+      sql`truncate ${seatReservations}, ${orders}, ${sql.raw('"orders"."outbox"')}, ${sql.raw('"orders"."processed_messages"')} restart identity cascade`,
     );
     await redis.flushall();
   });

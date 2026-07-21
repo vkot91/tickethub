@@ -45,7 +45,7 @@ describe('Payments webhook idempotency (integration: real Postgres)', () => {
 
   beforeEach(async () => {
     await db.execute(
-      sql`truncate ${payments}, ${stripeEvents}, ${sql.raw('"payments"."outbox"')} restart identity cascade`,
+      sql`truncate ${payments}, ${stripeEvents}, ${sql.raw('"payments"."outbox"')}, ${sql.raw('"payments"."processed_messages"')} restart identity cascade`,
     );
     await db.insert(payments).values({
       orderId,
