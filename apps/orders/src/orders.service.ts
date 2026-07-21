@@ -4,7 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type { Queue } from 'bullmq';
 import { orders, seatReservations, ticketTypes, type Db } from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
+import { OutboxRepository, InboxRepository, type Tx } from '@tickethub/outbox';
 import {
   ORDER_ROUTING_KEYS,
   type CreateOrderDto,
@@ -17,7 +17,9 @@ import { canTransition, type OrderStatus } from './order-state';
 
 export const seatLockKey = (showId: string, seatId: string) => `seat-lock:${showId}:${seatId}`;
 
-const toResponse = (order: typeof orders.$inferSelect): OrderResponse => ({
+type Order = typeof orders.$inferSelect;
+
+const toResponse = (order: Order): OrderResponse => ({
   id: order.id,
   status: order.status,
   totalCents: order.totalCents,
@@ -57,22 +59,7 @@ export class OrdersService {
 
     try {
       return await this.db.transaction(async (tx) => {
-        // Price the seats (source of truth = ticket_types).
-        const typeIds = [...new Set(dto.seats.map((s) => s.ticketTypeId))];
-        const types = await tx
-          .select({
-            id: ticketTypes.id,
-            priceCents: ticketTypes.priceCents,
-            currency: ticketTypes.currency,
-          })
-          .from(ticketTypes)
-          .where(inArray(ticketTypes.id, typeIds));
-        const priceOf = new Map(types.map((t) => [t.id, t]));
-        const totalCents = dto.seats.reduce(
-          (sum, s) => sum + (priceOf.get(s.ticketTypeId)?.priceCents ?? 0),
-          0,
-        );
-        const currency = types[0]?.currency ?? 'usd';
+        const { totalCents, currency } = await this.price(tx, dto.seats);
 
         const expiresAt = new Date(Date.now() + this.ttlSec * 1000);
         const [order] = await tx
@@ -100,27 +87,18 @@ export class OrdersService {
         );
 
         // 4. Outbox (same tx): order.awaiting_payment + one seat.held per seat.
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT,
-          payload: {
-            messageId: uuid(),
-            orderId: order.id,
-            userId,
-            showId: dto.showId,
-            totalCents,
-          },
+        await this.emit(tx, ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT, {
+          orderId: order.id,
+          userId,
+          showId: dto.showId,
+          totalCents,
         });
-        for (const s of dto.seats) {
-          await this.outbox.enqueue(tx, {
-            routingKey: ORDER_ROUTING_KEYS.SEAT_HELD,
-            payload: {
-              messageId: uuid(),
-              orderId: order.id,
-              showId: dto.showId,
-              seatId: s.seatId,
-            },
-          });
-        }
+        await this.emitPerSeat(
+          tx,
+          ORDER_ROUTING_KEYS.SEAT_HELD,
+          order,
+          dto.seats.map((s) => s.seatId),
+        );
 
         // 5. Schedule the 10-minute release.
         await this.releaseQueue.add(
@@ -150,41 +128,116 @@ export class OrdersService {
     return toResponse(order);
   }
 
+  // Prices the requested seats off ticket_types (the source of truth, never the client).
+  private async price(
+    tx: Tx,
+    seats: CreateOrderDto['seats'],
+  ): Promise<{ totalCents: number; currency: string }> {
+    const typeIds = [...new Set(seats.map((s) => s.ticketTypeId))];
+
+    const types = await tx
+      .select({
+        id: ticketTypes.id,
+        priceCents: ticketTypes.priceCents,
+        currency: ticketTypes.currency,
+      })
+      .from(ticketTypes)
+      .where(inArray(ticketTypes.id, typeIds));
+
+    const priceOf = new Map(types.map((t) => [t.id, t]));
+
+    return {
+      totalCents: seats.reduce((sum, s) => sum + (priceOf.get(s.ticketTypeId)?.priceCents ?? 0), 0),
+      currency: types[0]?.currency ?? 'usd',
+    };
+  }
+
+  // --- Shared steps of the settle flows below. Each is one statement's worth of intent. ---
+
+  private async lockOrder(tx: Tx, orderId: string): Promise<Order | undefined> {
+    const [order] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .for('update')
+      .limit(1);
+    return order;
+  }
+
+  // Locks the order and returns it only if this message is new and the transition is legal.
+  private async claim(
+    tx: Tx,
+    messageId: string,
+    orderId: string,
+    to: OrderStatus,
+  ): Promise<Order | undefined> {
+    if (await this.inbox.alreadyProcessed(tx, messageId)) return undefined;
+
+    const order = await this.lockOrder(tx, orderId);
+
+    if (!order || !canTransition(order.status as OrderStatus, to)) return undefined;
+
+    return order;
+  }
+
+  // Moves the order and all of its reservations to their new statuses; returns the seat ids.
+  private async settle(
+    tx: Tx,
+    order: Order,
+    to: OrderStatus,
+    seatStatus: 'released' | 'confirmed',
+  ): Promise<string[]> {
+    const held = await tx
+      .select({ seatId: seatReservations.seatId })
+      .from(seatReservations)
+      .where(eq(seatReservations.orderId, order.id));
+
+    await tx.update(orders).set({ status: to }).where(eq(orders.id, order.id));
+
+    await tx
+      .update(seatReservations)
+      .set({ status: seatStatus })
+      .where(eq(seatReservations.orderId, order.id));
+
+    return held.map((h) => h.seatId);
+  }
+
+  private emit(tx: Tx, routingKey: string, payload: Record<string, unknown>): Promise<void> {
+    return this.outbox.enqueue(tx, { routingKey, payload: { messageId: uuid(), ...payload } });
+  }
+
+  private async emitPerSeat(
+    tx: Tx,
+    routingKey: string,
+    order: Order,
+    seatIds: string[],
+  ): Promise<void> {
+    for (const seatId of seatIds) {
+      await this.emit(tx, routingKey, { orderId: order.id, showId: order.showId, seatId });
+    }
+  }
+
+  private unlockSeats(order: Order, seatIds: string[]): Promise<void> {
+    return this.redis.releaseSeatLocks(seatIds.map((seatId) => seatLockKey(order.showId, seatId)));
+  }
+
   // Unblock seats and mark the order as expired. Called by the release worker
   async release(orderId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
-      const [order] = await tx
-        .select()
-        .from(orders)
-        .where(eq(orders.id, orderId))
-        .for('update')
-        .limit(1);
+      const order = await this.lockOrder(tx, orderId);
+
       // paid/expired/cancelled → nothing to release.
       if (!order || !canTransition(order.status as OrderStatus, 'expired')) return;
 
-      const held = await tx
-        .select({ seatId: seatReservations.seatId })
-        .from(seatReservations)
-        .where(eq(seatReservations.orderId, orderId));
+      const seatIds = await this.settle(tx, order, 'expired', 'released');
 
-      await tx.update(orders).set({ status: 'expired' }).where(eq(orders.id, orderId));
-      await tx
-        .update(seatReservations)
-        .set({ status: 'released' })
-        .where(eq(seatReservations.orderId, orderId));
-
-      await this.outbox.enqueue(tx, {
-        routingKey: ORDER_ROUTING_KEYS.ORDER_EXPIRED,
-        payload: { messageId: uuid(), orderId, showId: order.showId },
+      await this.emit(tx, ORDER_ROUTING_KEYS.ORDER_EXPIRED, {
+        orderId,
+        showId: order.showId,
       });
-      for (const s of held) {
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
-          payload: { messageId: uuid(), orderId, showId: order.showId, seatId: s.seatId },
-        });
-      }
+      await this.emitPerSeat(tx, ORDER_ROUTING_KEYS.SEAT_RELEASED, order, seatIds);
 
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
+      await this.unlockSeats(order, seatIds);
     });
   }
 
@@ -197,139 +250,62 @@ export class OrdersService {
     await this.db.transaction(async (tx) => {
       if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
 
-      const [order] = await tx
-        .select()
-        .from(orders)
-        .where(eq(orders.id, e.orderId))
-        .for('update')
-        .limit(1);
+      const order = await this.lockOrder(tx, e.orderId);
+
       if (!order) return;
 
       if (!canTransition(order.status as OrderStatus, 'paid')) {
         if (order.status === 'expired' || order.status === 'cancelled') {
-          await this.outbox.enqueue(tx, {
-            routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
-            payload: { messageId: uuid(), orderId: order.id, paymentIntentId: e.paymentIntentId },
+          await this.emit(tx, ORDER_ROUTING_KEYS.REFUND_REQUESTED, {
+            orderId: order.id,
+            paymentIntentId: e.paymentIntentId,
           });
         }
         return;
       }
 
-      const held = await tx
-        .select({ seatId: seatReservations.seatId })
-        .from(seatReservations)
-        .where(eq(seatReservations.orderId, order.id));
+      const seatIds = await this.settle(tx, order, 'paid', 'confirmed');
 
-      await tx.update(orders).set({ status: 'paid' }).where(eq(orders.id, order.id));
-      await tx
-        .update(seatReservations)
-        .set({ status: 'confirmed' })
-        .where(eq(seatReservations.orderId, order.id));
-
-      await this.outbox.enqueue(tx, {
-        routingKey: ORDER_ROUTING_KEYS.ORDER_PAID,
-        payload: {
-          messageId: uuid(),
-          orderId: order.id,
-          userId: order.userId,
-          showId: order.showId,
-        },
+      await this.emit(tx, ORDER_ROUTING_KEYS.ORDER_PAID, {
+        orderId: order.id,
+        userId: order.userId,
+        showId: order.showId,
       });
-      for (const s of held) {
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.SEAT_CONFIRMED,
-          payload: {
-            messageId: uuid(),
-            orderId: order.id,
-            showId: order.showId,
-            seatId: s.seatId,
-          },
-        });
-      }
+      await this.emitPerSeat(tx, ORDER_ROUTING_KEYS.SEAT_CONFIRMED, order, seatIds);
     });
   }
 
   // payment.failed → cancel the order, release its seats and locks.
   async markFailed(e: PaymentFailedEvent): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
+      const order = await this.claim(tx, e.messageId, e.orderId, 'cancelled');
 
-      const [order] = await tx
-        .select()
-        .from(orders)
-        .where(eq(orders.id, e.orderId))
-        .for('update')
-        .limit(1);
-      if (!order || !canTransition(order.status as OrderStatus, 'cancelled')) return;
+      if (!order) return;
 
-      const held = await tx
-        .select({ seatId: seatReservations.seatId })
-        .from(seatReservations)
-        .where(eq(seatReservations.orderId, order.id));
+      const seatIds = await this.settle(tx, order, 'cancelled', 'released');
 
-      await tx.update(orders).set({ status: 'cancelled' }).where(eq(orders.id, order.id));
-      await tx
-        .update(seatReservations)
-        .set({ status: 'released' })
-        .where(eq(seatReservations.orderId, order.id));
-
-      await this.outbox.enqueue(tx, {
-        routingKey: ORDER_ROUTING_KEYS.ORDER_CANCELLED,
-        payload: { messageId: uuid(), orderId: order.id, showId: order.showId },
+      await this.emit(tx, ORDER_ROUTING_KEYS.ORDER_CANCELLED, {
+        orderId: order.id,
+        showId: order.showId,
       });
-      for (const s of held) {
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
-          payload: {
-            messageId: uuid(),
-            orderId: order.id,
-            showId: order.showId,
-            seatId: s.seatId,
-          },
-        });
-      }
+      await this.emitPerSeat(tx, ORDER_ROUTING_KEYS.SEAT_RELEASED, order, seatIds);
 
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
+      await this.unlockSeats(order, seatIds);
     });
   }
 
   // refund.succeeded → close out a paid order as refunded, release its seats and locks.
   async markRefunded(e: RefundSucceededEvent): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
+      const order = await this.claim(tx, e.messageId, e.orderId, 'refunded');
 
-      const [order] = await tx
-        .select()
-        .from(orders)
-        .where(eq(orders.id, e.orderId))
-        .for('update')
-        .limit(1);
-      if (!order || !canTransition(order.status as OrderStatus, 'refunded')) return;
+      if (!order) return;
 
-      const held = await tx
-        .select({ seatId: seatReservations.seatId })
-        .from(seatReservations)
-        .where(eq(seatReservations.orderId, order.id));
+      const seatIds = await this.settle(tx, order, 'refunded', 'released');
 
-      await tx.update(orders).set({ status: 'refunded' }).where(eq(orders.id, order.id));
-      await tx
-        .update(seatReservations)
-        .set({ status: 'released' })
-        .where(eq(seatReservations.orderId, order.id));
+      await this.emitPerSeat(tx, ORDER_ROUTING_KEYS.SEAT_RELEASED, order, seatIds);
 
-      for (const s of held) {
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
-          payload: {
-            messageId: uuid(),
-            orderId: order.id,
-            showId: order.showId,
-            seatId: s.seatId,
-          },
-        });
-      }
-
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
+      await this.unlockSeats(order, seatIds);
     });
   }
 
@@ -348,10 +324,8 @@ export class OrdersService {
         throw new ConflictException(`Cannot refund an order in status ${order.status}`);
 
       // ponytail: refund window policy (N days before the show) is a single guard; add it when the shows RPC exposes startsAt.
-      await this.outbox.enqueue(tx, {
-        routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
-        payload: { messageId: uuid(), orderId: order.id },
-      });
+      await this.emit(tx, ORDER_ROUTING_KEYS.REFUND_REQUESTED, { orderId: order.id });
+
       return toResponse(order);
     });
   }
@@ -368,10 +342,7 @@ export class OrdersService {
         .where(and(eq(orders.showId, e.showId), eq(orders.status, 'paid')));
 
       for (const o of paid) {
-        await this.outbox.enqueue(tx, {
-          routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
-          payload: { messageId: uuid(), orderId: o.id },
-        });
+        await this.emit(tx, ORDER_ROUTING_KEYS.REFUND_REQUESTED, { orderId: o.id });
       }
     });
   }
