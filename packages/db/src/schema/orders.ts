@@ -22,7 +22,7 @@ export const orders = ordersSchema.table(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').notNull(), // logical FK to auth.users
-    eventId: uuid('event_id').notNull(), // logical FK to events.events
+    showId: uuid('show_id').notNull(), // logical FK to shows.shows
     status: orderStatusEnum('status').notNull().default('awaiting_payment'),
     idempotencyKey: text('idempotency_key').notNull(),
     totalCents: integer('total_cents').notNull(),
@@ -42,16 +42,16 @@ export const seatReservations = ordersSchema.table(
     orderId: uuid('order_id')
       .notNull()
       .references(() => orders.id),
-    eventId: uuid('event_id').notNull(),
+    showId: uuid('show_id').notNull(),
     seatId: uuid('seat_id').notNull(),
     ticketTypeId: uuid('ticket_type_id').notNull(),
     status: seatReservationStatusEnum('status').notNull().default('held'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
-    // The oversell barrier: at most one active reservation per (event, seat).
+    // The oversell barrier: at most one active reservation per (show, seat).
     activeUq: uniqueIndex('seat_res_active_uq')
-      .on(t.eventId, t.seatId)
+      .on(t.showId, t.seatId)
       .where(sql`status in ('held','confirmed')`),
   }),
 );

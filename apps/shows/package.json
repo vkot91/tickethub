@@ -1,5 +1,5 @@
 {
-  "name": "@tickethub/events",
+  "name": "@tickethub/shows",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -17,8 +17,8 @@
     "@tickethub/db": "workspace:*",
     "@tickethub/rmq": "workspace:*",
     "@nestjs/common": "catalog:",
+    "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/core": "catalog:",
-    "@nestjs/microservices": "catalog:",
     "drizzle-orm": "catalog:",
     "nestjs-pino": "catalog:",
     "reflect-metadata": "catalog:",

@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ClientsModule, ClientProxy, type RmqOptions } from '@nestjs/microservices';
+import { RabbitMQModule, AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { Queue } from 'bullmq';
-import Redis from 'ioredis';
-import { createDb, ordersOutbox, type Db } from '@tickethub/db';
+import { createDb, ordersOutbox, ordersProcessedMessages, type Db } from '@tickethub/db';
 import { configModuleFor, ConfigService } from '@tickethub/config';
 import { AppLoggerModule } from '@tickethub/common';
-import { RedisService, REDIS_CLIENT } from '@tickethub/redis';
-import { OutboxRepository, OutboxPoller } from '@tickethub/outbox';
-import { rmqClientOptions } from '@tickethub/rmq';
-import { QUEUES } from '@tickethub/contracts';
+import { RedisModule, RedisService } from '@tickethub/redis';
+import { OutboxRepository, InboxRepository, OutboxPoller } from '@tickethub/outbox';
+import { rmqConfig, publishEvent } from '@tickethub/rmq';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { startReleaseWorker } from './release.worker';
@@ -27,14 +25,11 @@ const bullConnection = (redisUrl: string) => {
   imports: [
     configModuleFor(schema),
     AppLoggerModule,
-    ClientsModule.registerAsync([
-      {
-        name: 'EVENTS_BUS',
-        inject: [ConfigService],
-        useFactory: (config: Cfg): RmqOptions =>
-          rmqClientOptions(QUEUES.ordersEvents, get(config, 'RABBITMQ_URL')),
-      },
-    ]),
+    RedisModule,
+    RabbitMQModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: Cfg) => rmqConfig(get(config, 'RABBITMQ_URL'), true),
+    }),
   ],
   controllers: [OrdersController],
   providers: [
@@ -44,37 +39,45 @@ const bullConnection = (redisUrl: string) => {
       useFactory: (config: Cfg): Db => createDb(get(config, 'DATABASE_URL')),
     },
     {
-      provide: REDIS_CLIENT,
-      inject: [ConfigService],
-      useFactory: (config: Cfg) => new Redis(get(config, 'REDIS_URL')),
-    },
-    {
-      provide: RedisService,
-      inject: [REDIS_CLIENT],
-      useFactory: (r: Redis) => new RedisService(r),
-    },
-    { provide: OutboxRepository, useFactory: () => new OutboxRepository() },
-    {
       provide: 'RELEASE_QUEUE',
       inject: [ConfigService],
       useFactory: (config: Cfg) =>
         new Queue('orders.release', { connection: bullConnection(get(config, 'REDIS_URL')) }),
     },
+    // The outbox tables are named here and nowhere else — services speak in messages.
+    {
+      provide: OutboxRepository,
+      inject: ['DB'],
+      useFactory: (db: Db) => new OutboxRepository(db, ordersOutbox),
+    },
+    {
+      provide: InboxRepository,
+      useFactory: () => new InboxRepository(ordersProcessedMessages),
+    },
     {
       provide: OrdersService,
-      inject: ['DB', RedisService, OutboxRepository, 'RELEASE_QUEUE', ConfigService],
+      inject: [
+        'DB',
+        RedisService,
+        OutboxRepository,
+        InboxRepository,
+        'RELEASE_QUEUE',
+        ConfigService,
+      ],
       useFactory: (
         db: Db,
         redis: RedisService,
         outbox: OutboxRepository,
+        inbox: InboxRepository,
         queue: Queue,
         config: Cfg,
-      ) => new OrdersService(db, redis, outbox, queue, get(config, 'RESERVATION_TTL_SEC')),
+      ) => new OrdersService(db, redis, outbox, inbox, queue, get(config, 'RESERVATION_TTL_SEC')),
     },
     {
       provide: OutboxPoller,
-      inject: ['DB', 'EVENTS_BUS'],
-      useFactory: (db: Db, client: ClientProxy) => new OutboxPoller(db, ordersOutbox, client),
+      inject: [OutboxRepository, AmqpConnection],
+      useFactory: (outbox: OutboxRepository, amqp: AmqpConnection) =>
+        new OutboxPoller(outbox, (rk, p) => publishEvent(amqp, rk, p)),
     },
     {
       provide: 'RELEASE_WORKER',

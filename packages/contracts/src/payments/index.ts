@@ -1,11 +1,5 @@
 import { z } from 'zod';
 
-export const PAYMENT_ROUTING_KEYS = {
-  paymentSucceeded: 'payment.succeeded',
-  paymentFailed: 'payment.failed',
-  refundSucceeded: 'refund.succeeded',
-} as const;
-
 const uuid = z.string().uuid();
 
 export const createPaymentIntentSchema = z.object({ orderId: uuid });

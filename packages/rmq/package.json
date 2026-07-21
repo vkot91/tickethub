@@ -8,12 +8,14 @@
     "build": "tsc",
     "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
-    "test": "jest --coverage"
+    "test": "jest --coverage",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit"
   },
   "dependencies": {
     "@tickethub/env": "workspace:*",
+    "@tickethub/contracts": "workspace:*",
+    "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/common": "catalog:",
-    "@nestjs/microservices": "catalog:",
     "amqplib": "catalog:",
     "amqp-connection-manager": "catalog:",
     "uuid": "catalog:",
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@tickethub/tsconfig": "workspace:*",
+    "@types/amqplib": "catalog:",
     "@types/uuid": "catalog:",
     "@types/node": "catalog:",
     "jest": "catalog:",
@@ -28,6 +31,8 @@
     "@types/jest": "catalog:",
     "typescript": "catalog:",
     "@tickethub/jest-config": "workspace:*",
+    "@testcontainers/rabbitmq": "catalog:",
+    "testcontainers": "catalog:",
     "ts-node": "catalog:"
   }
 }

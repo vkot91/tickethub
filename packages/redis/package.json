@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tickethub/env": "workspace:*",
+    "@tickethub/config": "workspace:*",
     "@nestjs/common": "catalog:",
     "ioredis": "catalog:"
   },

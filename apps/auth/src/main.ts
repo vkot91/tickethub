@@ -1,20 +1,15 @@
 import { NestFactory } from '@nestjs/core';
-import { Transport, MicroserviceOptions } from '@nestjs/microservices';
 import { RequestIdInterceptor } from '@tickethub/rmq';
-import { QUEUES } from '@tickethub/contracts';
 import { Logger } from 'nestjs-pino';
 import { AuthModule } from './auth.module';
-import { schema } from './config';
 
 async function bootstrap() {
-  const cfg = schema.parse(process.env);
-  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AuthModule, {
-    transport: Transport.RMQ,
-    options: { urls: [cfg.RABBITMQ_URL], queue: QUEUES.authRpc, queueOptions: { durable: true } },
-    bufferLogs: true,
-  });
+  // golevelup discovers the @RabbitRPC handlers via module scanning on bootstrap. Auth has
+  // no HTTP port — init() is enough.
+  const app = await NestFactory.create(AuthModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.useGlobalInterceptors(new RequestIdInterceptor());
-  await app.listen();
+
+  await app.init();
 }
 bootstrap();

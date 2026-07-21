@@ -2,15 +2,15 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../client';
 import { createDb } from '../client';
 import { requireDatabaseUrl } from '../env';
-import { users, organizers, venues, sections, rows, seats, events, ticketTypes } from '../schema';
+import { users, organizers, venues, sections, rows, seats, shows, ticketTypes } from '../schema';
 
 // bcrypt hash of "password123" — regenerated with real bcrypt (Task 9 setup).
 const PW_HASH = '$2b$10$7zJ/BFOmvCksYTw8T67EMeOhM5D9xz9EhVW9AoUT.YfenRwBk1mMa';
 
 export async function seed(db: Db): Promise<{
-  eventId: string;
-  gaEventId: string;
-  flashEventId: string;
+  showId: string;
+  gaShowId: string;
+  flashShowId: string;
   flashSeatId: string;
   flashTicketTypeId: string;
 }> {
@@ -66,7 +66,7 @@ export async function seed(db: Db): Promise<{
   const seatedTitle = 'Demo Concert (seated)';
   const gaTitle = 'Demo Festival (GA)';
   const [seated] = await db
-    .insert(events)
+    .insert(shows)
     .values({
       organizerId: orgRow.id,
       venueId: venueRow.id,
@@ -78,10 +78,10 @@ export async function seed(db: Db): Promise<{
     .onConflictDoNothing()
     .returning();
   const seatedRow =
-    seated ?? (await db.select().from(events).where(eq(events.title, seatedTitle)))[0];
+    seated ?? (await db.select().from(shows).where(eq(shows.title, seatedTitle)))[0];
 
   const [ga] = await db
-    .insert(events)
+    .insert(shows)
     .values({
       organizerId: orgRow.id,
       venueId: venueRow.id,
@@ -92,23 +92,23 @@ export async function seed(db: Db): Promise<{
     })
     .onConflictDoNothing()
     .returning();
-  const gaRow = ga ?? (await db.select().from(events).where(eq(events.title, gaTitle)))[0];
+  const gaRow = ga ?? (await db.select().from(shows).where(eq(shows.title, gaTitle)))[0];
 
   const existingTypes = await db
     .select()
     .from(ticketTypes)
-    .where(eq(ticketTypes.eventId, seatedRow.id));
+    .where(eq(ticketTypes.showId, seatedRow.id));
   if (existingTypes.length === 0) {
     await db
       .insert(ticketTypes)
-      .values({ eventId: seatedRow.id, name: 'Standard', priceCents: 5000 });
+      .values({ showId: seatedRow.id, name: 'Standard', priceCents: 5000 });
     await db
       .insert(ticketTypes)
-      .values({ eventId: gaRow.id, name: 'GA', priceCents: 3000, quota: 50 });
+      .values({ showId: gaRow.id, name: 'GA', priceCents: 3000, quota: 50 });
   }
 
   // Flash-sale target: its own venue/section/row with exactly ONE seat, published
-  // event — the contended seat for the k6 oversell test. Idempotent via select-first.
+  // show — the contended seat for the k6 oversell test. Idempotent via select-first.
   const flashTitle = 'Flash Sale (1 seat)';
   const existingFlashVenue = await db.select().from(venues).where(eq(venues.name, 'Flash Arena'));
   const flashVenue =
@@ -147,8 +147,8 @@ export async function seed(db: Db): Promise<{
     )[0];
   }
 
-  const [flashEvent] = await db
-    .insert(events)
+  const [flashShow] = await db
+    .insert(shows)
     .values({
       organizerId: orgRow.id,
       venueId: flashVenue.id,
@@ -159,26 +159,26 @@ export async function seed(db: Db): Promise<{
     })
     .onConflictDoNothing()
     .returning();
-  const flashEventRow =
-    flashEvent ?? (await db.select().from(events).where(eq(events.title, flashTitle)))[0];
+  const flashShowRow =
+    flashShow ?? (await db.select().from(shows).where(eq(shows.title, flashTitle)))[0];
 
   const existingFlashType = await db
     .select()
     .from(ticketTypes)
-    .where(eq(ticketTypes.eventId, flashEventRow.id));
+    .where(eq(ticketTypes.showId, flashShowRow.id));
   const flashType =
     existingFlashType[0] ??
     (
       await db
         .insert(ticketTypes)
-        .values({ eventId: flashEventRow.id, name: 'Flash', priceCents: 5000 })
+        .values({ showId: flashShowRow.id, name: 'Flash', priceCents: 5000 })
         .returning()
     )[0];
 
   return {
-    eventId: seatedRow.id,
-    gaEventId: gaRow.id,
-    flashEventId: flashEventRow.id,
+    showId: seatedRow.id,
+    gaShowId: gaRow.id,
+    flashShowId: flashShowRow.id,
     flashSeatId: flashSeatRow.id,
     flashTicketTypeId: flashType.id,
   };

@@ -1,11 +1,12 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
-import { isNull, eq } from 'drizzle-orm';
-import type { Db, OutboxTable } from '@tickethub/db';
+import type { OutboxRepository } from './outbox.repository';
 
-// ponytail: interval poll + FOR UPDATE SKIP LOCKED. At-least-once (emit may repeat on
-// crash between emit and commit) — consumers dedupe via processed_messages. CDC only if
+// Publishes one outbox row to the broker. Injected so the poller stays transport-agnostic —
+// it depends on neither @nestjs/microservices nor golevelup, and is testable without a broker.
+export type PublishFn = (routingKey: string, payload: unknown) => Promise<void>;
+
+// ponytail: interval poll + FOR UPDATE SKIP LOCKED. At-least-once (publish may repeat on
+// crash between publish and commit) — consumers dedupe via InboxRepository. CDC only if
 // throughput ever demands it.
 @Injectable()
 export class OutboxPoller implements OnModuleInit, OnModuleDestroy {
@@ -13,9 +14,8 @@ export class OutboxPoller implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
 
   constructor(
-    private readonly db: Db,
-    private readonly table: OutboxTable,
-    private readonly client: ClientProxy,
+    private readonly outbox: OutboxRepository,
+    private readonly publish: PublishFn,
     private readonly intervalMs = 500,
     private readonly batch = 100,
   ) {}
@@ -31,21 +31,16 @@ export class OutboxPoller implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
 
+  // Publish-then-mark: a failure here leaves the row unpublished, so it goes out again.
+  // Marking first would turn at-least-once into at-most-once and silently drop events.
   async drain(): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      const rows = await tx
-        .select()
-        .from(this.table)
-        .where(isNull(this.table.publishedAt))
-        .for('update', { skipLocked: true })
-        .limit(this.batch);
+    await this.outbox.withTransaction(async (tx) => {
+      const rows = await this.outbox.fetchUnpublished(tx, this.batch);
 
       for (const row of rows) {
-        await firstValueFrom(this.client.emit(row.routingKey, row.payload));
-        await tx
-          .update(this.table)
-          .set({ publishedAt: new Date() })
-          .where(eq(this.table.id, row.id));
+        await this.publish(row.routingKey, row.payload);
+
+        await this.outbox.markPublished(tx, row.id);
       }
     });
   }

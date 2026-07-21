@@ -1,3 +1,4 @@
+import { Nack } from '@golevelup/nestjs-rabbitmq';
 import { OrdersController } from './orders.controller';
 
 describe('OrdersController', () => {
@@ -8,13 +9,13 @@ describe('OrdersController', () => {
     markPaid: jest.fn(),
     markFailed: jest.fn(),
     markRefunded: jest.fn(),
-    refundAllPaidForEvent: jest.fn(),
+    refundAllPaidForShow: jest.fn(),
   };
   const ctrl = new OrdersController(svc as never);
 
   it('forwards create to the service', () => {
-    ctrl.create({ userId: 'u1', idempotencyKey: 'k1', dto: { eventId: 'e1', seats: [] } as never });
-    expect(svc.create).toHaveBeenCalledWith('u1', 'k1', { eventId: 'e1', seats: [] });
+    ctrl.create({ userId: 'u1', idempotencyKey: 'k1', dto: { showId: 'e1', seats: [] } as never });
+    expect(svc.create).toHaveBeenCalledWith('u1', 'k1', { showId: 'e1', seats: [] });
   });
 
   it('forwards get to the service', () => {
@@ -52,8 +53,16 @@ describe('OrdersController', () => {
     expect(svc.markRefunded).toHaveBeenCalled();
   });
 
-  it('routes event.cancelled to refundAllPaidForEvent', () => {
-    ctrl.onEventCancelled({ messageId: 'm1', eventId: 'e1' });
-    expect(svc.refundAllPaidForEvent).toHaveBeenCalled();
+  it('routes show.cancelled to refundAllPaidForShow', () => {
+    ctrl.onShowCancelled({ messageId: 'm1', showId: 'e1' });
+    expect(svc.refundAllPaidForShow).toHaveBeenCalled();
+  });
+
+  it('dead-letters (Nack, no requeue) when a saga handler throws', async () => {
+    const failing = { markPaid: jest.fn().mockRejectedValue(new Error('boom')) };
+    const c = new OrdersController(failing as never);
+    const res = await c.onPaymentSucceeded({ messageId: 'm1', orderId: 'ord1' } as never);
+    expect(res).toBeInstanceOf(Nack);
+    expect((res as Nack).requeue).toBe(false);
   });
 });

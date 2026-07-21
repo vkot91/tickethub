@@ -1,5 +1,5 @@
 {
-  "id": "cdbc0292-49d9-43ea-aac2-b2c01bddebcd",
+  "id": "8360c77f-c3af-4306-9c23-b1f43a21f77c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -100,9 +100,164 @@
         }
       }
     },
-    "events.events": {
-      "name": "events",
-      "schema": "events",
+    "shows.organizers": {
+      "name": "organizers",
+      "schema": "shows",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "organizers_user_id_unique": {
+          "name": "organizers_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["user_id"]
+        }
+      }
+    },
+    "shows.rows": {
+      "name": "rows",
+      "schema": "shows",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rows_section_id_sections_id_fk": {
+          "name": "rows_section_id_sections_id_fk",
+          "tableFrom": "rows",
+          "tableTo": "sections",
+          "schemaTo": "shows",
+          "columnsFrom": ["section_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "shows.seats": {
+      "name": "seats",
+      "schema": "shows",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "row_id": {
+          "name": "row_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "number": {
+          "name": "number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "seats_row_id_rows_id_fk": {
+          "name": "seats_row_id_rows_id_fk",
+          "tableFrom": "seats",
+          "tableTo": "rows",
+          "schemaTo": "shows",
+          "columnsFrom": ["row_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "shows.sections": {
+      "name": "sections",
+      "schema": "shows",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "sections_venue_id_venues_id_fk": {
+          "name": "sections_venue_id_venues_id_fk",
+          "tableFrom": "sections",
+          "tableTo": "venues",
+          "schemaTo": "shows",
+          "columnsFrom": ["venue_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "shows.shows": {
+      "name": "shows",
+      "schema": "shows",
       "columns": {
         "id": {
           "name": "id",
@@ -156,8 +311,8 @@
         },
         "status": {
           "name": "status",
-          "type": "event_status",
-          "typeSchema": "events",
+          "type": "show_status",
+          "typeSchema": "shows",
           "primaryKey": false,
           "notNull": true,
           "default": "'draft'"
@@ -165,21 +320,21 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "events_organizer_id_organizers_id_fk": {
-          "name": "events_organizer_id_organizers_id_fk",
-          "tableFrom": "events",
+        "shows_organizer_id_organizers_id_fk": {
+          "name": "shows_organizer_id_organizers_id_fk",
+          "tableFrom": "shows",
           "tableTo": "organizers",
-          "schemaTo": "events",
+          "schemaTo": "shows",
           "columnsFrom": ["organizer_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "events_venue_id_venues_id_fk": {
-          "name": "events_venue_id_venues_id_fk",
-          "tableFrom": "events",
+        "shows_venue_id_venues_id_fk": {
+          "name": "shows_venue_id_venues_id_fk",
+          "tableFrom": "shows",
           "tableTo": "venues",
-          "schemaTo": "events",
+          "schemaTo": "shows",
           "columnsFrom": ["venue_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
@@ -188,171 +343,16 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "events_title_unique": {
-          "name": "events_title_unique",
+        "shows_title_unique": {
+          "name": "shows_title_unique",
           "nullsNotDistinct": false,
           "columns": ["title"]
         }
       }
     },
-    "events.organizers": {
-      "name": "organizers",
-      "schema": "events",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "organizers_user_id_unique": {
-          "name": "organizers_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": ["user_id"]
-        }
-      }
-    },
-    "events.rows": {
-      "name": "rows",
-      "schema": "events",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "section_id": {
-          "name": "section_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "number": {
-          "name": "number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "rows_section_id_sections_id_fk": {
-          "name": "rows_section_id_sections_id_fk",
-          "tableFrom": "rows",
-          "tableTo": "sections",
-          "schemaTo": "events",
-          "columnsFrom": ["section_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "events.seats": {
-      "name": "seats",
-      "schema": "events",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "row_id": {
-          "name": "row_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "number": {
-          "name": "number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "seats_row_id_rows_id_fk": {
-          "name": "seats_row_id_rows_id_fk",
-          "tableFrom": "seats",
-          "tableTo": "rows",
-          "schemaTo": "events",
-          "columnsFrom": ["row_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "events.sections": {
-      "name": "sections",
-      "schema": "events",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "venue_id": {
-          "name": "venue_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "sections_venue_id_venues_id_fk": {
-          "name": "sections_venue_id_venues_id_fk",
-          "tableFrom": "sections",
-          "tableTo": "venues",
-          "schemaTo": "events",
-          "columnsFrom": ["venue_id"],
-          "columnsTo": ["id"],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "events.ticket_types": {
+    "shows.ticket_types": {
       "name": "ticket_types",
-      "schema": "events",
+      "schema": "shows",
       "columns": {
         "id": {
           "name": "id",
@@ -361,8 +361,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "event_id": {
-          "name": "event_id",
+        "show_id": {
+          "name": "show_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -395,12 +395,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "ticket_types_event_id_events_id_fk": {
-          "name": "ticket_types_event_id_events_id_fk",
+        "ticket_types_show_id_shows_id_fk": {
+          "name": "ticket_types_show_id_shows_id_fk",
           "tableFrom": "ticket_types",
-          "tableTo": "events",
-          "schemaTo": "events",
-          "columnsFrom": ["event_id"],
+          "tableTo": "shows",
+          "schemaTo": "shows",
+          "columnsFrom": ["show_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -409,9 +409,9 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     },
-    "events.venues": {
+    "shows.venues": {
       "name": "venues",
-      "schema": "events",
+      "schema": "shows",
       "columns": {
         "id": {
           "name": "id",
@@ -451,13 +451,401 @@
           "name": "venues_organizer_id_organizers_id_fk",
           "tableFrom": "venues",
           "tableTo": "organizers",
-          "schemaTo": "events",
+          "schemaTo": "shows",
           "columnsFrom": ["organizer_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "orders.orders": {
+      "name": "orders",
+      "schema": "orders",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "show_id": {
+          "name": "show_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "order_status",
+          "typeSchema": "orders",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'awaiting_payment'"
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_cents": {
+          "name": "total_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'usd'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "orders_user_idem_uq": {
+          "name": "orders_user_idem_uq",
+          "nullsNotDistinct": false,
+          "columns": ["user_id", "idempotency_key"]
+        }
+      }
+    },
+    "orders.outbox": {
+      "name": "outbox",
+      "schema": "orders",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "routing_key": {
+          "name": "routing_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "orders.processed_messages": {
+      "name": "processed_messages",
+      "schema": "orders",
+      "columns": {
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "orders.seat_reservations": {
+      "name": "seat_reservations",
+      "schema": "orders",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "show_id": {
+          "name": "show_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_id": {
+          "name": "seat_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ticket_type_id": {
+          "name": "ticket_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "seat_reservation_status",
+          "typeSchema": "orders",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'held'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "seat_res_active_uq": {
+          "name": "seat_res_active_uq",
+          "columns": [
+            {
+              "expression": "show_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "seat_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "status in ('held','confirmed')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "seat_reservations_order_id_orders_id_fk": {
+          "name": "seat_reservations_order_id_orders_id_fk",
+          "tableFrom": "seat_reservations",
+          "tableTo": "orders",
+          "schemaTo": "orders",
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "payments.payments": {
+      "name": "payments",
+      "schema": "payments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stripe_payment_intent_id": {
+          "name": "stripe_payment_intent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'usd'"
+        },
+        "status": {
+          "name": "status",
+          "type": "payment_status",
+          "typeSchema": "payments",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'requires_payment'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "payments_order_uq": {
+          "name": "payments_order_uq",
+          "nullsNotDistinct": false,
+          "columns": ["order_id"]
+        }
+      }
+    },
+    "payments.outbox": {
+      "name": "outbox",
+      "schema": "payments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "routing_key": {
+          "name": "routing_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "payments.processed_messages": {
+      "name": "processed_messages",
+      "schema": "payments",
+      "columns": {
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "payments.stripe_events": {
+      "name": "stripe_events",
+      "schema": "payments",
+      "columns": {
+        "stripe_event_id": {
+          "name": "stripe_event_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
     }
@@ -468,15 +856,32 @@
       "schema": "auth",
       "values": ["user", "organizer", "admin"]
     },
-    "events.event_status": {
-      "name": "event_status",
-      "schema": "events",
+    "shows.show_status": {
+      "name": "show_status",
+      "schema": "shows",
       "values": ["draft", "published", "cancelled", "finished"]
+    },
+    "orders.order_status": {
+      "name": "order_status",
+      "schema": "orders",
+      "values": ["awaiting_payment", "paid", "expired", "cancelled", "refunded"]
+    },
+    "orders.seat_reservation_status": {
+      "name": "seat_reservation_status",
+      "schema": "orders",
+      "values": ["held", "confirmed", "released"]
+    },
+    "payments.payment_status": {
+      "name": "payment_status",
+      "schema": "payments",
+      "values": ["requires_payment", "succeeded", "failed", "refunded", "canceled"]
     }
   },
   "schemas": {
     "auth": "auth",
-    "events": "events"
+    "shows": "shows",
+    "orders": "orders",
+    "payments": "payments"
   },
   "sequences": {},
   "_meta": {

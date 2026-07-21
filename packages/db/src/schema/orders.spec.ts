@@ -6,7 +6,7 @@ describe('orders schema', () => {
       expect.arrayContaining([
         'id',
         'userId',
-        'eventId',
+        'showId',
         'status',
         'idempotencyKey',
         'totalCents',
@@ -17,7 +17,7 @@ describe('orders schema', () => {
 
   it('seat_reservations exposes seat + status columns', () => {
     expect(Object.keys(seatReservations)).toEqual(
-      expect.arrayContaining(['id', 'orderId', 'eventId', 'seatId', 'ticketTypeId', 'status']),
+      expect.arrayContaining(['id', 'orderId', 'showId', 'seatId', 'ticketTypeId', 'status']),
     );
   });
 

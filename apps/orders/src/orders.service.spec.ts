@@ -17,6 +17,7 @@ function deps(overrides: Partial<Record<string, unknown>> = {}) {
     releaseSeatLocks: jest.fn(),
   };
   const outbox = { enqueue: jest.fn() };
+  const inbox = { alreadyProcessed: jest.fn().mockResolvedValue(false) };
   const queue = { add: jest.fn() };
   const order = {
     id: 'ord1',
@@ -37,11 +38,11 @@ function deps(overrides: Partial<Record<string, unknown>> = {}) {
       }),
     ...overrides,
   };
-  return { db, redis, outbox, queue, order };
+  return { db, redis, outbox, inbox, queue, order };
 }
 
 describe('OrdersService.create', () => {
-  const dto = { eventId: 'e1', seats: [{ seatId: 's1', ticketTypeId: 'tt1' }] };
+  const dto = { showId: 'e1', seats: [{ seatId: 's1', ticketTypeId: 'tt1' }] };
 
   it('returns a 409 when seat locks cannot be acquired', async () => {
     const d = deps();
@@ -50,6 +51,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -62,6 +64,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -91,6 +94,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -119,6 +123,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -137,6 +142,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -155,6 +161,7 @@ describe('OrdersService.create', () => {
       d.db as never,
       d.redis as never,
       d.outbox as never,
+      d.inbox as never,
       d.queue as never,
       TTL,
     );
@@ -190,6 +197,7 @@ describe('OrdersService.release', () => {
       db as never,
       redis as never,
       outbox as never,
+      { alreadyProcessed: jest.fn().mockResolvedValue(false) } as never,
       { add: jest.fn() } as never,
       600,
     );
@@ -197,7 +205,7 @@ describe('OrdersService.release', () => {
 
   it('expires an unpaid order, writes outbox rows, and releases the seat locks', async () => {
     const setCalls: string[] = [];
-    const order = { id: 'ord1', eventId: 'e1', status: 'awaiting_payment' };
+    const order = { id: 'ord1', showId: 'e1', status: 'awaiting_payment' };
     const redis = { releaseSeatLocks: jest.fn() };
     const outbox = { enqueue: jest.fn() };
     const db = {
@@ -217,7 +225,7 @@ describe('OrdersService.release', () => {
     const outbox = { enqueue: jest.fn() };
     const db = {
       transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-        fn(stateChangeTx({ id: 'ord1', eventId: 'e1', status: 'paid' }, [], setCalls)),
+        fn(stateChangeTx({ id: 'ord1', showId: 'e1', status: 'paid' }, [], setCalls)),
     };
     await svcWith(db, redis, outbox).release('ord1');
     expect(redis.releaseSeatLocks).not.toHaveBeenCalled();
@@ -225,16 +233,12 @@ describe('OrdersService.release', () => {
   });
 });
 
-// Fake tx for the saga handlers: insert()→processed-messages guard (returning [] means
-// "already seen"); no-arg select→order lookup; select({...})→a rows list (held seats or paid orders).
-function sagaTx(opts: { order?: unknown; rows?: unknown[]; seen?: boolean; setCalls?: string[] }) {
-  const { order, rows = [], seen = false, setCalls = [] } = opts;
+// Fake tx for the saga handlers: no-arg select→order lookup; select({...})→a rows list
+// (held seats or paid orders). The processed-messages guard lives on the inbox mock
+// in sagaSvc, not here.
+function sagaTx(opts: { order?: unknown; rows?: unknown[]; setCalls?: string[] }) {
+  const { order, rows = [], setCalls = [] } = opts;
   return {
-    insert: () => ({
-      values: () => ({
-        onConflictDoNothing: () => ({ returning: async () => (seen ? [] : [{ messageId: 'm1' }]) }),
-      }),
-    }),
     select: (arg?: unknown) =>
       arg
         ? { from: () => ({ where: async () => rows }) }
@@ -252,23 +256,25 @@ function sagaTx(opts: { order?: unknown; rows?: unknown[]; seen?: boolean; setCa
   };
 }
 
-function sagaSvc(tx: unknown) {
+function sagaSvc(tx: unknown, seen = false) {
   const enqueued: Array<{ routingKey: string }> = [];
   const outbox = {
-    enqueue: jest.fn(async (_tx: unknown, _t: unknown, m: { routingKey: string }) => {
+    enqueue: jest.fn(async (_tx: unknown, m: { routingKey: string }) => {
       enqueued.push(m);
     }),
   };
   const redis = { releaseSeatLocks: jest.fn() };
   const db = { transaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx) };
+  const inbox = { alreadyProcessed: jest.fn().mockResolvedValue(seen) };
   const svc = new OrdersService(
     db as never,
     redis as never,
     outbox as never,
+    inbox as never,
     { add: jest.fn() } as never,
     600,
   );
-  return { svc, outbox, redis, enqueued };
+  return { svc, outbox, inbox, redis, enqueued };
 }
 
 describe('OrdersService saga handlers', () => {
@@ -276,7 +282,7 @@ describe('OrdersService saga handlers', () => {
     const setCalls: string[] = [];
     const d = sagaSvc(
       sagaTx({
-        order: { id: 'ord1', userId: 'u1', eventId: 'e1', status: 'awaiting_payment' },
+        order: { id: 'ord1', userId: 'u1', showId: 'e1', status: 'awaiting_payment' },
         rows: [{ seatId: 's1' }],
         setCalls,
       }),
@@ -295,7 +301,7 @@ describe('OrdersService saga handlers', () => {
 
   it('markPaid on an expired order requests a refund instead of resurrecting it', async () => {
     const d = sagaSvc(
-      sagaTx({ order: { id: 'ord1', userId: 'u1', eventId: 'e1', status: 'expired' } }),
+      sagaTx({ order: { id: 'ord1', userId: 'u1', showId: 'e1', status: 'expired' } }),
     );
     await d.svc.markPaid({
       messageId: 'm1',
@@ -307,7 +313,7 @@ describe('OrdersService saga handlers', () => {
   });
 
   it('markPaid is a no-op when the message was already processed', async () => {
-    const d = sagaSvc(sagaTx({ order: { id: 'ord1', status: 'awaiting_payment' }, seen: true }));
+    const d = sagaSvc(sagaTx({ order: { id: 'ord1', status: 'awaiting_payment' } }), true);
     await d.svc.markPaid({
       messageId: 'm1',
       orderId: 'ord1',
@@ -321,7 +327,7 @@ describe('OrdersService saga handlers', () => {
     const setCalls: string[] = [];
     const d = sagaSvc(
       sagaTx({
-        order: { id: 'ord1', eventId: 'e1', status: 'awaiting_payment' },
+        order: { id: 'ord1', showId: 'e1', status: 'awaiting_payment' },
         rows: [{ seatId: 's1' }],
         setCalls,
       }),
@@ -332,7 +338,7 @@ describe('OrdersService saga handlers', () => {
   });
 
   it('markFailed on a paid order is a no-op', async () => {
-    const d = sagaSvc(sagaTx({ order: { id: 'ord1', eventId: 'e1', status: 'paid' } }));
+    const d = sagaSvc(sagaTx({ order: { id: 'ord1', showId: 'e1', status: 'paid' } }));
     await d.svc.markFailed({ messageId: 'm1', orderId: 'ord1', paymentIntentId: 'pi_1' } as never);
     expect(d.redis.releaseSeatLocks).not.toHaveBeenCalled();
   });
@@ -341,7 +347,7 @@ describe('OrdersService saga handlers', () => {
     const setCalls: string[] = [];
     const d = sagaSvc(
       sagaTx({
-        order: { id: 'ord1', eventId: 'e1', status: 'paid' },
+        order: { id: 'ord1', showId: 'e1', status: 'paid' },
         rows: [{ seatId: 's1' }],
         setCalls,
       }),
@@ -361,7 +367,7 @@ describe('OrdersService.requestRefund', () => {
   const paidOrder = {
     id: 'ord1',
     userId: 'u1',
-    eventId: 'e1',
+    showId: 'e1',
     status: 'paid',
     totalCents: 5000,
     currency: 'usd',
@@ -386,16 +392,16 @@ describe('OrdersService.requestRefund', () => {
   });
 });
 
-describe('OrdersService.refundAllPaidForEvent', () => {
+describe('OrdersService.refundAllPaidForShow', () => {
   it('emits a refund.requested per paid order', async () => {
     const d = sagaSvc(sagaTx({ rows: [{ id: 'o1' }, { id: 'o2' }] }));
-    await d.svc.refundAllPaidForEvent({ messageId: 'm1', eventId: 'e1' });
+    await d.svc.refundAllPaidForShow({ messageId: 'm1', showId: 'e1' });
     expect(d.enqueued.filter((m) => m.routingKey === 'refund.requested')).toHaveLength(2);
   });
 
   it('is a no-op when already processed', async () => {
-    const d = sagaSvc(sagaTx({ rows: [{ id: 'o1' }], seen: true }));
-    await d.svc.refundAllPaidForEvent({ messageId: 'm1', eventId: 'e1' });
+    const d = sagaSvc(sagaTx({ rows: [{ id: 'o1' }] }), true);
+    await d.svc.refundAllPaidForShow({ messageId: 'm1', showId: 'e1' });
     expect(d.enqueued).toHaveLength(0);
   });
 });
@@ -413,13 +419,27 @@ describe('OrdersService.get', () => {
     const db = {
       select: () => ({ from: () => ({ where: () => ({ limit: async () => [order] }) }) }),
     };
-    const svc = new OrdersService(db as never, {} as never, {} as never, {} as never, 600);
+    const svc = new OrdersService(
+      db as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      600,
+    );
     expect((await svc.get('u1', 'ord1')).id).toBe('ord1');
   });
 
   it('throws NotFound when the order is missing', async () => {
     const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => [] }) }) }) };
-    const svc = new OrdersService(db as never, {} as never, {} as never, {} as never, 600);
+    const svc = new OrdersService(
+      db as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      600,
+    );
     await expect(svc.get('u1', 'x')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

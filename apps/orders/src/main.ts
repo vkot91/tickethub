@@ -1,34 +1,15 @@
 import { NestFactory } from '@nestjs/core';
-import { MicroserviceOptions } from '@nestjs/microservices';
-import { RequestIdInterceptor, rmqClientOptions } from '@tickethub/rmq';
-import { HttpToRpcExceptionFilter } from '@tickethub/common';
-import { QUEUES } from '@tickethub/contracts';
+import { RequestIdInterceptor } from '@tickethub/rmq';
 import { Logger } from 'nestjs-pino';
 import { OrdersModule } from './orders.module';
-import { schema } from './config';
 
 async function bootstrap() {
-  const cfg = schema.parse(process.env);
-
-  // Hybrid app: our own RPC queue (orders.rpc) plus two publisher queues we now consume —
-  // payments.events (payment/refund outcomes) and events.events (mass refund on cancel).
-  // INestMicroservice has no connectMicroservice, so create a full app and attach each queue.
+  // golevelup discovers every @RabbitRPC/@RabbitSubscribe via module scanning on bootstrap.
+  // Orders has no HTTP port — init() is enough (it also starts the BullMQ release worker).
   const app = await NestFactory.create(OrdersModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
   app.useGlobalInterceptors(new RequestIdInterceptor());
-  app.useGlobalFilters(new HttpToRpcExceptionFilter());
 
-  app.connectMicroservice<MicroserviceOptions>(
-    rmqClientOptions(QUEUES.ordersRpc, cfg.RABBITMQ_URL),
-  );
-  app.connectMicroservice<MicroserviceOptions>(
-    rmqClientOptions(QUEUES.paymentsEvents, cfg.RABBITMQ_URL),
-  );
-  app.connectMicroservice<MicroserviceOptions>(
-    rmqClientOptions(QUEUES.catalogEvents, cfg.RABBITMQ_URL),
-  );
-
-  await app.startAllMicroservices();
   await app.init();
 }
 bootstrap();

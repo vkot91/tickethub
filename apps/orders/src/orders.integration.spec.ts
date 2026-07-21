@@ -1,10 +1,17 @@
 import { loadEnv, requireEnv } from '@tickethub/env';
 import { sql } from 'drizzle-orm';
 import Redis from 'ioredis';
-import { createDb, orders, seatReservations, type Db } from '@tickethub/db';
+import {
+  createDb,
+  orders,
+  seatReservations,
+  ordersOutbox,
+  ordersProcessedMessages,
+  type Db,
+} from '@tickethub/db';
 import { seed } from '@tickethub/db/seed';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository } from '@tickethub/outbox';
+import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
 import { OrdersService } from './orders.service';
 
 jest.setTimeout(30_000);
@@ -13,21 +20,22 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
   let db: Db;
   let redis: Redis;
   let svc: OrdersService;
-  let eventId: string, seatId: string, ttId: string;
+  let showId: string, seatId: string, ttId: string;
 
   beforeAll(async () => {
     loadEnv();
     db = createDb(requireEnv('DATABASE_URL'));
     redis = new Redis(requireEnv('REDIS_URL'));
     const ids = await seed(db);
-    eventId = ids.flashEventId;
+    showId = ids.flashShowId;
     seatId = ids.flashSeatId;
     ttId = ids.flashTicketTypeId;
     // release scheduling isn't exercised here — fake the queue.
     svc = new OrdersService(
       db,
       new RedisService(redis),
-      new OutboxRepository(),
+      new OutboxRepository(db, ordersOutbox),
+      new InboxRepository(ordersProcessedMessages),
       { add: async () => undefined } as never,
       600,
     );
@@ -45,7 +53,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     await redis.flushall();
   });
 
-  const dtoFor = () => ({ eventId, seats: [{ seatId, ticketTypeId: ttId }] });
+  const dtoFor = () => ({ showId, seats: [{ seatId, ticketTypeId: ttId }] });
 
   it('lets exactly one of two concurrent buyers win the single seat', async () => {
     const results = await Promise.allSettled([

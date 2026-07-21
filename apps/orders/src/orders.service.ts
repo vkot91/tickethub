@@ -2,16 +2,9 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 import { and, eq, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import type { Queue } from 'bullmq';
-import {
-  orders,
-  seatReservations,
-  ordersOutbox,
-  ordersProcessedMessages,
-  ticketTypes,
-  type Db,
-} from '@tickethub/db';
+import { orders, seatReservations, ticketTypes, type Db } from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository, alreadyProcessed } from '@tickethub/outbox';
+import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
 import {
   ORDER_ROUTING_KEYS,
   type CreateOrderDto,
@@ -22,7 +15,7 @@ import {
 } from '@tickethub/contracts';
 import { canTransition, type OrderStatus } from './order-state';
 
-export const seatLockKey = (eventId: string, seatId: string) => `seat-lock:${eventId}:${seatId}`;
+export const seatLockKey = (showId: string, seatId: string) => `seat-lock:${showId}:${seatId}`;
 
 const toResponse = (order: typeof orders.$inferSelect): OrderResponse => ({
   id: order.id,
@@ -38,6 +31,7 @@ export class OrdersService {
     private readonly db: Db,
     private readonly redis: RedisService,
     private readonly outbox: OutboxRepository,
+    private readonly inbox: InboxRepository,
     private readonly releaseQueue: Queue,
     private readonly ttlSec: number,
   ) {}
@@ -56,7 +50,7 @@ export class OrdersService {
     if (existing) return toResponse(existing);
 
     // 2. Redis seat locks — cheap rejection before touching Postgres.
-    const keys = dto.seats.map((s) => seatLockKey(dto.eventId, s.seatId));
+    const keys = dto.seats.map((s) => seatLockKey(dto.showId, s.seatId));
     if (!(await this.redis.acquireSeatLocks(keys, this.ttlSec))) {
       throw new ConflictException('One or more seats are being held by another buyer');
     }
@@ -85,7 +79,7 @@ export class OrdersService {
           .insert(orders)
           .values({
             userId,
-            eventId: dto.eventId,
+            showId: dto.showId,
             idempotencyKey,
             status: 'awaiting_payment',
             totalCents,
@@ -98,7 +92,7 @@ export class OrdersService {
         await tx.insert(seatReservations).values(
           dto.seats.map((s) => ({
             orderId: order.id,
-            eventId: dto.eventId,
+            showId: dto.showId,
             seatId: s.seatId,
             ticketTypeId: s.ticketTypeId,
             status: 'held' as const,
@@ -106,23 +100,23 @@ export class OrdersService {
         );
 
         // 4. Outbox (same tx): order.awaiting_payment + one seat.held per seat.
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.orderAwaitingPayment,
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT,
           payload: {
             messageId: uuid(),
             orderId: order.id,
             userId,
-            eventId: dto.eventId,
+            showId: dto.showId,
             totalCents,
           },
         });
         for (const s of dto.seats) {
-          await this.outbox.enqueue(tx, ordersOutbox, {
-            routingKey: ORDER_ROUTING_KEYS.seatHeld,
+          await this.outbox.enqueue(tx, {
+            routingKey: ORDER_ROUTING_KEYS.SEAT_HELD,
             payload: {
               messageId: uuid(),
               orderId: order.id,
-              eventId: dto.eventId,
+              showId: dto.showId,
               seatId: s.seatId,
             },
           });
@@ -179,18 +173,18 @@ export class OrdersService {
         .set({ status: 'released' })
         .where(eq(seatReservations.orderId, orderId));
 
-      await this.outbox.enqueue(tx, ordersOutbox, {
-        routingKey: ORDER_ROUTING_KEYS.orderExpired,
-        payload: { messageId: uuid(), orderId, eventId: order.eventId },
+      await this.outbox.enqueue(tx, {
+        routingKey: ORDER_ROUTING_KEYS.ORDER_EXPIRED,
+        payload: { messageId: uuid(), orderId, showId: order.showId },
       });
       for (const s of held) {
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.seatReleased,
-          payload: { messageId: uuid(), orderId, eventId: order.eventId, seatId: s.seatId },
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
+          payload: { messageId: uuid(), orderId, showId: order.showId, seatId: s.seatId },
         });
       }
 
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.eventId, h.seatId)));
+      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
     });
   }
 
@@ -201,7 +195,7 @@ export class OrdersService {
   // race), auto-refund instead of resurrecting it.
   async markPaid(e: PaymentSucceededEvent): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
 
       const [order] = await tx
         .select()
@@ -213,8 +207,8 @@ export class OrdersService {
 
       if (!canTransition(order.status as OrderStatus, 'paid')) {
         if (order.status === 'expired' || order.status === 'cancelled') {
-          await this.outbox.enqueue(tx, ordersOutbox, {
-            routingKey: ORDER_ROUTING_KEYS.refundRequested,
+          await this.outbox.enqueue(tx, {
+            routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
             payload: { messageId: uuid(), orderId: order.id, paymentIntentId: e.paymentIntentId },
           });
         }
@@ -232,22 +226,22 @@ export class OrdersService {
         .set({ status: 'confirmed' })
         .where(eq(seatReservations.orderId, order.id));
 
-      await this.outbox.enqueue(tx, ordersOutbox, {
-        routingKey: ORDER_ROUTING_KEYS.orderPaid,
+      await this.outbox.enqueue(tx, {
+        routingKey: ORDER_ROUTING_KEYS.ORDER_PAID,
         payload: {
           messageId: uuid(),
           orderId: order.id,
           userId: order.userId,
-          eventId: order.eventId,
+          showId: order.showId,
         },
       });
       for (const s of held) {
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.seatConfirmed,
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.SEAT_CONFIRMED,
           payload: {
             messageId: uuid(),
             orderId: order.id,
-            eventId: order.eventId,
+            showId: order.showId,
             seatId: s.seatId,
           },
         });
@@ -258,7 +252,7 @@ export class OrdersService {
   // payment.failed → cancel the order, release its seats and locks.
   async markFailed(e: PaymentFailedEvent): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
 
       const [order] = await tx
         .select()
@@ -279,30 +273,30 @@ export class OrdersService {
         .set({ status: 'released' })
         .where(eq(seatReservations.orderId, order.id));
 
-      await this.outbox.enqueue(tx, ordersOutbox, {
-        routingKey: ORDER_ROUTING_KEYS.orderCancelled,
-        payload: { messageId: uuid(), orderId: order.id, eventId: order.eventId },
+      await this.outbox.enqueue(tx, {
+        routingKey: ORDER_ROUTING_KEYS.ORDER_CANCELLED,
+        payload: { messageId: uuid(), orderId: order.id, showId: order.showId },
       });
       for (const s of held) {
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.seatReleased,
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
           payload: {
             messageId: uuid(),
             orderId: order.id,
-            eventId: order.eventId,
+            showId: order.showId,
             seatId: s.seatId,
           },
         });
       }
 
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.eventId, h.seatId)));
+      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
     });
   }
 
   // refund.succeeded → close out a paid order as refunded, release its seats and locks.
   async markRefunded(e: RefundSucceededEvent): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
 
       const [order] = await tx
         .select()
@@ -324,18 +318,18 @@ export class OrdersService {
         .where(eq(seatReservations.orderId, order.id));
 
       for (const s of held) {
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.seatReleased,
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.SEAT_RELEASED,
           payload: {
             messageId: uuid(),
             orderId: order.id,
-            eventId: order.eventId,
+            showId: order.showId,
             seatId: s.seatId,
           },
         });
       }
 
-      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.eventId, h.seatId)));
+      await this.redis.releaseSeatLocks(held.map((h) => seatLockKey(order.showId, h.seatId)));
     });
   }
 
@@ -353,29 +347,29 @@ export class OrdersService {
       if (order.status !== 'paid')
         throw new ConflictException(`Cannot refund an order in status ${order.status}`);
 
-      // ponytail: refund window policy (N days before event) is a single guard; add it when the events RPC exposes startsAt.
-      await this.outbox.enqueue(tx, ordersOutbox, {
-        routingKey: ORDER_ROUTING_KEYS.refundRequested,
+      // ponytail: refund window policy (N days before the show) is a single guard; add it when the shows RPC exposes startsAt.
+      await this.outbox.enqueue(tx, {
+        routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
         payload: { messageId: uuid(), orderId: order.id },
       });
       return toResponse(order);
     });
   }
 
-  // event.cancelled → refund every paid order for that event (each downstream refund reuses
+  // show.cancelled → refund every paid order for that show (each downstream refund reuses
   // the same refund.requested → Payments → charge.refunded → markRefunded path).
-  async refundAllPaidForEvent(e: { messageId: string; eventId: string }): Promise<void> {
+  async refundAllPaidForShow(e: { messageId: string; showId: string }): Promise<void> {
     await this.db.transaction(async (tx) => {
-      if (await alreadyProcessed(tx, ordersProcessedMessages, e.messageId)) return;
+      if (await this.inbox.alreadyProcessed(tx, e.messageId)) return;
 
       const paid = await tx
         .select({ id: orders.id })
         .from(orders)
-        .where(and(eq(orders.eventId, e.eventId), eq(orders.status, 'paid')));
+        .where(and(eq(orders.showId, e.showId), eq(orders.status, 'paid')));
 
       for (const o of paid) {
-        await this.outbox.enqueue(tx, ordersOutbox, {
-          routingKey: ORDER_ROUTING_KEYS.refundRequested,
+        await this.outbox.enqueue(tx, {
+          routingKey: ORDER_ROUTING_KEYS.REFUND_REQUESTED,
           payload: { messageId: uuid(), orderId: o.id },
         });
       }

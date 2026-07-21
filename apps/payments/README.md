@@ -34,7 +34,7 @@ docker compose up -d postgres redis rabbitmq stripe-cli
 # 3. Copy the whsec_... printed by stripe-cli into .env as STRIPE_WEBHOOK_SECRET, then run:
 docker compose logs stripe-cli | grep whsec
 
-# 4. Start gateway, auth, events, orders, payments (ts-node), then:
+# 4. Start gateway, auth, shows, orders, payments (ts-node), then:
 #    register + login, create an order, POST /payments/intent, and drive a webhook:
 stripe trigger payment_intent.succeeded --add payment_intent:metadata.orderId=<orderId>
 #    → GET /orders/:id shows "paid".

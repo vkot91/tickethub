@@ -27,7 +27,7 @@
     "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
     "test": "jest --coverage",
-    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",

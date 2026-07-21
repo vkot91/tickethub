@@ -8,6 +8,9 @@ export const paymentStatusEnum = paymentsSchema.enum('payment_status', [
   'succeeded',
   'failed',
   'refunded',
+  // reservation expired before the customer paid — we cancel the intent so it can't be
+  // charged later. Distinct from 'failed' (card declined) for reconciliation.
+  'canceled',
 ]);
 
 export const payments = paymentsSchema.table(

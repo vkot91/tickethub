@@ -1,39 +1,39 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, eq, gt } from 'drizzle-orm';
-import { events, sections, rows, seats, type Db } from '@tickethub/db';
-import type { CatalogQuery, EventSummary, EventDetail, SeatMap } from '@tickethub/contracts';
+import { shows, sections, rows, seats, type Db } from '@tickethub/db';
+import type { CatalogQuery, ShowSummary, ShowDetail, SeatMap } from '@tickethub/contracts';
 
 @Injectable()
-export class EventsService {
+export class ShowsService {
   constructor(private readonly db: Db) {}
 
-  async catalog(q: CatalogQuery): Promise<{ items: EventSummary[]; nextCursor: string | null }> {
+  async catalog(q: CatalogQuery): Promise<{ items: ShowSummary[]; nextCursor: string | null }> {
     const where = q.cursor
-      ? and(eq(events.status, 'published'), gt(events.id, q.cursor))
-      : eq(events.status, 'published');
+      ? and(eq(shows.status, 'published'), gt(shows.id, q.cursor))
+      : eq(shows.status, 'published');
     const rowsOut = await this.db
       .select({
-        id: events.id,
-        title: events.title,
-        startsAt: events.startsAt,
-        posterUrl: events.posterUrl,
-        status: events.status,
+        id: shows.id,
+        title: shows.title,
+        startsAt: shows.startsAt,
+        posterUrl: shows.posterUrl,
+        status: shows.status,
       })
-      .from(events)
+      .from(shows)
       .where(where)
-      .orderBy(asc(events.id))
+      .orderBy(asc(shows.id))
       .limit(q.limit + 1);
 
     const items = rowsOut
       .slice(0, q.limit)
-      .map((e) => ({ ...e, startsAt: String(e.startsAt) })) as EventSummary[];
+      .map((e) => ({ ...e, startsAt: String(e.startsAt) })) as ShowSummary[];
     const nextCursor = rowsOut.length > q.limit ? rowsOut[q.limit].id : null;
     return { items, nextCursor };
   }
 
-  async detail(id: string): Promise<EventDetail> {
-    const [e] = await this.db.select().from(events).where(eq(events.id, id)).limit(1);
-    if (!e) throw new NotFoundException('Event not found');
+  async detail(id: string): Promise<ShowDetail> {
+    const [e] = await this.db.select().from(shows).where(eq(shows.id, id)).limit(1);
+    if (!e) throw new NotFoundException('Show not found');
     return {
       id: e.id,
       title: e.title,
@@ -46,8 +46,8 @@ export class EventsService {
   }
 
   async seatMap(id: string): Promise<SeatMap> {
-    const [e] = await this.db.select().from(events).where(eq(events.id, id)).limit(1);
-    if (!e) throw new NotFoundException('Event not found');
+    const [e] = await this.db.select().from(shows).where(eq(shows.id, id)).limit(1);
+    if (!e) throw new NotFoundException('Show not found');
     const secs = await this.db.select().from(sections).where(eq(sections.venueId, e.venueId));
     const built = await Promise.all(
       secs.map(async (sec) => {
@@ -70,6 +70,6 @@ export class EventsService {
         return { id: sec.id, name: sec.name, rows: rowsWithSeats };
       }),
     );
-    return { eventId: id, sections: built };
+    return { showId: id, sections: built };
   }
 }
