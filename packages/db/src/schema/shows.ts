@@ -1,20 +1,20 @@
 import { pgSchema, uuid, text, integer, timestamp } from 'drizzle-orm/pg-core';
 
-export const eventsSchema = pgSchema('events');
-export const eventStatusEnum = eventsSchema.enum('event_status', [
+export const showsSchema = pgSchema('shows');
+export const showStatusEnum = showsSchema.enum('show_status', [
   'draft',
   'published',
   'cancelled',
   'finished',
 ]);
 
-export const organizers = eventsSchema.table('organizers', {
+export const organizers = showsSchema.table('organizers', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().unique(), // logical FK to auth.users
   name: text('name').notNull(),
 });
 
-export const venues = eventsSchema.table('venues', {
+export const venues = showsSchema.table('venues', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizerId: uuid('organizer_id')
     .notNull()
@@ -24,7 +24,7 @@ export const venues = eventsSchema.table('venues', {
   city: text('city'),
 });
 
-export const sections = eventsSchema.table('sections', {
+export const sections = showsSchema.table('sections', {
   id: uuid('id').primaryKey().defaultRandom(),
   venueId: uuid('venue_id')
     .notNull()
@@ -32,7 +32,7 @@ export const sections = eventsSchema.table('sections', {
   name: text('name').notNull(),
 });
 
-export const rows = eventsSchema.table('rows', {
+export const rows = showsSchema.table('rows', {
   id: uuid('id').primaryKey().defaultRandom(),
   sectionId: uuid('section_id')
     .notNull()
@@ -40,7 +40,7 @@ export const rows = eventsSchema.table('rows', {
   number: integer('number').notNull(),
 });
 
-export const seats = eventsSchema.table('seats', {
+export const seats = showsSchema.table('seats', {
   id: uuid('id').primaryKey().defaultRandom(),
   rowId: uuid('row_id')
     .notNull()
@@ -48,7 +48,7 @@ export const seats = eventsSchema.table('seats', {
   number: integer('number').notNull(),
 });
 
-export const events = eventsSchema.table('events', {
+export const shows = showsSchema.table('shows', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizerId: uuid('organizer_id')
     .notNull()
@@ -61,14 +61,14 @@ export const events = eventsSchema.table('events', {
   posterUrl: text('poster_url'),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   saleStartsAt: timestamp('sale_starts_at', { withTimezone: true }),
-  status: eventStatusEnum('status').notNull().default('draft'),
+  status: showStatusEnum('status').notNull().default('draft'),
 });
 
-export const ticketTypes = eventsSchema.table('ticket_types', {
+export const ticketTypes = showsSchema.table('ticket_types', {
   id: uuid('id').primaryKey().defaultRandom(),
-  eventId: uuid('event_id')
+  showId: uuid('show_id')
     .notNull()
-    .references(() => events.id),
+    .references(() => shows.id),
   name: text('name').notNull(),
   priceCents: integer('price_cents').notNull(),
   currency: text('currency').notNull().default('usd'),

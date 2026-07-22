@@ -1,9 +1,9 @@
 import type { Db } from '../client';
 import { users } from '../schema/auth';
-import { organizers, venues, sections, rows, seats, events } from '../schema/events';
+import { organizers, venues, sections, rows, seats, shows } from '../schema/shows';
 
 // Monotonic suffix so repeated seeds in one db don't collide on unique columns
-// (users.email, events.title).
+// (users.email, shows.title).
 let seq = 0;
 const uniq = () => ++seq;
 
@@ -22,12 +22,12 @@ export async function seedUser(db: Db, overrides: Insert<typeof users.$inferInse
 
 // Shape of the seated-venue graph a caller wants. Defaults to one section with
 // one row of one seat — enough for seatMap/detail; bump counts per test.
-export interface EventGraphSpec {
-  event?: Insert<typeof events.$inferInsert>;
+export interface ShowGraphSpec {
+  show?: Insert<typeof shows.$inferInsert>;
   sections?: { name?: string; rows?: number; seatsPerRow?: number }[];
 }
 
-export async function seedEventGraph(db: Db, spec: EventGraphSpec = {}) {
+export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
   const n = uniq();
 
   const owner = await seedUser(db);
@@ -67,17 +67,17 @@ export async function seedEventGraph(db: Db, spec: EventGraphSpec = {}) {
     builtSections.push({ section, rows: builtRows });
   }
 
-  const [event] = await db
-    .insert(events)
+  const [show] = await db
+    .insert(shows)
     .values({
       organizerId: organizer.id,
       venueId: venue.id,
-      title: `Event ${n}`,
+      title: `Show ${n}`,
       startsAt: new Date(),
       status: 'published',
-      ...spec.event,
+      ...spec.show,
     })
     .returning();
 
-  return { event, organizer, venue, sections: builtSections };
+  return { show, organizer, venue, sections: builtSections };
 }

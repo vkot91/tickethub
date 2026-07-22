@@ -1,10 +1,10 @@
-import { createOrderSchema, orderAwaitingPaymentSchema, ORDER_ROUTING_KEYS } from './index';
-import { MESSAGE_PATTERNS, QUEUES } from '../events';
+import { createOrderSchema, orderAwaitingPaymentSchema } from './index';
+import { ORDER_ROUTING_KEYS, ORDERS_MESSAGE_PATTERNS, RPC_QUEUES } from '../events';
 
 describe('order contracts', () => {
   it('accepts a valid create-order payload', () => {
     const dto = createOrderSchema.parse({
-      eventId: '00000000-0000-0000-0000-000000000001',
+      showId: '00000000-0000-0000-0000-000000000001',
       seats: [
         {
           seatId: '00000000-0000-0000-0000-000000000002',
@@ -17,7 +17,7 @@ describe('order contracts', () => {
 
   it('rejects an empty seats array', () => {
     expect(() =>
-      createOrderSchema.parse({ eventId: '00000000-0000-0000-0000-000000000001', seats: [] }),
+      createOrderSchema.parse({ showId: '00000000-0000-0000-0000-000000000001', seats: [] }),
     ).toThrow();
   });
 
@@ -26,15 +26,15 @@ describe('order contracts', () => {
       messageId: '00000000-0000-0000-0000-000000000004',
       orderId: '00000000-0000-0000-0000-000000000005',
       userId: '00000000-0000-0000-0000-000000000006',
-      eventId: '00000000-0000-0000-0000-000000000001',
+      showId: '00000000-0000-0000-0000-000000000001',
       totalCents: 5000,
     });
     expect(ev.totalCents).toBe(5000);
-    expect(ORDER_ROUTING_KEYS.orderAwaitingPayment).toBe('order.awaiting_payment');
+    expect(ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT).toBe('order.awaiting_payment');
   });
 
   it('exposes orders queues and message patterns', () => {
-    expect(QUEUES.ordersRpc).toBe('orders.rpc');
-    expect(MESSAGE_PATTERNS.orders.create).toBe('orders.create');
+    expect(RPC_QUEUES.ORDERS).toBe('orders.rpc');
+    expect(ORDERS_MESSAGE_PATTERNS.CREATE).toBe('orders.create');
   });
 });

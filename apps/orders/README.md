@@ -8,7 +8,7 @@ transactional outbox.
 
 1. Gateway rate-limit (existing).
 2. Redis `SET NX` seat locks — cheap rejection before touching Postgres.
-3. **Partial-unique index** `seat_res_active_uq` on `(event_id, seat_id) WHERE status IN ('held','confirmed')` — the source of truth. Even if Redis is bypassed, a second active hold on a seat cannot be inserted.
+3. **Partial-unique index** `seat_res_active_uq` on `(show_id, seat_id) WHERE status IN ('held','confirmed')` — the source of truth. Even if Redis is bypassed, a second active hold on a seat cannot be inserted.
 
 ## RPC (via the gateway)
 
@@ -22,7 +22,7 @@ transactional outbox.
 
 Orders is a hybrid app: besides `orders.rpc` it consumes `payments.events`
 (`payment.succeeded → markPaid`, `payment.failed → markFailed`, `refund.succeeded → markRefunded`)
-and `catalog.events` (`event.cancelled → refundAllPaidForEvent`). Every transition goes through the
+and `catalog.shows` (`show.cancelled → refundAllPaidForShow`). Every transition goes through the
 `order-state` machine, so an out-of-order `payment.succeeded` on an already-`expired` order emits
 `refund.requested` instead of resurrecting it (the expire-then-pay race). The Phase 2 `confirmTest`
 hook is retired.

@@ -13,12 +13,12 @@ beforeEach(async () => {
   db = await getTestDb();
 });
 
-// redis + RMQ client stay simple mocks — only the db is a real emulated Postgres.
+// redis + AMQP connection stay simple mocks — only the db is a real emulated Postgres.
 function makeService(opts: { storedRefresh?: string | null } = {}) {
   const redis = { set: jest.fn(), get: jest.fn().mockResolvedValue(opts.storedRefresh ?? null) };
-  const client = { emit: jest.fn() };
-  const svc = new AuthService(db, redis as never, jwt, client as never);
-  return { svc, redis, client };
+  const amqp = { publish: jest.fn().mockResolvedValue(true) };
+  const svc = new AuthService(db, redis as never, jwt, amqp as never);
+  return { svc, redis, amqp };
 }
 
 const hash = (pw: string) => bcrypt.hash(pw, 10);
@@ -28,15 +28,18 @@ async function refreshTokenFor(id: string) {
 }
 
 describe('AuthService.register', () => {
-  it('creates the user, emits userRegistered, and returns tokens', async () => {
-    const { svc, client } = makeService();
+  it('creates the user, publishes userRegistered, and returns tokens', async () => {
+    const { svc, amqp } = makeService();
 
     const tokens = await svc.register({ email: 'a@b.com', password: 'password123' });
 
     expect(tokens.accessToken).toBeTruthy();
-    expect(client.emit).toHaveBeenCalledWith(
+    // publishEvent(amqp, routingKey, payload, opts) → publish(exchange, routingKey, payload, opts)
+    expect(amqp.publish).toHaveBeenCalledWith(
+      'tickethub.events',
       'user.registered',
       expect.objectContaining({ userId: expect.any(String), email: 'a@b.com' }),
+      expect.any(Object),
     );
   });
 

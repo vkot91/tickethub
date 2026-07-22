@@ -2,7 +2,7 @@ import { schema } from './config';
 
 const valid = { DATABASE_URL: 'postgres://x', RABBITMQ_URL: 'amqp://x' };
 
-describe('events config schema', () => {
+describe('shows config schema', () => {
   it('parses valid env, dropping extra keys', () => {
     expect(schema.parse({ ...valid, EXTRA: '1' })).toEqual(valid);
   });

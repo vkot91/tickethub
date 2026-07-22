@@ -22,10 +22,10 @@ describe('RpcToHttpExceptionFilter', () => {
   it('maps a plain RPC error with a numeric status', () => {
     const { res, host } = mockHost();
 
-    filter.catch({ status: 404, message: 'Event not found' }, host);
+    filter.catch({ status: 404, message: 'Show not found' }, host);
 
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ statusCode: 404, message: 'Event not found' });
+    expect(res.json).toHaveBeenCalledWith({ statusCode: 404, message: 'Show not found' });
   });
 
   it('falls back to 500 for an unknown error', () => {

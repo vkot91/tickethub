@@ -1,1 +1,1 @@
-export { default } from '@tickethub/jest-config/base';
+export { default } from '@tickethub/jest-config/nest-db';

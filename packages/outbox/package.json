@@ -8,14 +8,12 @@
     "build": "tsc",
     "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
-    "test": "jest --coverage"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "catalog:",
-    "@nestjs/microservices": "catalog:",
     "@tickethub/db": "workspace:*",
-    "drizzle-orm": "catalog:",
-    "rxjs": "catalog:"
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@tickethub/tsconfig": "workspace:*",

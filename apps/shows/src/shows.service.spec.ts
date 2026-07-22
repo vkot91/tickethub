@@ -1,22 +1,22 @@
 import { NotFoundException } from '@nestjs/common';
-import { getTestDb, seedEventGraph, type TestDb } from '@tickethub/db/testing';
-import { EventsService } from './events.service';
+import { getTestDb, seedShowGraph, type TestDb } from '@tickethub/db/testing';
+import { ShowsService } from './shows.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.
 let db: TestDb;
-let svc: EventsService;
+let svc: ShowsService;
 
 beforeEach(async () => {
   db = await getTestDb();
-  svc = new EventsService(db);
+  svc = new ShowsService(db);
 });
 
-describe('EventsService.catalog', () => {
+describe('ShowsService.catalog', () => {
   it('returns items and a nextCursor when the page is full', async () => {
     const ids: string[] = [];
     for (let i = 0; i < 21; i++) {
-      const { event } = await seedEventGraph(db, { sections: [] });
-      ids.push(event.id);
+      const { show } = await seedShowGraph(db, { sections: [] });
+      ids.push(show.id);
     }
     const expectedCursor = [...ids].sort()[20]; // service orders by asc(id)
 
@@ -27,7 +27,7 @@ describe('EventsService.catalog', () => {
   });
 
   it('returns null cursor when page is not full', async () => {
-    await seedEventGraph(db, { sections: [] });
+    await seedShowGraph(db, { sections: [] });
 
     const res = await svc.catalog({ limit: 20 });
 
@@ -35,8 +35,8 @@ describe('EventsService.catalog', () => {
     expect(res.nextCursor).toBeNull();
   });
 
-  it('excludes unpublished events', async () => {
-    await seedEventGraph(db, { sections: [], event: { status: 'draft' } });
+  it('excludes unpublished shows', async () => {
+    await seedShowGraph(db, { sections: [], show: { status: 'draft' } });
 
     const res = await svc.catalog({ limit: 20 });
 
@@ -44,48 +44,48 @@ describe('EventsService.catalog', () => {
   });
 
   it('filters by cursor when one is given', async () => {
-    const { event } = await seedEventGraph(db, { sections: [] });
+    const { show } = await seedShowGraph(db, { sections: [] });
 
-    const res = await svc.catalog({ limit: 20, cursor: event.id });
+    const res = await svc.catalog({ limit: 20, cursor: show.id });
 
-    expect(res.items).toEqual([]); // event's own id is not > itself
+    expect(res.items).toEqual([]); // show's own id is not > itself
     expect(res.nextCursor).toBeNull();
   });
 });
 
-describe('EventsService.detail', () => {
-  it('returns the event when found', async () => {
-    const { event } = await seedEventGraph(db, { sections: [], event: { title: 'Show' } });
+describe('ShowsService.detail', () => {
+  it('returns the show when found', async () => {
+    const { show } = await seedShowGraph(db, { sections: [], show: { title: 'Show' } });
 
-    const res = await svc.detail(event.id);
+    const res = await svc.detail(show.id);
 
-    expect(res.id).toBe(event.id);
+    expect(res.id).toBe(show.id);
     expect(res.title).toBe('Show');
   });
 
-  it('throws NotFound when the event is missing', async () => {
+  it('throws NotFound when the show is missing', async () => {
     await expect(svc.detail('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
       NotFoundException,
     );
   });
 });
 
-describe('EventsService.seatMap', () => {
-  it('throws NotFound when the event is missing', async () => {
+describe('ShowsService.seatMap', () => {
+  it('throws NotFound when the show is missing', async () => {
     await expect(svc.seatMap('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
       NotFoundException,
     );
   });
 
   it('builds the seat map from sections, rows, and seats', async () => {
-    const { event, sections } = await seedEventGraph(db, {
+    const { show, sections } = await seedShowGraph(db, {
       sections: [{ name: 'A', rows: 1, seatsPerRow: 1 }],
     });
     const seededSeat = sections[0].rows[0].seats[0];
 
-    const map = await svc.seatMap(event.id);
+    const map = await svc.seatMap(show.id);
 
-    expect(map.eventId).toBe(event.id);
+    expect(map.showId).toBe(show.id);
     expect(map.sections[0].name).toBe('A');
     expect(map.sections[0].rows[0].seats[0].id).toBe(seededSeat.id);
   });

@@ -24,6 +24,13 @@ export class StripeClient {
     return { id: intent.id, clientSecret: intent.client_secret ?? '' };
   }
 
+  // Called when a seat reservation expires unpaid: kill the intent so the customer can't be
+  // charged for a seat they no longer hold. Throws if Stripe already moved it out of a
+  // cancelable state — the caller decides whether that race is expected.
+  async cancelPaymentIntent(paymentIntentId: string): Promise<void> {
+    await this.stripe.paymentIntents.cancel(paymentIntentId);
+  }
+
   async createRefund(idempotencyKey: string, paymentIntentId: string): Promise<{ id: string }> {
     const refund = await this.stripe.refunds.create(
       { payment_intent: paymentIntentId },

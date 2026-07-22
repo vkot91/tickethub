@@ -19,7 +19,7 @@
     "@nestjs/common": "catalog:",
     "@nestjs/core": "catalog:",
     "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/microservices": "catalog:",
+    "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/terminus": "^10.2.0",
     "@nestjs/bullmq": "^10.2.0",
     "bullmq": "catalog:",

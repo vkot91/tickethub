@@ -1,8 +1,8 @@
+import { PAYMENT_ROUTING_KEYS } from '../events';
 import {
   createPaymentIntentSchema,
   paymentIntentResponseSchema,
   paymentSucceededSchema,
-  PAYMENT_ROUTING_KEYS,
 } from './index';
 
 describe('payment contracts', () => {
@@ -31,6 +31,6 @@ describe('payment contracts', () => {
       amountCents: 5000,
     });
     expect(ev.paymentIntentId).toBe('pi_123');
-    expect(PAYMENT_ROUTING_KEYS.paymentSucceeded).toBe('payment.succeeded');
+    expect(PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED).toBe('payment.succeeded');
   });
 });

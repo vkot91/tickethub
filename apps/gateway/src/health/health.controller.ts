@@ -1,22 +1,23 @@
 import { Controller, Get } from '@nestjs/common';
-import { ConfigService } from '@tickethub/config';
-import { HealthCheck, HealthCheckService, MicroserviceHealthIndicator } from '@nestjs/terminus';
-import { Transport } from '@nestjs/microservices';
-import type { Config } from '../config';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { HealthCheck, HealthCheckService, HealthCheckError } from '@nestjs/terminus';
 
 @Controller('health')
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
-    private readonly mq: MicroserviceHealthIndicator,
-    private readonly config: ConfigService<Config, true>,
+    private readonly amqp: AmqpConnection,
   ) {}
   @Get()
   @HealthCheck()
   check() {
-    const urls = [this.config.get('RABBITMQ_URL', { infer: true })];
     return this.health.check([
-      () => this.mq.pingCheck('rabbitmq', { transport: Transport.RMQ, options: { urls } }),
+      () => {
+        if (!this.amqp.connected) {
+          throw new HealthCheckError('rabbitmq down', { rabbitmq: { status: 'down' } });
+        }
+        return { rabbitmq: { status: 'up' } };
+      },
     ]);
   }
 }

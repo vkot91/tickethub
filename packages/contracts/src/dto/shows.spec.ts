@@ -1,4 +1,4 @@
-import { catalogQuerySchema, createEventSchema, eventDetailSchema } from './events';
+import { catalogQuerySchema, createShowSchema, showDetailSchema } from './shows';
 
 describe('catalogQuerySchema', () => {
   it('defaults limit to 20 and coerces a string limit', () => {
@@ -15,10 +15,10 @@ describe('catalogQuerySchema', () => {
   });
 });
 
-describe('createEventSchema', () => {
+describe('createShowSchema', () => {
   it('requires a non-empty title and datetime startsAt', () => {
     expect(() =>
-      createEventSchema.parse({
+      createShowSchema.parse({
         title: '',
         description: 'd',
         venueId: crypto.randomUUID(),
@@ -28,9 +28,9 @@ describe('createEventSchema', () => {
   });
 });
 
-describe('eventDetailSchema', () => {
+describe('showDetailSchema', () => {
   it('extends the summary with description and venueId', () => {
-    const parsed = eventDetailSchema.parse({
+    const parsed = showDetailSchema.parse({
       id: crypto.randomUUID(),
       title: 'Show',
       startsAt: '2026-01-01',

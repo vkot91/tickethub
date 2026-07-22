@@ -1,59 +1,67 @@
 import { OutboxPoller } from './poller';
-import { of } from 'rxjs';
+import type { OutboxRepository } from './outbox.repository';
+
+// The poller owns no SQL any more — it orchestrates the repository, so that is what we stub.
+function fakeOutbox(rows: Array<{ id: string; routingKey: string; payload: unknown }>) {
+  const marked: string[] = [];
+
+  const outbox = {
+    marked,
+    withTransaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn({})),
+    fetchUnpublished: jest.fn(async () => rows),
+    markPublished: jest.fn(async (_tx: unknown, id: string) => {
+      marked.push(id);
+    }),
+  };
+
+  return outbox as typeof outbox & OutboxRepository;
+}
 
 describe('OutboxPoller.drain', () => {
-  it('emits each unpublished row then marks it published', async () => {
-    const unpublished = [{ id: 'o1', routingKey: 'order.paid', payload: { messageId: 'm1' } }];
-    const marked: string[] = [];
-    const emitted: Array<[string, unknown]> = [];
+  it('publishes each unpublished row then marks it published', async () => {
+    const outbox = fakeOutbox([
+      { id: 'o1', routingKey: 'order.paid', payload: { messageId: 'm1' } },
+    ]);
+    const published: Array<[string, unknown]> = [];
 
-    const db = {
-      transaction: async (fn: (tx: unknown) => Promise<void>) =>
-        fn({
-          select: () => ({
-            from: () => ({
-              where: () => ({ for: () => ({ limit: async () => unpublished }) }),
-            }),
-          }),
-          update: () => ({
-            set: () => ({
-              where: async (w: unknown) => {
-                marked.push('o1');
-                return w;
-              },
-            }),
-          }),
-        }),
-    };
-    const client = {
-      emit: (rk: string, p: unknown) => {
-        emitted.push([rk, p]);
-        return of(null);
-      },
-    };
+    // omit intervalMs/batch here to exercise their defaults
+    const poller = new OutboxPoller(outbox, (rk, p) => {
+      published.push([rk, p]);
+      return Promise.resolve();
+    });
 
-    const poller = new OutboxPoller(db as never, {} as never, client as never, 50);
     await poller.drain();
 
-    expect(emitted).toEqual([['order.paid', { messageId: 'm1' }]]);
-    expect(marked).toEqual(['o1']);
+    expect(published).toEqual([['order.paid', { messageId: 'm1' }]]);
+    expect(outbox.marked).toEqual(['o1']);
+    expect(outbox.fetchUnpublished).toHaveBeenCalledWith({}, 100);
+  });
+
+  it('leaves the row unmarked when publishing fails, so it is retried', async () => {
+    const outbox = fakeOutbox([{ id: 'o1', routingKey: 'order.paid', payload: {} }]);
+    const poller = new OutboxPoller(outbox, () => Promise.reject(new Error('broker down')));
+
+    await expect(poller.drain()).rejects.toThrow('broker down');
+
+    expect(outbox.markPublished).not.toHaveBeenCalled();
   });
 
   it('polls on an interval and stops cleanly, swallowing drain errors', async () => {
     jest.useFakeTimers();
-    const db = { transaction: jest.fn().mockRejectedValue(new Error('boom')) };
-    const poller = new OutboxPoller(db as never, {} as never, {} as never, 10);
+    const outbox = fakeOutbox([]);
+    outbox.withTransaction.mockRejectedValue(new Error('boom'));
+    const poller = new OutboxPoller(outbox, jest.fn().mockResolvedValue(undefined), 10, 5);
 
     poller.onModuleInit();
     jest.advanceTimersByTime(10);
     await Promise.resolve(); // let the rejected drain settle
 
-    expect(db.transaction).toHaveBeenCalled();
+    expect(outbox.withTransaction).toHaveBeenCalled();
 
     poller.onModuleDestroy();
-    db.transaction.mockClear();
+    outbox.withTransaction.mockClear();
     jest.advanceTimersByTime(50);
-    expect(db.transaction).not.toHaveBeenCalled(); // timer cleared
+    expect(outbox.withTransaction).not.toHaveBeenCalled(); // timer cleared
 
     jest.useRealTimers();
   });

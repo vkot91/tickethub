@@ -27,3 +27,10 @@ export type AuthTokens = z.infer<typeof authTokensSchema>;
 
 export const refreshSchema = z.object({ refreshToken: z.string() });
 export type RefreshDto = z.infer<typeof refreshSchema>;
+
+export const userRegisteredSchema = z.object({
+  messageId: z.string().uuid(),
+  userId: z.string().uuid(),
+  email: z.string().email(),
+});
+export type UserRegisteredEvent = z.infer<typeof userRegisteredSchema>;

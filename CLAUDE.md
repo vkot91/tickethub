@@ -11,12 +11,28 @@ transactions (saga + outbox), concurrency.
   supertest + docker-compose for e2e saga flows; k6 for load (flash-sale / oversell).
 - Coverage gate in `turbo test` / CI — aim high on domain logic (order state machine,
   saga compensations, idempotency, seat-lock paths). Trivial glue code excepted.
+- Integration suites run against the **throwaway `TEST_DATABASE_URL` database, never the dev one**
+  — they TRUNCATE and re-seed on every run. Wiring: `--setupFiles @tickethub/db/testing/integration-env`
+  in each `test:integration` script repoints `DATABASE_URL` before any spec body runs. Run the lot with
+  `pnpm test:integration` (migrates the test db first, then runs the suites serially — they share it).
+  A new `*.integration.spec.ts` in a db-backed package needs no extra wiring; a new _package_ must copy
+  the `test:integration` script.
 - A phase is not "done" until its tests are green and `docker-compose up` boots from a clean clone.
 
 ## Conventions
 
 - Monorepo: Turborepo + pnpm workspaces. Deps via `workspace:*`.
+- Naming: **show** = the ticketed thing people buy seats for (`apps/shows`, PG schema `shows`,
+  `showId`, routing keys `show.published`/`show.cancelled`). **event** = an RMQ message, and
+  nothing else (`EVENTS_EXCHANGE`, `publishEvent`, `PaymentSucceededEvent`). Never use "event"
+  for the domain object.
 - `packages/contracts` (Zod) is the single source of truth for DTOs and RMQ event shapes.
+- Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
+  (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
+  `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level
+  only, so the import line says which scope a file talks to. Keys are `SCREAMING_SNAKE` for
+  message patterns and queues; routing-key maps keep `camelCase` keys that mirror the wire
+  value (`showCancelled: 'show.cancelled'`). Every map ends with `as const`.
 - Per-service Postgres schema via Drizzle `pgSchema()`. No cross-service JOINs — data crosses
   service boundaries only via RMQ events or RPC.
 - Events published only through the outbox pattern; consumers are idempotent (`processed_messages`).

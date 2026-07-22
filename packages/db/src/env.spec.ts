@@ -1,3 +1,10 @@
+// The repo's own `.env` would otherwise satisfy DATABASE_URL and hide the "unset" case,
+// so the file walk is stubbed out — requireEnv (what's under test here) stays real.
+jest.mock('@tickethub/env', () => ({
+  ...jest.requireActual('@tickethub/env'),
+  loadEnv: () => undefined,
+}));
+
 import { requireDatabaseUrl } from './env';
 
 describe('requireDatabaseUrl', () => {

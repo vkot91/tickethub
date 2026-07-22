@@ -1,29 +1,35 @@
 import { Controller } from '@nestjs/common';
-import { MessagePattern, Payload } from '@nestjs/microservices';
+import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import {
-  MESSAGE_PATTERNS,
-  type RegisterDto,
+  AUTH_MESSAGE_PATTERNS,
+  RPC_EXCHANGE,
   type LoginDto,
   type RefreshDto,
+  type RegisterDto,
 } from '@tickethub/contracts';
 import { AuthService } from './auth.service';
-
-const message_keys = MESSAGE_PATTERNS.auth;
 
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @MessagePattern(message_keys.register) register(@Payload() dto: RegisterDto) {
+  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.REGISTER })
+  register(dto: RegisterDto) {
     return this.authService.register(dto);
   }
-  @MessagePattern(message_keys) login(@Payload() dto: LoginDto) {
+
+  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.LOGIN })
+  login(dto: LoginDto) {
     return this.authService.login(dto);
   }
-  @MessagePattern(message_keys) refresh(@Payload() dto: RefreshDto) {
+
+  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.REFRESH })
+  refresh(dto: RefreshDto) {
     return this.authService.refresh(dto);
   }
-  @MessagePattern(message_keys.validate) validate(@Payload() p: { accessToken: string }) {
+
+  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.VALIDATE })
+  validate(p: { accessToken: string }) {
     return this.authService.validate(p.accessToken);
   }
 }

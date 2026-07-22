@@ -1,9 +1,18 @@
-import { MESSAGE_PATTERNS, QUEUES, userRegisteredSchema, eventPublishedSchema } from './index';
+import {
+  AUTH_MESSAGE_PATTERNS,
+  RPC_QUEUES,
+  SHOWS_MESSAGE_PATTERNS,
+  SHOW_ROUTING_KEYS,
+} from './index';
+import { userRegisteredSchema } from '../dto/auth';
+import { showPublishedSchema } from '../dto/shows';
 
 describe('contract constants', () => {
   it('exposes the RPC patterns and queue names', () => {
-    expect(MESSAGE_PATTERNS.auth.login).toBe('auth.login');
-    expect(QUEUES.authRpc).toBe('auth.rpc');
+    expect(AUTH_MESSAGE_PATTERNS.LOGIN).toBe('auth.login');
+    expect(RPC_QUEUES.AUTH).toBe('auth.rpc');
+    expect(SHOWS_MESSAGE_PATTERNS.CATALOG).toBe('shows.catalog');
+    expect(SHOW_ROUTING_KEYS.SHOW_CANCELLED).toBe('show.cancelled');
   });
 });
 
@@ -13,9 +22,9 @@ describe('event schemas', () => {
     expect(userRegisteredSchema.parse(evt)).toEqual(evt);
   });
 
-  it('rejects an eventPublished event with a bad eventId', () => {
+  it('rejects a show.published event with a bad showId', () => {
     expect(() =>
-      eventPublishedSchema.parse({ messageId: crypto.randomUUID(), eventId: 'x' }),
+      showPublishedSchema.parse({ messageId: crypto.randomUUID(), showId: 'x' }),
     ).toThrow();
   });
 });

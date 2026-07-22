@@ -1,21 +1,9 @@
 import { z } from 'zod';
 
-// RMQ routing keys for order/seat domain events (published via the outbox).
-export const ORDER_ROUTING_KEYS = {
-  orderAwaitingPayment: 'order.awaiting_payment',
-  orderPaid: 'order.paid',
-  orderExpired: 'order.expired',
-  orderCancelled: 'order.cancelled',
-  seatHeld: 'seat.held',
-  seatReleased: 'seat.released',
-  seatConfirmed: 'seat.confirmed',
-  refundRequested: 'refund.requested',
-} as const;
-
 const uuid = z.string().uuid();
 
 export const createOrderSchema = z.object({
-  eventId: uuid,
+  showId: uuid,
   seats: z
     .array(z.object({ seatId: uuid, ticketTypeId: uuid }))
     .min(1)
@@ -36,14 +24,14 @@ const base = z.object({ messageId: uuid });
 export const orderAwaitingPaymentSchema = base.extend({
   orderId: uuid,
   userId: uuid,
-  eventId: uuid,
+  showId: uuid,
   totalCents: z.number().int(),
 });
-export const orderPaidSchema = base.extend({ orderId: uuid, userId: uuid, eventId: uuid });
-export const orderExpiredSchema = base.extend({ orderId: uuid, eventId: uuid });
-export const seatHeldSchema = base.extend({ orderId: uuid, eventId: uuid, seatId: uuid });
-export const seatReleasedSchema = base.extend({ orderId: uuid, eventId: uuid, seatId: uuid });
-export const seatConfirmedSchema = base.extend({ orderId: uuid, eventId: uuid, seatId: uuid });
+export const orderPaidSchema = base.extend({ orderId: uuid, userId: uuid, showId: uuid });
+export const orderExpiredSchema = base.extend({ orderId: uuid, showId: uuid });
+export const seatHeldSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
+export const seatReleasedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
+export const seatConfirmedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
 
 export type OrderAwaitingPaymentEvent = z.infer<typeof orderAwaitingPaymentSchema>;
 export type OrderPaidEvent = z.infer<typeof orderPaidSchema>;

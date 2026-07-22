@@ -1,5 +1,5 @@
 export * from './dto/auth';
-export * from './dto/events';
+export * from './dto/shows';
 export * from './events';
 export * from './orders';
 export * from './payments';

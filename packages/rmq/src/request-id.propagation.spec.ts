@@ -1,10 +1,12 @@
+import 'reflect-metadata';
 import { of } from 'rxjs';
-import { RmqRecordBuilder } from '@nestjs/microservices';
+import { RABBIT_HANDLER } from '@golevelup/nestjs-rabbitmq';
+import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { EVENTS_EXCHANGE } from '@tickethub/contracts';
 import { RequestIdMiddleware } from './request-id.middleware';
-import { RequestIdSerializer } from './request-id.serializer';
+import { publishEvent } from './rmq.config';
 import { RequestIdInterceptor } from './request-id.interceptor';
 
-const serializer = new RequestIdSerializer();
 const middleware = new RequestIdMiddleware();
 
 function req(headers: Record<string, string> = {}) {
@@ -15,56 +17,73 @@ function res() {
   return { setHeader: (k: string, v: string) => (set[k] = v), _headers: set };
 }
 
-// The full edge→wire→consumer chain: middleware seeds ALS, serializer stamps the
-// header from ALS, interceptor restores it — the same id must survive end to end.
-describe('request id propagation', () => {
-  it('carries the inbound x-request-id from middleware onto the outgoing message', () => {
-    const r = res();
-    let onWire: string | undefined;
+// Capture what publishEvent puts on the wire.
+function amqpSpy() {
+  const calls: { exchange: string; routingKey: string; headers: Record<string, unknown> }[] = [];
+  const amqp = {
+    publish: (
+      exchange: string,
+      routingKey: string,
+      _msg: unknown,
+      opts: { headers: Record<string, unknown> },
+    ) => {
+      calls.push({ exchange, routingKey, headers: opts.headers });
+      return Promise.resolve(true);
+    },
+  } as unknown as AmqpConnection;
+  return { amqp, calls };
+}
 
-    middleware.use(req({ 'x-request-id': 'req-abc' }), r, () => {
-      onWire = serializer.serialize({ data: { foo: 1 } }).options.headers['x-request-id'] as string;
+// golevelup consumer context: handler carries RABBIT_HANDLER metadata, ConsumeMessage at arg 1.
+function rabbitCtx(headers: Record<string, unknown>) {
+  const handler = () => undefined;
+  Reflect.defineMetadata(RABBIT_HANDLER, {}, handler);
+  return {
+    getHandler: () => handler,
+    getArgByIndex: (i: number) => (i === 1 ? { properties: { headers } } : undefined),
+  } as never;
+}
+
+// The full edge→wire→consumer chain: middleware seeds ALS, publishEvent stamps the header
+// from ALS, interceptor restores it — the same id must survive end to end.
+describe('request id propagation', () => {
+  it('carries the inbound x-request-id from middleware onto the published event', async () => {
+    const { amqp, calls } = amqpSpy();
+    const r = res();
+
+    await new Promise<void>((resolve) => {
+      middleware.use(req({ 'x-request-id': 'req-abc' }), r, () => {
+        void publishEvent(amqp, 'payment.succeeded', { foo: 1 }).then(resolve);
+      });
     });
 
-    expect(onWire).toBe('req-abc');
+    expect(calls[0].exchange).toBe(EVENTS_EXCHANGE);
+    expect(calls[0].routingKey).toBe('payment.succeeded');
+    expect(calls[0].headers['x-request-id']).toBe('req-abc');
     expect(r._headers['x-request-id']).toBe('req-abc');
   });
 
-  it('mints an id when none is inbound, and the consumer reads it back', (done) => {
-    middleware.use(req(), res(), () => {
-      const packet = serializer.serialize({ data: { foo: 1 } });
-      const headers = packet.options.headers;
+  it('mints an id when none is inbound, and the consumer reads it back', async () => {
+    const { amqp, calls } = amqpSpy();
 
-      const interceptor = new RequestIdInterceptor();
-      const ctx = {
-        switchToRpc: () => ({
-          getContext: () => ({ getMessage: () => ({ properties: { headers } }) }),
-        }),
-      } as never;
+    await new Promise<void>((resolve) => {
+      middleware.use(req(), res(), () => {
+        void publishEvent(amqp, 'payment.succeeded', { foo: 1 }).then(resolve);
+      });
+    });
 
-      // getRequestId() inside handle() must equal the id the serializer stamped.
+    const onWire = calls[0].headers['x-request-id'] as string;
+    expect(onWire).toMatch(/[0-9a-f-]{36}/);
+
+    const interceptor = new RequestIdInterceptor();
+    const restored = await new Promise<string>((resolve) => {
       interceptor
-        .intercept(ctx, { handle: () => of(headers['x-request-id']) } as never)
-        .subscribe((restored) => {
-          expect(restored).toMatch(/[0-9a-f-]{36}/);
-          expect(restored).toBe(headers['x-request-id']);
-          done();
-        });
+        .intercept(rabbitCtx({ 'x-request-id': onWire }), {
+          handle: () => of(onWire),
+        } as never)
+        .subscribe((v) => resolve(v as string));
     });
-  });
 
-  it('preserves a hand-built RmqRecord’s data/options while adding the header', () => {
-    middleware.use(req({ 'x-request-id': 'req-xyz' }), res(), () => {
-      const record = new RmqRecordBuilder({ foo: 1 }).setOptions({ priority: 5 }).build();
-
-      const packet = serializer.serialize({ data: record });
-      const options = packet.options as Record<string, unknown> & {
-        headers: Record<string, unknown>;
-      };
-
-      expect(packet.data).toEqual({ foo: 1 });
-      expect(options.priority).toBe(5);
-      expect(options.headers['x-request-id']).toBe('req-xyz');
-    });
+    expect(restored).toBe(onWire);
   });
 });

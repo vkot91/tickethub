@@ -1,39 +1,36 @@
-import { Body, Controller, Inject, Post, UsePipes } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { Body, Controller, Post, UsePipes } from '@nestjs/common';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { ZodValidationPipe } from '@tickethub/common';
+import { rpcRequest } from '@tickethub/rmq';
 import {
-  registerSchema,
+  AUTH_MESSAGE_PATTERNS,
   loginSchema,
   refreshSchema,
-  MESSAGE_PATTERNS,
-  type RegisterDto,
+  registerSchema,
   type LoginDto,
   type RefreshDto,
+  type RegisterDto,
 } from '@tickethub/contracts';
-import { RPC } from '../tokens';
-
-const message_keys = MESSAGE_PATTERNS.auth;
 
 @Controller('auth')
 export class GatewayAuthController {
-  constructor(@Inject(RPC.auth) private readonly auth: ClientProxy) {}
+  constructor(private readonly amqp: AmqpConnection) {}
 
   @Post('register')
   @UsePipes(new ZodValidationPipe(registerSchema))
   register(@Body() dto: RegisterDto) {
-    return firstValueFrom(this.auth.send(message_keys.register, dto));
+    return rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.REGISTER, dto);
   }
 
   @Post('login')
   @UsePipes(new ZodValidationPipe(loginSchema))
   login(@Body() dto: LoginDto) {
-    return firstValueFrom(this.auth.send(message_keys.login, dto));
+    return rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.LOGIN, dto);
   }
 
   @Post('refresh')
   @UsePipes(new ZodValidationPipe(refreshSchema))
   refresh(@Body() dto: RefreshDto) {
-    return firstValueFrom(this.auth.send(message_keys.refresh, dto));
+    return rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.REFRESH, dto);
   }
 }

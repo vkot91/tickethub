@@ -20,6 +20,10 @@
     "./testing/jest.setup": {
       "types": "./dist/testing/jest.setup.d.ts",
       "default": "./dist/testing/jest.setup.js"
+    },
+    "./testing/integration-env": {
+      "types": "./dist/testing/integration-env.d.ts",
+      "default": "./dist/testing/integration-env.js"
     }
   },
   "scripts": {
@@ -27,9 +31,10 @@
     "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
     "test": "jest --coverage",
-    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit --runInBand --setupFiles @tickethub/db/testing/integration-env",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:test": "drizzle-kit migrate --config=drizzle.test.config.ts",
     "db:studio": "drizzle-kit studio",
     "seed": "tsx src/seed/index.ts"
   },
