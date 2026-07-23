@@ -93,6 +93,11 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup
 
+      # test:integration migrates the db (drizzle-kit) before turbo runs, and that step
+      # imports @tickethub/env from dist — so packages must be built first on a clean checkout.
+      - name: Build packages
+        run: pnpm turbo run build
+
       # Shared test db + real Redis/RabbitMQ. Not --affected: the suites share one db
       # and run serially, so a partial run buys nothing.
       - name: Run integration suites
