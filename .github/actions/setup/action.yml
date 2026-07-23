@@ -1,0 +1,22 @@
+name: Setup workspace
+description: Install pnpm + Node with cache, install dependencies, and create .env from the example.
+
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+
+    - name: Install Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    - name: Create .env
+      shell: bash
+      run: cp .env.example .env

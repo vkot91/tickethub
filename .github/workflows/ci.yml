@@ -6,13 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: jobs only read the repo. Widen per-job if one ever needs more.
+permissions:
+  contents: read
+
+# One in-flight run per ref; a new push cancels the previous run.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-test:
+  lint-build-test:
+    name: Lint, build & unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       redis:
@@ -26,19 +33,67 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so `turbo --affected` can diff against the base
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup
+
+      - name: Lint, build & test (affected)
+        run: pnpm turbo run lint build test --affected --concurrency=100%
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tickethub
+          POSTGRES_PASSWORD: tickethub
+          POSTGRES_DB: tickethub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tickethub"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup workspace
+        uses: ./.github/actions/setup
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: cp .env.example .env
-
-      - run: pnpm turbo run lint build test --affected --concurrency=100%
+      # Shared test db + real Redis/RabbitMQ. Not --affected: the suites share one db
+      # and run serially, so a partial run buys nothing.
+      - name: Run integration suites
+        run: pnpm test:integration
