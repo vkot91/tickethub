@@ -22,7 +22,6 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src"
   },
   "dependencies": {

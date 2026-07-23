@@ -1,16 +1,9 @@
 import { loadEnv, requireEnv } from '@tickethub/env';
 import { sql, eq } from 'drizzle-orm';
-import {
-  createDb,
-  payments,
-  paymentsOutbox,
-  paymentsProcessedMessages,
-  stripeEvents,
-  type Db,
-} from '@tickethub/db';
-import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
+import { createDb, payments, paymentsOutbox, stripeEvents, type Db } from '@tickethub/db';
+import { OutboxRepository } from '@tickethub/outbox';
 import { PAYMENT_ROUTING_KEYS } from '@tickethub/contracts';
-import { PaymentsService } from './payments.service';
+import { WebhookService } from './webhook.service';
 
 jest.setTimeout(30_000);
 
@@ -28,18 +21,16 @@ function fakeStripe(orderId: string) {
 
 describe('Payments webhook idempotency (integration: real Postgres)', () => {
   let db: Db;
-  let svc: PaymentsService;
+  let svc: WebhookService;
   const orderId = '00000000-0000-0000-0000-0000000000aa';
 
   beforeAll(() => {
     loadEnv();
     db = createDb(requireEnv('DATABASE_URL'));
-    svc = new PaymentsService(
+    svc = new WebhookService(
       db,
       fakeStripe(orderId) as never,
-      {} as never,
       new OutboxRepository(db, paymentsOutbox),
-      new InboxRepository(paymentsProcessedMessages),
     );
   });
 

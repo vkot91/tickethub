@@ -11,7 +11,8 @@
     "test": "turbo run test",
     "test:integration": "pnpm --filter @tickethub/db db:migrate:test && turbo run test:integration --concurrency=1",
     "lint": "turbo run lint",
-    "db:seed": "pnpm --filter @tickethub/db seed",
+    "db:seed": "pnpm --filter @tickethub/db db:seed",
+    "db:reset": "pnpm --filter @tickethub/db db:reset && pnpm db:seed",
     "prepare": "husky"
   },
   "devDependencies": {

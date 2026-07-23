@@ -11,11 +11,6 @@ export async function getTestDb(): Promise<TestDb> {
   return db;
 }
 
-// For the jest-setup hooks: act only if a db was actually created this file.
-export function peekTestDb(): TestDb | undefined {
-  return db;
-}
-
 export async function resetCurrentDb(): Promise<void> {
   if (db) await resetDb(db);
 }

@@ -4,9 +4,15 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
     "test": "jest --coverage",
     "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit"
@@ -14,6 +20,9 @@
   "dependencies": {
     "@tickethub/env": "workspace:*",
     "@tickethub/contracts": "workspace:*",
+    "@tickethub/config": "workspace:*",
+    "@tickethub/db": "workspace:*",
+    "@tickethub/outbox": "workspace:*",
     "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/common": "catalog:",
     "amqplib": "catalog:",

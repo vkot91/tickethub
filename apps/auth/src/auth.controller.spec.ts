@@ -7,6 +7,7 @@ describe('AuthController', () => {
     login: jest.fn().mockResolvedValue('log'),
     refresh: jest.fn().mockResolvedValue('ref'),
     validate: jest.fn().mockResolvedValue('val'),
+    getUser: jest.fn().mockResolvedValue({ userId: 'u1', email: 'a@b.com' }),
   };
   const controller = new AuthController(service as never);
 
@@ -24,5 +25,13 @@ describe('AuthController', () => {
   it('delegates validate, unwrapping the accessToken', async () => {
     await controller.validate({ accessToken: 'tok' });
     expect(service.validate).toHaveBeenCalledWith('tok');
+  });
+
+  it('delegates getUser, unwrapping the userId', async () => {
+    await expect(controller.getUser({ userId: 'u1' })).resolves.toEqual({
+      userId: 'u1',
+      email: 'a@b.com',
+    });
+    expect(service.getUser).toHaveBeenCalledWith('u1');
   });
 });

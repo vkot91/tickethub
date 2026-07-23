@@ -30,7 +30,7 @@ hook is retired.
 ## Events (outbox → RabbitMQ, `orders.events`, with DLX)
 
 `order.awaiting_payment`, `order.paid`, `order.expired`, `order.cancelled`, `refund.requested`,
-`seat.held`, `seat.released`, `seat.confirmed`.
+`seat.held`, `seat.released`.
 
 ## Config
 

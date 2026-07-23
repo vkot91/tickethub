@@ -1,9 +1,20 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
 import { eq } from 'drizzle-orm';
 import { users, type Db } from '@tickethub/db';
-import type { RegisterDto, LoginDto, AuthTokens, RefreshDto } from '@tickethub/contracts';
+import type {
+  RegisterDto,
+  LoginDto,
+  AuthTokens,
+  RefreshDto,
+  GetUserResponse,
+} from '@tickethub/contracts';
 import { USER_ROUTING_KEYS } from '@tickethub/contracts';
 import { JwtService } from './jwt.service';
 import type Redis from 'ioredis';
@@ -73,6 +84,14 @@ export class AuthService {
     await this.redis.set(`refresh:${user.id}`, tokens.refreshToken, 'EX', 60 * 60 * 24 * 30); // rotation
 
     return tokens;
+  }
+
+  async getUser(userId: string): Promise<GetUserResponse> {
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    return { userId: user.id, email: user.email };
   }
 
   async validate(accessToken: string) {

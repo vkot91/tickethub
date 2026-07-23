@@ -1,4 +1,4 @@
-import { registerSchema } from './auth';
+import { getUserRequestSchema, getUserResponseSchema, registerSchema } from './auth';
 
 describe('registerSchema', () => {
   it('accepts a valid registration', () => {
@@ -12,5 +12,28 @@ describe('registerSchema', () => {
     expect(registerSchema.parse({ email: 'A@B.com', password: 'password123' }).email).toBe(
       'a@b.com',
     );
+  });
+});
+
+describe('getUserRequestSchema', () => {
+  it('accepts a valid userId', () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    expect(getUserRequestSchema.parse({ userId })).toEqual({ userId });
+  });
+
+  it('rejects a non-uuid userId', () => {
+    expect(() => getUserRequestSchema.parse({ userId: 'not-a-uuid' })).toThrow();
+  });
+});
+
+describe('getUserResponseSchema', () => {
+  it('accepts a valid user payload', () => {
+    const user = { userId: '11111111-1111-1111-1111-111111111111', email: 'a@b.com' };
+    expect(getUserResponseSchema.parse(user)).toEqual(user);
+  });
+
+  it('rejects an invalid email', () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    expect(() => getUserResponseSchema.parse({ userId, email: 'not-an-email' })).toThrow();
   });
 });

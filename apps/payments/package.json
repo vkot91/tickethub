@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "dev": "node --watch -r ts-node/register src/main.ts",
+    "dev": "node --watch --conditions=development -r ts-node/register src/main.ts",
     "start": "node dist/main",
     "lint": "eslint src",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",

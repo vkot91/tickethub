@@ -16,7 +16,6 @@ export const ORDER_ROUTING_KEYS = {
   ORDER_CANCELLED: 'order.cancelled',
   SEAT_HELD: 'seat.held',
   SEAT_RELEASED: 'seat.released',
-  SEAT_CONFIRMED: 'seat.confirmed',
   REFUND_REQUESTED: 'refund.requested',
 } as const;
 
@@ -26,21 +25,20 @@ export const PAYMENT_ROUTING_KEYS = {
   REFUND_SUCCEEDED: 'refund.succeeded',
 } as const;
 
+export const TICKET_ROUTING_KEYS = {
+  TICKET_PDF_READY: 'ticket.pdf_ready',
+} as const;
+
 // Durable RMQ exchanges. All domain events fan out through the topic exchange; all RPC
 // requests route through the direct exchange (replies come back over Direct Reply-To).
 export const EVENTS_EXCHANGE = 'tickethub.events';
 export const RPC_EXCHANGE = 'tickethub.rpc';
 
-// RMQ queue names. RPC queues: one per service, bound to RPC_EXCHANGE by its message-pattern
-// routing keys. Event queues: one per handler, bound to EVENTS_EXCHANGE by routing key — so
-// each event type gets its own DLX and a new subscriber just binds its own queue (fan-out).
-export const RPC_QUEUES = {
-  AUTH: 'auth.rpc',
-  SHOWS: 'shows.rpc',
-  ORDERS: 'orders.rpc',
-  PAYMENTS: 'payments.rpc',
-} as const;
-
+// RMQ queue names. RPC handlers each bind their own queue named after the message-pattern
+// routing key (golevelup runs one consumer per @RabbitRPC, so a shared per-service queue would
+// make handlers compete and drop mismatched keys). Event queues: one per handler, bound to
+// EVENTS_EXCHANGE by routing key — so each event type gets its own DLX and a new subscriber
+// just binds its own queue (fan-out).
 export const EVENTS_QUEUES = {
   ORDERS_PAYMENT_SUCCEEDED: 'orders.payment-succeeded',
   ORDERS_PAYMENT_FAILED: 'orders.payment-failed',
@@ -48,6 +46,8 @@ export const EVENTS_QUEUES = {
   ORDERS_SHOW_CANCELLED: 'orders.show-cancelled',
   PAYMENTS_REFUND_REQUESTED: 'payments.refund-requested',
   PAYMENTS_ORDER_EXPIRED: 'payments.order-expired',
+  FULFILLMENT_ORDER_PAID: 'fulfillment.order-paid',
+  FULFILLMENT_TICKET_PDF_READY: 'fulfillment.ticket-pdf-ready',
 } as const;
 
 export const AUTH_MESSAGE_PATTERNS = {
@@ -55,6 +55,7 @@ export const AUTH_MESSAGE_PATTERNS = {
   LOGIN: 'auth.login',
   REFRESH: 'auth.refresh',
   VALIDATE: 'auth.validate',
+  GET_USER: 'auth.getUser',
 } as const;
 
 export const SHOWS_MESSAGE_PATTERNS = {

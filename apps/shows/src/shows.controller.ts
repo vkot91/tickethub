@@ -7,17 +7,29 @@ import { ShowsService } from './shows.service';
 export class ShowsController {
   constructor(private readonly showsService: ShowsService) {}
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: SHOWS_MESSAGE_PATTERNS.CATALOG })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: SHOWS_MESSAGE_PATTERNS.CATALOG,
+    queue: SHOWS_MESSAGE_PATTERNS.CATALOG,
+  })
   catalog(query: CatalogQuery) {
     return this.showsService.catalog(query);
   }
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: SHOWS_MESSAGE_PATTERNS.DETAIL })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: SHOWS_MESSAGE_PATTERNS.DETAIL,
+    queue: SHOWS_MESSAGE_PATTERNS.DETAIL,
+  })
   detail(params: { id: string }) {
     return this.showsService.detail(params.id);
   }
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: SHOWS_MESSAGE_PATTERNS.SEAT_MAP })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: SHOWS_MESSAGE_PATTERNS.SEAT_MAP,
+    queue: SHOWS_MESSAGE_PATTERNS.SEAT_MAP,
+  })
   seatMap(params: { id: string }) {
     return this.showsService.seatMap(params.id);
   }

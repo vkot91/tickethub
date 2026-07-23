@@ -17,6 +17,7 @@ export const orderResponseSchema = z.object({
   totalCents: z.number().int(),
   currency: z.string(),
   expiresAt: z.string(),
+  seats: z.array(z.object({ seatId: uuid, ticketTypeId: uuid })),
 });
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
 
@@ -31,14 +32,12 @@ export const orderPaidSchema = base.extend({ orderId: uuid, userId: uuid, showId
 export const orderExpiredSchema = base.extend({ orderId: uuid, showId: uuid });
 export const seatHeldSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
 export const seatReleasedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
-export const seatConfirmedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
 
 export type OrderAwaitingPaymentEvent = z.infer<typeof orderAwaitingPaymentSchema>;
 export type OrderPaidEvent = z.infer<typeof orderPaidSchema>;
 export type OrderExpiredEvent = z.infer<typeof orderExpiredSchema>;
 export type SeatHeldEvent = z.infer<typeof seatHeldSchema>;
 export type SeatReleasedEvent = z.infer<typeof seatReleasedSchema>;
-export type SeatConfirmedEvent = z.infer<typeof seatConfirmedSchema>;
 
 // paymentIntentId optional: REST-driven refunds omit it (Payments resolves it from its own row);
 // the expire-then-pay race carries it straight from the payment.succeeded event.

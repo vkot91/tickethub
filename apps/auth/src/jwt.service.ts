@@ -10,7 +10,7 @@ export class JwtService {
   async createTokens(payload: UserPayload): Promise<AuthTokens> {
     const accessToken = await this.jwt.signAsync(payload, {
       secret: this.secrets.accessSecret,
-      expiresIn: '15m',
+      expiresIn: '30m',
     });
     const refreshToken = await this.jwt.signAsync(
       { sub: payload.id },

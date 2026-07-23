@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { getTestDb, seedUser, type TestDb } from '@tickethub/db/testing';
 import { AuthService } from './auth.service';
@@ -118,6 +118,23 @@ describe('AuthService.refresh', () => {
     const { svc } = makeService({ storedRefresh: rt });
 
     await expect(svc.refresh({ refreshToken: rt })).rejects.toThrow(UnauthorizedException);
+  });
+});
+
+describe('AuthService.getUser', () => {
+  it('returns userId + email for an existing user', async () => {
+    const user = await seedUser(db, { email: 'buyer@x.com' });
+    const { svc } = makeService();
+
+    await expect(svc.getUser(user.id)).resolves.toEqual({ userId: user.id, email: 'buyer@x.com' });
+  });
+
+  it('throws NotFound for an unknown id', async () => {
+    const { svc } = makeService();
+
+    await expect(svc.getUser('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });
 

@@ -27,12 +27,18 @@ transactions (saga + outbox), concurrency.
   nothing else (`EVENTS_EXCHANGE`, `publishEvent`, `PaymentSucceededEvent`). Never use "event"
   for the domain object.
 - `packages/contracts` (Zod) is the single source of truth for DTOs and RMQ event shapes.
+- `design/` is the single source of truth for UI: `design/README.md` (screens, tokens, behavior)
+  and `design/TicketHub.dc.html` (interactive prototype, source project on claude.ai/design).
+  Read it before building any frontend screen; recreate with shadcn/ui + Tailwind at high
+  fidelity — never port its raw HTML/inline styles. Colors, type, radii, and motion come from
+  its token list via CSS variables, not hardcoded per component. The handoff predates the
+  `show` naming rule — its `events/[id]` routes and `GET /events/...` endpoints map to `shows`.
 - Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
   (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
   `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level
-  only, so the import line says which scope a file talks to. Keys are `SCREAMING_SNAKE` for
-  message patterns and queues; routing-key maps keep `camelCase` keys that mirror the wire
-  value (`showCancelled: 'show.cancelled'`). Every map ends with `as const`.
+  only, so the import line says which scope a file talks to. Keys are `SCREAMING_SNAKE`
+  throughout — message patterns, queues, and routing-key maps alike, each key mirroring its
+  wire value (`SHOW_CANCELLED: 'show.cancelled'`). Every map ends with `as const`.
 - Per-service Postgres schema via Drizzle `pgSchema()`. No cross-service JOINs — data crosses
   service boundaries only via RMQ events or RPC.
 - Events published only through the outbox pattern; consumers are idempotent (`processed_messages`).

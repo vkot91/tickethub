@@ -1,4 +1,4 @@
-import { canTransition } from './order-state';
+import { canTransition } from './orders.state';
 
 describe('order state machine', () => {
   it('allows awaiting_payment → paid/expired/cancelled', () => {

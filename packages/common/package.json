@@ -4,9 +4,15 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
     "test": "jest --coverage"
   },
@@ -16,6 +22,7 @@
     "@tickethub/rmq": "workspace:*",
     "nestjs-pino": "catalog:",
     "pino-http": "^10.0.0",
+    "pino-loki": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
     "zod": "catalog:"
