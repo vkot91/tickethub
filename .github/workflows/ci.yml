@@ -98,6 +98,19 @@ jobs:
       - name: Build packages
         run: pnpm turbo run build
 
+      # MinIO for the fulfillment suite (ticket PDFs). Started as a step, not a service
+      # container, because it needs a `server` command those can't set — same as
+      # docker-compose. The mc one-shot waits for readiness and creates the buckets.
+      - name: Start MinIO
+        run: |
+          docker run -d --network host --name minio \
+            -e MINIO_ROOT_USER=tickethub -e MINIO_ROOT_PASSWORD=tickethub \
+            minio/minio server /data
+          docker run --rm --network host --entrypoint sh minio/mc -c '
+            until mc alias set ci http://localhost:9000 tickethub tickethub 2>/dev/null; do sleep 1; done
+            mc mb --ignore-existing ci/posters ci/tickets
+          '
+
       # Shared test db + real Redis/RabbitMQ. Not --affected: the suites share one db
       # and run serially, so a partial run buys nothing.
       - name: Run integration suites
