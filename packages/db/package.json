@@ -7,32 +7,37 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./nest": {
       "types": "./dist/nest.d.ts",
+      "development": "./src/nest.ts",
       "default": "./dist/nest.js"
     },
     "./seed": {
       "types": "./dist/seed/index.d.ts",
+      "development": "./src/seed/index.ts",
       "default": "./dist/seed/index.js"
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
+      "development": "./src/testing/index.ts",
       "default": "./dist/testing/index.js"
     },
     "./testing/jest.setup": {
       "types": "./dist/testing/jest.setup.d.ts",
+      "development": "./src/testing/jest.setup.ts",
       "default": "./dist/testing/jest.setup.js"
     },
     "./testing/integration-env": {
       "types": "./dist/testing/integration-env.d.ts",
+      "development": "./src/testing/integration-env.ts",
       "default": "./dist/testing/integration-env.js"
     }
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
     "lint": "eslint src",
     "test": "jest --coverage",
     "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit --runInBand --setupFiles @tickethub/db/testing/integration-env",

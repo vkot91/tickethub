@@ -7,7 +7,13 @@ import type { Config } from 'jest';
 // DI wiring, declarative schema, dev seeds) is stripped out so the threshold
 // measures domain logic, not scaffolding.
 const config: Config = {
+  // `isolatedModules: true` makes ts-jest transpile-only — it skips per-suite type-checking (already
+  // covered by `build` + `lint` in the turbo pipeline), which is where ts-jest spends most of its
+  // cold-start time. Suites start in well under a second instead of ~3s.
   preset: 'ts-jest',
+  transform: {
+    '^.+\\.tsx?$': ['ts-jest', { isolatedModules: true }],
+  },
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   clearMocks: true,
