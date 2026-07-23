@@ -29,6 +29,11 @@ services:
     image: redis:7
     ports: ['6379:6379']
     healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, retries: 10 }
+  # Web UI for Redis/BullMQ. Add redis://redis:6379 once in the UI. ponytail: dev-only viewer.
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports: ['5540:5540']
+    depends_on: [redis]
   rabbitmq:
     image: rabbitmq:4-management
     ports: ['5672:5672', '15672:15672']
@@ -51,6 +56,10 @@ services:
       until mc alias set local http://minio:9000 tickethub tickethub; do sleep 1; done &&
       mc mb -p local/posters local/tickets &&
       mc anonymous set download local/posters"
+  # Fake SMTP server for local email testing (apps/fulfillment sends PDF tickets here).
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['1025:1025', '8025:8025'] # 1025 SMTP, 8025 web UI
   loki:
     image: grafana/loki:3.0.0
     ports: ['3100:3100']
@@ -58,6 +67,8 @@ services:
     image: grafana/grafana:11.0.0
     ports: ['3001:3000']
     environment: { GF_AUTH_ANONYMOUS_ENABLED: 'true', GF_AUTH_ANONYMOUS_ORG_ROLE: 'Admin' }
+    volumes:
+      - ./observability/grafana-datasources.yml:/etc/grafana/provisioning/datasources/loki.yml:ro
   promtail:
     image: grafana/promtail:3.0.0
     volumes:

@@ -14,6 +14,9 @@
   "dependencies": {
     "@tickethub/env": "workspace:*",
     "@tickethub/contracts": "workspace:*",
+    "@tickethub/config": "workspace:*",
+    "@tickethub/db": "workspace:*",
+    "@tickethub/outbox": "workspace:*",
     "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/common": "catalog:",
     "amqplib": "catalog:",

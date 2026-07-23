@@ -13,23 +13,48 @@ import { AuthService } from './auth.service';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.REGISTER })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.REGISTER,
+    queue: AUTH_MESSAGE_PATTERNS.REGISTER,
+  })
   register(dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.LOGIN })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.LOGIN,
+    queue: AUTH_MESSAGE_PATTERNS.LOGIN,
+  })
   login(dto: LoginDto) {
     return this.authService.login(dto);
   }
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.REFRESH })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.REFRESH,
+    queue: AUTH_MESSAGE_PATTERNS.REFRESH,
+  })
   refresh(dto: RefreshDto) {
     return this.authService.refresh(dto);
   }
 
-  @RabbitRPC({ exchange: RPC_EXCHANGE, routingKey: AUTH_MESSAGE_PATTERNS.VALIDATE })
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.VALIDATE,
+    queue: AUTH_MESSAGE_PATTERNS.VALIDATE,
+  })
   validate(p: { accessToken: string }) {
     return this.authService.validate(p.accessToken);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.GET_USER,
+    queue: AUTH_MESSAGE_PATTERNS.GET_USER,
+  })
+  getUser(params: { userId: string }) {
+    return this.authService.getUser(params.userId);
   }
 }

@@ -24,6 +24,7 @@ const config: Config = {
     '!src/**/decorators/**', // Nest param/metadata decorators — declarative wiring
     '!src/**/schema/**', // Drizzle table defs — declarative
     '!src/**/seed/**', // dev-only seed scripts
+    '!src/**/reset.ts', // dev-only db reset script — needs real Postgres, not unit-testable
     '!src/**/testing/**', // shared test helpers (fixtures, in-memory db)
     // NB: index.ts kept in — some packages (env, config) put real code there;
     // pure barrels self-cover once imported, so they don't drag the numbers.

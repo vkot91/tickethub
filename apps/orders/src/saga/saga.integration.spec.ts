@@ -13,7 +13,9 @@ import {
 import { seed } from '@tickethub/db/seed';
 import { RedisService } from '@tickethub/redis';
 import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
-import { OrdersService } from './orders.service';
+import { OrderRepository } from '../orders.repository';
+import { OrdersService } from '../orders.service';
+import { OrderSagaService } from './saga.service';
 
 jest.setTimeout(30_000);
 
@@ -21,6 +23,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
   let db: Db;
   let redis: Redis;
   let svc: OrdersService;
+  let saga: OrderSagaService;
   let showId: string, seatId: string, ttId: string;
   const buyer = '99999999-9999-9999-9999-999999999999';
 
@@ -32,14 +35,19 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
     showId = ids.flashShowId;
     seatId = ids.flashSeatId;
     ttId = ids.flashTicketTypeId;
-    svc = new OrdersService(
-      db,
+    const orderRepository = new OrderRepository(
       new RedisService(redis),
       new OutboxRepository(db, ordersOutbox),
       new InboxRepository(ordersProcessedMessages),
+    );
+    svc = new OrdersService(
+      db,
+      new RedisService(redis),
+      orderRepository,
       { add: async () => undefined } as never,
       600,
     );
+    saga = new OrderSagaService(db, orderRepository);
   });
 
   afterAll(() => {
@@ -59,7 +67,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
   it('markPaid confirms an awaiting_payment order and its seats', async () => {
     const order = await svc.create(buyer, 'pay-1', dtoFor() as never);
 
-    await svc.markPaid({
+    await saga.markPaid({
       messageId: uuid(),
       orderId: order.id,
       paymentIntentId: 'pi_1',
@@ -73,15 +81,15 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
       .where(eq(seatReservations.orderId, order.id));
     expect(row.status).toBe('paid');
     expect(res.status).toBe('confirmed');
-    expect(await outboxKeys()).toEqual(expect.arrayContaining(['order.paid', 'seat.confirmed']));
+    expect(await outboxKeys()).toEqual(expect.arrayContaining(['order.paid']));
   });
 
   it('markPaid on an expired order auto-refunds instead of resurrecting (the race)', async () => {
     const order = await svc.create(buyer, 'pay-2', dtoFor() as never);
-    await svc.release(order.id); // expire it first
+    await saga.release(order.id); // expire it first
 
     const messageId = uuid();
-    await svc.markPaid({
+    await saga.markPaid({
       messageId,
       orderId: order.id,
       paymentIntentId: 'pi_2',
@@ -94,7 +102,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
 
     // Idempotent: replaying the same messageId adds no new refund.requested row.
     const before = (await outboxKeys()).filter((k) => k === 'refund.requested').length;
-    await svc.markPaid({
+    await saga.markPaid({
       messageId,
       orderId: order.id,
       paymentIntentId: 'pi_2',

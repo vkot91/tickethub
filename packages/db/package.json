@@ -9,6 +9,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./nest": {
+      "types": "./dist/nest.d.ts",
+      "default": "./dist/nest.js"
+    },
     "./seed": {
       "types": "./dist/seed/index.d.ts",
       "default": "./dist/seed/index.js"
@@ -36,9 +40,12 @@
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:test": "drizzle-kit migrate --config=drizzle.test.config.ts",
     "db:studio": "drizzle-kit studio",
-    "seed": "tsx src/seed/index.ts"
+    "db:seed": "tsx src/seed/index.ts",
+    "db:reset": "tsx src/reset.ts && drizzle-kit migrate"
   },
   "dependencies": {
+    "@nestjs/common": "catalog:",
+    "@tickethub/config": "workspace:*",
     "@tickethub/env": "workspace:*",
     "drizzle-orm": "catalog:",
     "postgres": "^3.4.0"

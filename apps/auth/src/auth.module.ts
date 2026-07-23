@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { RabbitMQModule, AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type Redis from 'ioredis';
-import { createDb, type Db } from '@tickethub/db';
+import type { Db } from '@tickethub/db';
+import { DbModule } from '@tickethub/db/nest';
 import { configModuleFor, ConfigService } from '@tickethub/config';
 import { AppLoggerModule } from '@tickethub/common';
 import { RedisModule, REDIS_CLIENT } from '@tickethub/redis';
-import { rmqConfig } from '@tickethub/rmq';
+import { rmqRootModule } from '@tickethub/rmq';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtService } from './jwt.service';
@@ -18,18 +19,11 @@ type Cfg = ConfigService<Config, true>;
     configModuleFor(schema),
     AppLoggerModule,
     RedisModule,
-    RabbitMQModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: Cfg) => rmqConfig(config.get('RABBITMQ_URL', { infer: true }), true),
-    }),
+    DbModule.forRoot(),
+    rmqRootModule(),
   ],
   controllers: [AuthController],
   providers: [
-    {
-      provide: 'DB',
-      inject: [ConfigService],
-      useFactory: (config: Cfg): Db => createDb(config.get('DATABASE_URL', { infer: true })),
-    },
     {
       provide: JwtService,
       inject: [ConfigService],

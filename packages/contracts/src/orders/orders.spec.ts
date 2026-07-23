@@ -1,5 +1,5 @@
 import { createOrderSchema, orderAwaitingPaymentSchema } from './index';
-import { ORDER_ROUTING_KEYS, ORDERS_MESSAGE_PATTERNS, RPC_QUEUES } from '../events';
+import { ORDER_ROUTING_KEYS, ORDERS_MESSAGE_PATTERNS } from '../events';
 
 describe('order contracts', () => {
   it('accepts a valid create-order payload', () => {
@@ -33,8 +33,7 @@ describe('order contracts', () => {
     expect(ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT).toBe('order.awaiting_payment');
   });
 
-  it('exposes orders queues and message patterns', () => {
-    expect(RPC_QUEUES.ORDERS).toBe('orders.rpc');
+  it('exposes orders message patterns', () => {
     expect(ORDERS_MESSAGE_PATTERNS.CREATE).toBe('orders.create');
   });
 });

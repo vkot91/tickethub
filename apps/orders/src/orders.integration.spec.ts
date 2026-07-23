@@ -12,6 +12,8 @@ import {
 import { seed } from '@tickethub/db/seed';
 import { RedisService } from '@tickethub/redis';
 import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
+import { OrderRepository } from './orders.repository';
+import { OrderSagaService } from './saga/saga.service';
 import { OrdersService } from './orders.service';
 
 jest.setTimeout(30_000);
@@ -20,6 +22,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
   let db: Db;
   let redis: Redis;
   let svc: OrdersService;
+  let saga: OrderSagaService;
   let showId: string, seatId: string, ttId: string;
 
   beforeAll(async () => {
@@ -30,15 +33,20 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     showId = ids.flashShowId;
     seatId = ids.flashSeatId;
     ttId = ids.flashTicketTypeId;
+    const orderRepository = new OrderRepository(
+      new RedisService(redis),
+      new OutboxRepository(db, ordersOutbox),
+      new InboxRepository(ordersProcessedMessages),
+    );
     // release scheduling isn't exercised here — fake the queue.
     svc = new OrdersService(
       db,
       new RedisService(redis),
-      new OutboxRepository(db, ordersOutbox),
-      new InboxRepository(ordersProcessedMessages),
+      orderRepository,
       { add: async () => undefined } as never,
       600,
     );
+    saga = new OrderSagaService(db, orderRepository);
   });
 
   afterAll(() => {
@@ -87,7 +95,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
 
   it('release expires an unpaid order and frees the seat for a new buyer', async () => {
     const winner = await svc.create('33333333-3333-3333-3333-333333333333', 'c', dtoFor() as never);
-    await svc.release(winner.id);
+    await saga.release(winner.id);
 
     const fresh = await svc.create('55555555-5555-5555-5555-555555555555', 'e', dtoFor() as never);
     expect(fresh.status).toBe('awaiting_payment');
@@ -95,7 +103,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
 
   it('markPaid flips an order to paid and confirms its seats', async () => {
     const order = await svc.create('66666666-6666-6666-6666-666666666666', 'f', dtoFor() as never);
-    await svc.markPaid({
+    await saga.markPaid({
       messageId: '77777777-7777-7777-7777-777777777777',
       orderId: order.id,
       paymentIntentId: 'pi_test',
@@ -103,5 +111,23 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     } as never);
     const paid = await svc.get('66666666-6666-6666-6666-666666666666', order.id);
     expect(paid.status).toBe('paid');
+  });
+
+  it('get() returns only the confirmed seat reservations, excluding held/released ones', async () => {
+    const userId = '88888888-8888-8888-8888-888888888888';
+    const order = await svc.create(userId, 'g', dtoFor() as never); // seeds a 'held' reservation for seatId
+
+    const confirmedSeatId = '99999999-9999-9999-9999-999999999999';
+    await db.insert(seatReservations).values({
+      orderId: order.id,
+      showId,
+      seatId: confirmedSeatId,
+      ticketTypeId: ttId,
+      status: 'confirmed',
+    });
+
+    const response = await svc.get(userId, order.id);
+
+    expect(response.seats).toEqual([{ seatId: confirmedSeatId, ticketTypeId: ttId }]);
   });
 });
