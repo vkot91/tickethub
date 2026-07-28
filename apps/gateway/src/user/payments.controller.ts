@@ -10,7 +10,7 @@ import {
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 @Controller()
-export class GatewayPaymentsController {
+export class GatewayUserPaymentsController {
   constructor(private readonly amqp: AmqpConnection) {}
 
   @UseGuards(JwtAuthGuard)

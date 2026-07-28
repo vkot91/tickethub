@@ -12,7 +12,7 @@ interface RedirectResponse {
 
 @Controller('tickets')
 @UseGuards(JwtAuthGuard)
-export class GatewayTicketsController {
+export class GatewayUserTicketsController {
   constructor(private readonly amqp: AmqpConnection) {}
 
   @Get()

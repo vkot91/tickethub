@@ -1,8 +1,8 @@
-import { GatewayShowsController } from './shows.controller';
+import { GatewayUserShowsController } from './shows.controller';
 
-describe('GatewayShowsController', () => {
+describe('GatewayUserShowsController', () => {
   const amqp = { request: jest.fn().mockResolvedValue('result') };
-  const controller = new GatewayShowsController(amqp as never);
+  const controller = new GatewayUserShowsController(amqp as never);
 
   it('parses the query and forwards catalog over RPC', async () => {
     await controller.catalog({ limit: '5' });

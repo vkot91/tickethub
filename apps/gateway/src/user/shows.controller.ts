@@ -4,7 +4,7 @@ import { SHOWS_MESSAGE_PATTERNS, catalogQuerySchema } from '@tickethub/contracts
 import { rpcRequest } from '@tickethub/rmq';
 
 @Controller('shows')
-export class GatewayShowsController {
+export class GatewayUserShowsController {
   constructor(private readonly amqp: AmqpConnection) {}
 
   @Get() catalog(@Query() query: unknown) {

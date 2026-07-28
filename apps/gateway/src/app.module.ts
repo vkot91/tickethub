@@ -10,10 +10,11 @@ import { configModuleFor, ConfigService } from '@tickethub/config';
 import { AppLoggerModule } from '@tickethub/common';
 import { RequestIdMiddleware, rmqRootModule } from '@tickethub/rmq';
 import { GatewayAuthController } from './auth/auth.controller';
-import { GatewayShowsController } from './shows/shows.controller';
-import { GatewayOrdersController } from './orders/orders.controller';
-import { GatewayPaymentsController } from './payments/payments.controller';
-import { GatewayTicketsController } from './tickets/tickets.controller';
+import { GatewayUserShowsController } from './user/shows.controller';
+import { GatewayUserOrdersController } from './user/orders.controller';
+import { GatewayUserPaymentsController } from './user/payments.controller';
+import { GatewayUserTicketsController } from './user/tickets.controller';
+import { ShowContextService } from './shared/show-context.service';
 import { HealthController } from './health/health.controller';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 import { schema, type Config } from './config';
@@ -52,13 +53,15 @@ const queueDashboardImports =
   ],
   controllers: [
     GatewayAuthController,
-    GatewayShowsController,
-    GatewayOrdersController,
-    GatewayPaymentsController,
-    GatewayTicketsController,
+    GatewayUserShowsController,
+    GatewayUserOrdersController,
+    GatewayUserPaymentsController,
+    GatewayUserTicketsController,
     HealthController,
   ],
-  providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }],
+  // No UserModule/OrganizerModule: Nest cannot scope a guard to a module (only APP_GUARD, which
+  // is global), so a module per audience would be grouping for its own sake. The folders group.
+  providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }, ShowContextService],
 })
 export class AppModule implements NestModule {
   // Seed the correlation id at the edge, for every route, before the handlers run.

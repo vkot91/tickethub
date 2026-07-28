@@ -1,5 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
-import { GatewayOrdersController } from './orders.controller';
+import { GatewayUserOrdersController } from './orders.controller';
+import { ShowContextService } from '../shared/show-context.service';
+
+// The merge moved into ShowContextService in the audience reshuffle; the controller now
+// composes it. Same amqp double, same assertions — only the wiring changed.
+const controller = (amqp: unknown) =>
+  new GatewayUserOrdersController(amqp as never, new ShowContextService(amqp as never));
 
 const amqp = { request: jest.fn().mockResolvedValue({ id: 'ord1' }) };
 
@@ -13,9 +19,9 @@ const dto = {
   ],
 };
 
-describe('GatewayOrdersController', () => {
+describe('GatewayUserOrdersController', () => {
   it('forwards create with the authenticated user id, idempotency key, and dto', async () => {
-    const ctrl = new GatewayOrdersController(amqp as never);
+    const ctrl = controller(amqp);
     const req = { user: { id: 'u1' }, headers: { 'idempotency-key': 'k1' } };
     await ctrl.create(req as never, dto as never);
     expect(amqp.request).toHaveBeenCalledWith(
@@ -27,13 +33,13 @@ describe('GatewayOrdersController', () => {
   });
 
   it('rejects a missing idempotency key', async () => {
-    const ctrl = new GatewayOrdersController(amqp as never);
+    const ctrl = controller(amqp);
     const req = { user: { id: 'u1' }, headers: {} };
     expect(() => ctrl.create(req as never, dto as never)).toThrow(BadRequestException);
   });
 
   it('forwards get with the authenticated user id', async () => {
-    const ctrl = new GatewayOrdersController(amqp as never);
+    const ctrl = controller(amqp);
     await ctrl.get({ user: { id: 'u1' } } as never, 'ord1');
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -94,7 +100,7 @@ describe('GatewayOrdersController', () => {
 
     it('adds the show title and seat labels from Shows', async () => {
       const amqpList = gateway({ items: [summary], nextCursor: null }, shows);
-      const ctrl = new GatewayOrdersController(amqpList as never);
+      const ctrl = controller(amqpList);
 
       const res = await ctrl.list({ user: { id: 'u1' } } as never, { limit: '20' });
 
@@ -113,7 +119,7 @@ describe('GatewayOrdersController', () => {
     it('asks Shows once per distinct show, not once per order', async () => {
       const page = { items: [summary, { ...summary, id: 'ord2' }], nextCursor: null };
       const amqpList = gateway(page, shows);
-      const ctrl = new GatewayOrdersController(amqpList as never);
+      const ctrl = controller(amqpList);
 
       await ctrl.list({ user: { id: 'u1' } } as never, {});
 
@@ -128,7 +134,7 @@ describe('GatewayOrdersController', () => {
       const amqpList = gateway({ items: [summary], nextCursor: null }, () =>
         Promise.reject(new Error('Show not found')),
       );
-      const ctrl = new GatewayOrdersController(amqpList as never);
+      const ctrl = controller(amqpList);
 
       const res = await ctrl.list({ user: { id: 'u1' } } as never, {});
 
@@ -137,14 +143,14 @@ describe('GatewayOrdersController', () => {
     });
 
     it('rejects a limit outside the allowed range', async () => {
-      const ctrl = new GatewayOrdersController(amqp as never);
+      const ctrl = controller(amqp);
 
       await expect(ctrl.list({ user: { id: 'u1' } } as never, { limit: '999' })).rejects.toThrow();
     });
   });
 
   it('forwards refund with the authenticated user id', async () => {
-    const ctrl = new GatewayOrdersController(amqp as never);
+    const ctrl = controller(amqp);
     await ctrl.requestRefund({ user: { id: 'u1' } } as never, 'ord1');
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
