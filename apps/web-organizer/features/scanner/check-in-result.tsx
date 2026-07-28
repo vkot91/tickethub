@@ -1,0 +1,56 @@
+import { AlertTriangle, Check, X } from 'lucide-react';
+
+import { Card } from '@tickethub/ui';
+
+import { type CheckInResult } from '../api';
+
+const outcomes = {
+  valid: {
+    Icon: Check,
+    tone: 'border-success/40 bg-success/10 text-success',
+    title: 'Checked in',
+  },
+  used: {
+    Icon: AlertTriangle,
+    tone: 'border-warn/40 bg-warn/10 text-warn',
+    title: 'Already used',
+  },
+  invalid: {
+    Icon: X,
+    tone: 'border-danger/40 bg-danger/10 text-danger',
+    title: 'Invalid ticket',
+  },
+} as const satisfies Record<CheckInResult['result'], unknown>;
+
+const checkedInAt = new Intl.DateTimeFormat('en-GB', {
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'UTC',
+});
+
+export function CheckInPanel({ result }: { result: CheckInResult }) {
+  const { Icon, tone, title } = outcomes[result.result];
+
+  return (
+    <Card padding="lg" radius="panel" className={`border ${tone}`} asChild>
+      <div role="status" aria-live="polite">
+        <div className="mb-3 flex items-center gap-3">
+          <Icon aria-hidden className="size-6" />
+          <p className="font-display text-lg font-semibold">{title}</p>
+        </div>
+
+        {result.seatLabel ? (
+          <p className="text-sm text-fg-secondary">
+            {result.showTitle} · seat {result.seatLabel}
+          </p>
+        ) : null}
+
+        {result.result === 'used' && result.checkedInAt ? (
+          <p className="mt-1 font-mono text-xs text-fg-muted">
+            Scanned at {checkedInAt.format(new Date(result.checkedInAt))}
+          </p>
+        ) : null}
+      </div>
+    </Card>
+  );
+}

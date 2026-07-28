@@ -33,6 +33,17 @@ transactions (saga + outbox), concurrency.
   fidelity — never port its raw HTML/inline styles. Colors, type, radii, and motion come from
   its token list via CSS variables, not hardcoded per component. The handoff predates the
   `show` naming rule — its `events/[id]` routes and `GET /events/...` endpoints map to `shows`.
+- Two frontends: `apps/web-user` (buyers) and `apps/web-organizer` (the console). They share `packages/ui`
+  (presentational components + design tokens) and `packages/web-kit` (BFF proxy, refresh rotation,
+  query client) and **nothing else** — app-specific code never goes in a package.
+- The two never share a session. Dev URLs are `http://app.localhost:4000` and
+  `http://admin.localhost:4001` — separate hostnames, matching the `app.`/`admin.` subdomains in
+  production, with host-only cookies (no `Domain`) and per-app names (`th_*` vs `tho_*`).
+- UI primitives are **Radix-based**: everything in `packages/ui/src/` wraps a
+  `@radix-ui/react-*` primitive (shadcn/ui's own foundation) rather than a bare HTML element —
+  `Slot` for `asChild` composition, `Label`, `Dialog`, `Toast`, `Progress`, `Select`, `Tabs`.
+  Radix owns behavior and accessibility (focus, keyboard, ARIA); we own only the `cva` variants
+  that map design tokens onto it. Do not hand-roll a control Radix already ships.
 - Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
   (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
   `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level

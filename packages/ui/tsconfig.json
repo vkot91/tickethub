@@ -1,0 +1,8 @@
+{
+  "extends": "@tickethub/tsconfig/next.json",
+  "compilerOptions": {
+    "plugins": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules"]
+}

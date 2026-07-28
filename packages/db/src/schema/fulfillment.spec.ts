@@ -11,21 +11,47 @@ describe('fulfillment schema', () => {
     expect(fulfillmentSchema.schemaName).toBe('fulfillment');
   });
 
-  it('tickets table exposes order + s3 + qr columns', () => {
+  it('tickets is one row per seat, not per order', () => {
     expect(Object.keys(tickets)).toEqual(
-      expect.arrayContaining(['id', 'orderId', 's3Key', 'qrToken', 'createdAt']),
+      expect.arrayContaining([
+        'id',
+        'orderId',
+        'userId',
+        'showId',
+        'seatId',
+        'seatLabel',
+        'tier',
+        'qrToken',
+        's3Key',
+        'checkedInAt',
+        'createdAt',
+      ]),
     );
   });
 
-  it('tickets.orderId is unique so a duplicate order.paid cannot mint two tickets', () => {
+  it('is unique per (order, seat) so a redelivered order.paid cannot mint a second ticket', () => {
     const { uniqueConstraints } = getTableConfig(tickets);
 
-    const orderIdUniqueConstraint = uniqueConstraints.find((constraint) =>
-      constraint.columns.map((column) => column.name).includes('order_id'),
+    const orderSeatUnique = uniqueConstraints.find((constraint) =>
+      constraint.columns.map((column) => column.name).includes('seat_id'),
     );
 
-    expect(orderIdUniqueConstraint).toBeDefined();
-    expect(orderIdUniqueConstraint?.columns.map((column) => column.name)).toEqual(['order_id']);
+    expect(orderSeatUnique?.columns.map((column) => column.name)).toEqual(['order_id', 'seat_id']);
+  });
+
+  it('leaves a ticket un-checked-in until a gate scans it', () => {
+    const { columns } = getTableConfig(tickets);
+
+    const checkedInAt = columns.find((column) => column.name === 'checked_in_at');
+
+    expect(checkedInAt?.notNull).toBe(false);
+  });
+
+  it('persists what was sold — the seat label and price tier are not re-derived later', () => {
+    const { columns } = getTableConfig(tickets);
+    const notNullNames = columns.filter((column) => column.notNull).map((column) => column.name);
+
+    expect(notNullNames).toEqual(expect.arrayContaining(['seat_label', 'tier']));
   });
 
   it('reuses the outbox factory for the fulfillment schema', () => {

@@ -1,4 +1,10 @@
-import { catalogQuerySchema, createShowSchema, showDetailSchema } from './shows';
+import {
+  catalogPageSchema,
+  catalogQuerySchema,
+  createShowSchema,
+  priceTierSchema,
+  showDetailSchema,
+} from './shows';
 
 describe('catalogQuerySchema', () => {
   it('defaults limit to 20 and coerces a string limit', () => {
@@ -29,7 +35,7 @@ describe('createShowSchema', () => {
 });
 
 describe('showDetailSchema', () => {
-  it('extends the summary with description and venueId', () => {
+  it('extends the summary with description, venueId and price tiers', () => {
     const parsed = showDetailSchema.parse({
       id: crypto.randomUUID(),
       title: 'Show',
@@ -38,7 +44,54 @@ describe('showDetailSchema', () => {
       status: 'published',
       description: 'A show',
       venueId: crypto.randomUUID(),
+      priceTiers: [
+        {
+          id: crypto.randomUUID(),
+          tier: 'vip',
+          name: 'Loge',
+          priceCents: 8500,
+          currency: 'usd',
+        },
+      ],
     });
+
     expect(parsed.description).toBe('A show');
+    expect(parsed.priceTiers[0]).toMatchObject({ tier: 'vip', name: 'Loge', priceCents: 8500 });
+  });
+
+  // The band is a fixed vocabulary shared with the seat map and the db enum; a free-form
+  // string here would let a typo through and silently render an uncoloured dot.
+  it('rejects a tier outside the three bands', () => {
+    expect(() =>
+      priceTierSchema.parse({
+        id: crypto.randomUUID(),
+        tier: 'platinum',
+        name: 'Platinum',
+        priceCents: 100,
+        currency: 'usd',
+      }),
+    ).toThrow();
+  });
+});
+
+describe('catalogPageSchema', () => {
+  it('accepts a page with a null cursor on the last page', () => {
+    const parsed = catalogPageSchema.parse({
+      items: [
+        {
+          id: crypto.randomUUID(),
+          title: 'Show',
+          startsAt: '2026-01-01',
+          posterUrl: null,
+          status: 'published',
+        },
+      ],
+      nextCursor: null,
+    });
+    expect(parsed.nextCursor).toBeNull();
+  });
+
+  it('rejects a cursor that is not a show id', () => {
+    expect(() => catalogPageSchema.parse({ items: [], nextCursor: 'not-a-uuid' })).toThrow();
   });
 });

@@ -1,6 +1,6 @@
 {
-  "id": "6be648bd-6efa-4f3d-980b-12e2a7d87aa0",
-  "prevId": "8360c77f-c3af-4306-9c23-b1f43a21f77c",
+  "id": "56ac5e39-e67f-4a7e-af7a-c166604d0c66",
+  "prevId": "7d5a6267-08b4-4c66-9fe8-a751e760fd51",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -253,6 +253,82 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "sections_id_venue_uq": {
+          "name": "sections_id_venue_uq",
+          "nullsNotDistinct": false,
+          "columns": ["id", "venue_id"]
+        }
+      }
+    },
+    "shows.show_section_pricing": {
+      "name": "show_section_pricing",
+      "schema": "shows",
+      "columns": {
+        "show_id": {
+          "name": "show_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "section_id": {
+          "name": "section_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "venue_id": {
+          "name": "venue_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ticket_type_id": {
+          "name": "ticket_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "show_section_pricing_ticket_type_id_ticket_types_id_fk": {
+          "name": "show_section_pricing_ticket_type_id_ticket_types_id_fk",
+          "tableFrom": "show_section_pricing",
+          "tableTo": "ticket_types",
+          "schemaTo": "shows",
+          "columnsFrom": ["ticket_type_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "show_section_pricing_show_venue_fk": {
+          "name": "show_section_pricing_show_venue_fk",
+          "tableFrom": "show_section_pricing",
+          "tableTo": "shows",
+          "schemaTo": "shows",
+          "columnsFrom": ["show_id", "venue_id"],
+          "columnsTo": ["id", "venue_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "show_section_pricing_section_venue_fk": {
+          "name": "show_section_pricing_section_venue_fk",
+          "tableFrom": "show_section_pricing",
+          "tableTo": "sections",
+          "schemaTo": "shows",
+          "columnsFrom": ["section_id", "venue_id"],
+          "columnsTo": ["id", "venue_id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "show_section_pricing_show_id_section_id_pk": {
+          "name": "show_section_pricing_show_id_section_id_pk",
+          "columns": ["show_id", "section_id"]
+        }
+      },
       "uniqueConstraints": {}
     },
     "shows.shows": {
@@ -347,6 +423,11 @@
           "name": "shows_title_unique",
           "nullsNotDistinct": false,
           "columns": ["title"]
+        },
+        "shows_id_venue_uq": {
+          "name": "shows_id_venue_uq",
+          "nullsNotDistinct": false,
+          "columns": ["id", "venue_id"]
         }
       }
     },
@@ -373,6 +454,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tier": {
+          "name": "tier",
+          "type": "seat_tier",
+          "typeSchema": "shows",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'standard'"
+        },
         "price_cents": {
           "name": "price_cents",
           "type": "integer",
@@ -385,12 +474,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'usd'"
-        },
-        "quota": {
-          "name": "quota",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -931,8 +1014,32 @@
           "primaryKey": false,
           "notNull": true
         },
-        "s3_key": {
-          "name": "s3_key",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "show_id": {
+          "name": "show_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_id": {
+          "name": "seat_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_label": {
+          "name": "seat_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -942,6 +1049,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "s3_key": {
+          "name": "s3_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_in_at": {
+          "name": "checked_in_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -955,10 +1074,10 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "tickets_order_uq": {
-          "name": "tickets_order_uq",
+        "tickets_order_seat_uq": {
+          "name": "tickets_order_seat_uq",
           "nullsNotDistinct": false,
-          "columns": ["order_id"]
+          "columns": ["order_id", "seat_id"]
         }
       }
     }
@@ -968,6 +1087,11 @@
       "name": "role",
       "schema": "auth",
       "values": ["user", "organizer", "admin"]
+    },
+    "shows.seat_tier": {
+      "name": "seat_tier",
+      "schema": "shows",
+      "values": ["vip", "standard", "economy"]
     },
     "shows.show_status": {
       "name": "show_status",

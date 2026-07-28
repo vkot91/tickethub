@@ -5,12 +5,26 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Queue } from 'bullmq';
-import { orders, seatReservations, ticketTypes, type Db } from '@tickethub/db';
+import {
+  orders,
+  rows,
+  seatReservations,
+  seats,
+  showSectionPricing,
+  ticketTypes,
+  type Db,
+} from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
 import type { Tx } from '@tickethub/outbox';
-import { ORDER_ROUTING_KEYS, type CreateOrderDto, type OrderResponse } from '@tickethub/contracts';
+import {
+  ORDER_ROUTING_KEYS,
+  type CreateOrderDto,
+  type OrderListQuery,
+  type OrderResponse,
+  type OrderSummaryPage,
+} from '@tickethub/contracts';
 import { OrderRepository, seatLockKey, type Order } from './orders.repository';
 
 export const toResponse = (order: Order, seats: OrderResponse['seats'] = []): OrderResponse => ({
@@ -55,7 +69,16 @@ export class OrdersService {
 
     try {
       return await this.db.transaction(async (tx) => {
-        const { totalCents, currency } = await this.price(tx, dto.seats);
+        // Server-resolved seats from here on — the client's ticketTypeIds are not trusted.
+        const {
+          totalCents,
+          currency,
+          seats: pricedSeats,
+        } = await this.price(
+          tx,
+          dto.showId,
+          dto.seats.map((seat) => seat.seatId),
+        );
 
         const expiresAt = new Date(Date.now() + this.ttlSec * 1000);
         const [order] = await tx
@@ -73,11 +96,11 @@ export class OrdersService {
 
         // 3. Postgres barrier — the partial-unique index rejects a second active hold.
         await tx.insert(seatReservations).values(
-          dto.seats.map((s) => ({
+          pricedSeats.map((seat) => ({
             orderId: order.id,
             showId: dto.showId,
-            seatId: s.seatId,
-            ticketTypeId: s.ticketTypeId,
+            seatId: seat.seatId,
+            ticketTypeId: seat.ticketTypeId,
             status: 'held' as const,
           })),
         );
@@ -95,7 +118,7 @@ export class OrdersService {
           tx,
           ORDER_ROUTING_KEYS.SEAT_HELD,
           order,
-          dto.seats.map((s) => s.seatId),
+          pricedSeats.map((seat) => seat.seatId),
         );
 
         // 5. Schedule the 10-minute release.
@@ -104,7 +127,7 @@ export class OrdersService {
           { orderId: order.id },
           { delay: this.ttlSec * 1000, removeOnComplete: true },
         );
-        return toResponse(order, dto.seats);
+        return toResponse(order, pricedSeats);
       });
     } catch (err) {
       await this.redis.releaseSeatLocks(keys); // compensate: drop locks on PG conflict
@@ -125,6 +148,41 @@ export class OrdersService {
     if (!order) throw new NotFoundException('Order not found');
 
     return this.withSeats(order, 'confirmed');
+  }
+
+  // The buyer's own orders, newest first. Keyset on (created_at, id) rather than an offset:
+  // an order created while the reader pages would otherwise shift the window and duplicate a row.
+  async list(userId: string, query: OrderListQuery): Promise<OrderSummaryPage> {
+    const after = query.cursor ? await this.cursorRow(userId, query.cursor) : undefined;
+
+    const found = await this.db
+      .select()
+      .from(orders)
+      .where(
+        after
+          ? and(
+              eq(orders.userId, userId),
+              // Casts are load-bearing: inside a row comparison Postgres cannot infer a
+              // bound parameter's type, and postgres-js will not send a bare Date at all.
+              sql`(${orders.createdAt}, ${orders.id}) < (${new Date(after.createdAt).toISOString()}::timestamptz, ${after.id}::uuid)`,
+            )
+          : eq(orders.userId, userId),
+      )
+      .orderBy(desc(orders.createdAt), desc(orders.id))
+      .limit(query.limit + 1);
+
+    const page = found.slice(0, query.limit);
+    const seatsByOrder = await this.seatsByOrder(page.map((order) => order.id));
+
+    return {
+      items: page.map((order) => ({
+        // Unlike `get`, held seats count too: an awaiting_payment order still has seats to show.
+        ...toResponse(order, seatsByOrder.get(order.id) ?? []),
+        showId: order.showId,
+        createdAt: String(order.createdAt),
+      })),
+      nextCursor: found.length > query.limit ? page[page.length - 1].id : null,
+    };
   }
 
   // REST-driven refund: owner asks to refund a paid order → emit refund.requested (Payments
@@ -152,6 +210,39 @@ export class OrdersService {
     return this.withSeats(order, 'confirmed');
   }
 
+  // The cursor is an order id the caller owns; anything else is a client bug, not an empty page.
+  private async cursorRow(userId: string, cursor: string): Promise<Order> {
+    const [order] = await this.db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.id, cursor), eq(orders.userId, userId)))
+      .limit(1);
+    if (!order) throw new BadRequestException('Unknown cursor');
+
+    return order;
+  }
+
+  // One query for the whole page's seats, grouped in memory — not one per order.
+  private async seatsByOrder(orderIds: string[]): Promise<Map<string, OrderResponse['seats']>> {
+    const byOrder = new Map<string, OrderResponse['seats']>();
+    if (!orderIds.length) return byOrder;
+
+    const reservations = await this.db
+      .select({
+        orderId: seatReservations.orderId,
+        seatId: seatReservations.seatId,
+        ticketTypeId: seatReservations.ticketTypeId,
+      })
+      .from(seatReservations)
+      .where(inArray(seatReservations.orderId, orderIds));
+
+    for (const { orderId, ...seat } of reservations) {
+      byOrder.set(orderId, [...(byOrder.get(orderId) ?? []), seat]);
+    }
+
+    return byOrder;
+  }
+
   // Every response carries the order's seats; `status` narrows to the confirmed ones once paid.
   private async withSeats(order: Order, status?: 'confirmed'): Promise<OrderResponse> {
     const seats = await this.db
@@ -167,30 +258,52 @@ export class OrdersService {
   }
 
   // Prices the requested seats off ticket_types (the source of truth, never the client).
+  /**
+   * What the seats actually cost, resolved from the seat's own section — never from the
+   * `ticketTypeId` the client sent. That field is a hint for the UI's running total only: trusting
+   * it let a buyer post a VIP seat with the cheap band's id and pay the cheap price, because the
+   * old lookup checked merely that the id existed *somewhere* — not that it belonged to this show,
+   * let alone to this seat's section. `show_section_pricing` is the single authority, so the returned
+   * seats carry the resolved ids and are what gets reserved and charged.
+   *
+   * A seat whose section the show does not sell has no price at all, so it is refused outright.
+   */
   private async price(
     tx: Tx,
-    seats: CreateOrderDto['seats'],
-  ): Promise<{ totalCents: number; currency: string }> {
-    const typeIds = [...new Set(seats.map((s) => s.ticketTypeId))];
-
-    const types = await tx
+    showId: string,
+    seatIds: string[],
+  ): Promise<{ totalCents: number; currency: string; seats: CreateOrderDto['seats'] }> {
+    const priced = await tx
       .select({
-        id: ticketTypes.id,
+        seatId: seats.id,
+        ticketTypeId: ticketTypes.id,
         priceCents: ticketTypes.priceCents,
         currency: ticketTypes.currency,
       })
-      .from(ticketTypes)
-      .where(inArray(ticketTypes.id, typeIds));
+      .from(seats)
+      .innerJoin(rows, eq(seats.rowId, rows.id))
+      .innerJoin(
+        showSectionPricing,
+        and(
+          eq(showSectionPricing.sectionId, rows.sectionId),
+          eq(showSectionPricing.showId, showId),
+        ),
+      )
+      .innerJoin(ticketTypes, eq(ticketTypes.id, showSectionPricing.ticketTypeId))
+      .where(inArray(seats.id, seatIds));
 
-    const priceOf = new Map(types.map((t) => [t.id, t]));
+    const bySeatId = new Map(priced.map((seat) => [seat.seatId, seat]));
+
+    const resolved = seatIds.map((seatId) => {
+      const seat = bySeatId.get(seatId);
+      if (!seat) throw new BadRequestException(`Seat ${seatId} is not on sale for this show`);
+      return seat;
+    });
 
     return {
-      totalCents: seats.reduce((sum, s) => {
-        const type = priceOf.get(s.ticketTypeId);
-        if (!type) throw new BadRequestException(`Unknown ticketTypeId ${s.ticketTypeId}`);
-        return sum + type.priceCents;
-      }, 0),
-      currency: types[0]?.currency ?? 'usd',
+      totalCents: resolved.reduce((sum, seat) => sum + seat.priceCents, 0),
+      currency: resolved[0].currency,
+      seats: resolved.map((seat) => ({ seatId: seat.seatId, ticketTypeId: seat.ticketTypeId })),
     };
   }
 }

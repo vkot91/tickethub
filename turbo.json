@@ -4,7 +4,11 @@
   "globalDependencies": [".env"],
   "globalEnv": ["NODE_ENV"],
   "tasks": {
-    "build": { "dependsOn": ["^build"], "outputs": ["dist/**"] },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["GATEWAY_URL", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"]
+    },
     "dev": {
       "cache": false,
       "persistent": true,
@@ -14,7 +18,9 @@
         "RABBITMQ_URL",
         "JWT_ACCESS_SECRET",
         "JWT_REFRESH_SECRET",
-        "PORT"
+        "PORT",
+        "GATEWAY_URL",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY"
       ]
     },
     "lint": {},

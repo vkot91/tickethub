@@ -1,6 +1,6 @@
 # TicketHub
 
-Event ticketing platform. Pet project for training senior skills: microservices, queues, distributed transactions, concurrent access.
+Event ticketing platform. Pet project for training skills: microservices, queues, distributed transactions, concurrent access.
 
 ## Stack
 

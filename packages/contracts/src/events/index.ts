@@ -67,7 +67,13 @@ export const SHOWS_MESSAGE_PATTERNS = {
 export const ORDERS_MESSAGE_PATTERNS = {
   CREATE: 'orders.create',
   GET: 'orders.get',
+  LIST: 'orders.list',
   REQUEST_REFUND: 'orders.requestRefund',
+} as const;
+
+export const TICKETS_MESSAGE_PATTERNS = {
+  LIST: 'tickets.list',
+  PDF_URL: 'tickets.pdfUrl',
 } as const;
 
 export const PAYMENTS_MESSAGE_PATTERNS = {

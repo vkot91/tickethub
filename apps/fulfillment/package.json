@@ -31,10 +31,9 @@
     "amqplib": "catalog:",
     "uuid": "catalog:",
     "qrcode": "^1.5.4",
-    "pdf-lib": "^1.17.1",
-    "@pdf-lib/fontkit": "^1.1.1",
-    "nodemailer": "^6.9.16",
-    "@aws-sdk/client-s3": "^3.699.0"
+    "@tickethub/pdf": "workspace:*",
+    "@tickethub/storage": "workspace:*",
+    "@tickethub/mailer": "workspace:*"
   },
   "devDependencies": {
     "@tickethub/tsconfig": "workspace:*",
@@ -47,10 +46,11 @@
     "@types/node": "catalog:",
     "@types/uuid": "catalog:",
     "@types/qrcode": "^1.5.5",
-    "@types/nodemailer": "^6.4.16",
     "typescript": "catalog:",
     "@tickethub/eslint-config": "workspace:*",
     "@tickethub/jest-config": "workspace:*",
-    "ts-node": "catalog:"
+    "ts-node": "catalog:",
+    "@aws-sdk/client-s3": "catalog:",
+    "pdf-lib": "catalog:"
   }
 }

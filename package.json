@@ -39,7 +39,9 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "bcrypt",
-      "esbuild"
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
     ]
   }
 }

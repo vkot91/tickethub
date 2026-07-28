@@ -1,0 +1,146 @@
+/* Imported by each app's globals.css, after its own `@import 'tailwindcss'`. Tailwind resolves
+   `@source` relative to this file, so the package's own components are scanned for utilities
+   no matter which app pulls it in — node_modules is not crawled by default. */
+@source "./";
+
+/* Design tokens — the single source of truth for colour, type, radius and motion.
+   Values come from design/README.md "Design Tokens". Components use the semantic
+   utilities these generate (bg-surface, text-muted, rounded-card…), never raw hex. */
+@theme {
+  /* Surfaces */
+  /* Named `page`, not `base`: a `--color-base` token would shadow Tailwind's
+     `text-base` font-size utility and paint headings near-black. */
+  --color-page: #0a0b0e;
+  --color-surface: #14161d;
+  --color-deep: #0e1016;
+  --color-seatmap: #101218;
+  --color-seat: #15181f;
+
+  /* Price tiers */
+  --color-tier-vip: #e9c46a;
+  --color-tier-standard: #9ba6b8;
+  --color-tier-economy: #6e7889;
+
+  /* Borders */
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-faint: rgb(255 255 255 / 0.05);
+
+  /* Text */
+  --color-fg: #f4f5f7;
+  --color-fg-secondary: #c7cbd3;
+  --color-fg-muted: #9ba0ab;
+  --color-fg-faint: #6e7480;
+  --color-fg-disabled: #3a3f4a;
+
+  /* Accent + semantics */
+  --color-accent: #8b6dff;
+  --color-accent-hover: #a78bff;
+  --color-gold: #e9c46a;
+  --color-teal: #39c6b6;
+  --color-success: #4fcb8b;
+  --color-warn: #f5a623;
+  --color-danger: #f87171;
+
+  /* Type */
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), monospace;
+
+  /* Radius */
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --radius-seat: 6px;
+  --radius-pill: 99px;
+
+  /* Motion */
+  --animate-hold: th-pulse 1.4s ease-in-out infinite;
+  --animate-scan: th-scan 2.2s ease-in-out infinite alternate;
+  --animate-fade: th-fade 0.35s ease;
+  --animate-live: th-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes th-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+@keyframes th-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(228px);
+  }
+}
+@keyframes th-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes th-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@layer base {
+  :root {
+    /* The UI is dark-only — tells the UA to render native bits (form controls,
+       autofill, date pickers, scrollbars) dark instead of light-on-light. */
+    color-scheme: dark;
+  }
+
+  body {
+    /* Radial accent glow behind the page, per the design's background treatment. */
+    background:
+      radial-gradient(
+        1100px 560px at 50% -240px,
+        color-mix(in oklab, var(--color-accent) 13%, transparent),
+        transparent 68%
+      ),
+      var(--color-page);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.13);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

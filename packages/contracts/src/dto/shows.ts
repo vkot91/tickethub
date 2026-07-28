@@ -9,7 +9,34 @@ export const showSummarySchema = z.object({
 });
 export type ShowSummary = z.infer<typeof showSummarySchema>;
 
-export const seatSchema = z.object({ id: z.string().uuid(), number: z.number().int() });
+// The three price bands a ticket type can belong to. Purely how a tier is presented — its
+// colour on the seat map and the dot on the show page. The money is always `priceCents`.
+export const SEAT_TIERS = ['vip', 'standard', 'economy'] as const;
+export const seatTierSchema = z.enum(SEAT_TIERS);
+export type SeatTier = z.infer<typeof seatTierSchema>;
+
+// One row of the show page's price list. `name` is the organizer's own wording ("Loge",
+// "Early Bird"); `tier` is only which of the three bands to paint it in.
+export const priceTierSchema = z.object({
+  id: z.string().uuid(),
+  tier: seatTierSchema,
+  name: z.string(),
+  priceCents: z.number().int(),
+  currency: z.string(),
+});
+export type PriceTier = z.infer<typeof priceTierSchema>;
+
+// `ticketTypeId` is what `createOrderSchema` needs per seat to price the order, and
+// `priceCents` is what orders will actually charge for it — the UI must never invent its own
+// number. All three null when no ticket type covers the seat: it still renders, but nothing
+// about it can be bought.
+export const seatSchema = z.object({
+  id: z.string().uuid(),
+  number: z.number().int(),
+  ticketTypeId: z.string().uuid().nullable(),
+  priceCents: z.number().int().nullable(),
+  tier: seatTierSchema.nullable(),
+});
 export const rowSchema = z.object({
   id: z.string().uuid(),
   number: z.number().int(),
@@ -29,6 +56,9 @@ export type SeatMap = z.infer<typeof seatMapSchema>;
 export const showDetailSchema = showSummarySchema.extend({
   description: z.string(),
   venueId: z.string().uuid(),
+  // Dearest first, so the show page reads top-down like the design. Empty for a show with no
+  // ticket types — such a show has nothing on sale.
+  priceTiers: z.array(priceTierSchema),
 });
 export type ShowDetail = z.infer<typeof showDetailSchema>;
 
@@ -51,3 +81,9 @@ export const showPublishedSchema = z.object({
   showId: z.string().uuid(),
 });
 export type ShowPublishedEvent = z.infer<typeof showPublishedSchema>;
+
+export const catalogPageSchema = z.object({
+  items: z.array(showSummarySchema),
+  nextCursor: z.string().uuid().nullable(),
+});
+export type CatalogPage = z.infer<typeof catalogPageSchema>;
