@@ -1,5 +1,5 @@
 import { TICKETS_MESSAGE_PATTERNS } from '@tickethub/contracts';
-import { GatewayTicketsController } from './tickets.controller';
+import { GatewayUserTicketsController } from './tickets.controller';
 
 type RpcCall = { routingKey: string; payload: unknown };
 
@@ -12,12 +12,12 @@ const responseSpy = () => ({
   redirect: jest.fn(),
 });
 
-describe('GatewayTicketsController', () => {
+describe('GatewayUserTicketsController', () => {
   describe('list', () => {
     it('asks fulfillment for the authenticated caller’s tickets', async () => {
       const list = { items: [] };
       const amqp = amqpReturning(list);
-      const controller = new GatewayTicketsController(amqp as never);
+      const controller = new GatewayUserTicketsController(amqp as never);
 
       await expect(controller.list({ user: { id: 'u1' } })).resolves.toBe(list);
 
@@ -38,7 +38,7 @@ describe('GatewayTicketsController', () => {
       const amqp = amqpReturning({ url: SIGNED_URL });
       const res = responseSpy();
 
-      await new GatewayTicketsController(amqp as never).pdf(
+      await new GatewayUserTicketsController(amqp as never).pdf(
         { user: { id: 'u1' } },
         't1',
         res as never,
@@ -59,7 +59,7 @@ describe('GatewayTicketsController', () => {
       const amqp = amqpReturning({ url: SIGNED_URL });
       const res = responseSpy();
 
-      await new GatewayTicketsController(amqp as never).pdf(
+      await new GatewayUserTicketsController(amqp as never).pdf(
         { user: { id: 'u1' } },
         't1',
         res as never,
@@ -73,7 +73,11 @@ describe('GatewayTicketsController', () => {
       const res = responseSpy();
 
       await expect(
-        new GatewayTicketsController(amqp as never).pdf({ user: { id: 'u2' } }, 't1', res as never),
+        new GatewayUserTicketsController(amqp as never).pdf(
+          { user: { id: 'u2' } },
+          't1',
+          res as never,
+        ),
       ).rejects.toThrow('Ticket not found');
 
       expect(res.redirect).not.toHaveBeenCalled();

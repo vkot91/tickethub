@@ -1,10 +1,10 @@
-import { GatewayPaymentsController } from './payments.controller';
+import { GatewayUserPaymentsController } from './payments.controller';
 import { PAYMENTS_MESSAGE_PATTERNS } from '@tickethub/contracts';
 
-describe('GatewayPaymentsController', () => {
+describe('GatewayUserPaymentsController', () => {
   it('forwards intent creation with the authed user id', async () => {
     const amqp = { request: jest.fn().mockResolvedValue({ clientSecret: 'x' }) };
-    const ctrl = new GatewayPaymentsController(amqp as never);
+    const ctrl = new GatewayUserPaymentsController(amqp as never);
     const res = await ctrl.createIntent({ user: { id: 'u1' } } as never, { orderId: 'ord1' });
     expect(res).toEqual({ clientSecret: 'x' });
     expect(amqp.request).toHaveBeenCalledWith(
@@ -17,7 +17,7 @@ describe('GatewayPaymentsController', () => {
 
   it('forwards the raw webhook body + signature', async () => {
     const amqp = { request: jest.fn().mockResolvedValue({ received: true }) };
-    const ctrl = new GatewayPaymentsController(amqp as never);
+    const ctrl = new GatewayUserPaymentsController(amqp as never);
     const req = { rawBody: Buffer.from('{}'), headers: { 'stripe-signature': 'sig' } };
     const res = await ctrl.webhook(req as never);
     expect(amqp.request).toHaveBeenCalledWith(
