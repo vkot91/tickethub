@@ -124,9 +124,17 @@ export function createServerSession({ accessCookie, refreshCookie, gatewayUrl }:
       if (refreshed) upstream = await forward(target, httpRequest, body, refreshed.accessToken);
     }
 
+    // Content-Disposition carries the filename the origin chose (the ticket PDF presign sets
+    // `ticket-XXXX.pdf`). Drop it and an `<a download>` falls back to the URL's last path
+    // segment, which is how every ticket downloaded as `pdf.pdf`.
+    const disposition = upstream.headers.get('content-disposition');
+
     const response = new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: { 'content-type': upstream.headers.get('content-type') ?? 'application/json' },
+      headers: {
+        'content-type': upstream.headers.get('content-type') ?? 'application/json',
+        ...(disposition && { 'content-disposition': disposition }),
+      },
     });
 
     if (refreshed) {
