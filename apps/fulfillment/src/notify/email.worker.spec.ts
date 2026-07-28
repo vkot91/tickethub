@@ -32,27 +32,25 @@ jest.mock('bullmq', () => ({
 const ORDER_ID = 'o1';
 const USER_ID = 'u1';
 const BUYER_EMAIL = 'buyer@x.com';
-const FROM = 'tickets@tickethub.local';
 const PDF_BYTES = Buffer.from('%PDF-1.7');
 
-function makeDeps(overrides: { sendMail?: jest.Mock } = {}) {
-  const sendMail = overrides.sendMail ?? jest.fn().mockResolvedValue({});
+function makeDeps(overrides: { send?: jest.Mock } = {}) {
+  const send = overrides.send ?? jest.fn().mockResolvedValue(undefined);
   const request = jest.fn().mockResolvedValue({ userId: USER_ID, email: BUYER_EMAIL });
   const get = jest.fn().mockResolvedValue(PDF_BYTES);
 
   const deps: EmailDeps = {
     amqp: { request } as never,
-    s3: { get } as never,
-    mailer: { sendMail } as never,
-    from: FROM,
+    storage: { get } as never,
+    mailer: { send } as never,
   };
 
-  return { deps, sendMail, request, get };
+  return { deps, send, request, get };
 }
 
 describe('sendTicketEmail', () => {
   it('fetches the email, attaches the PDF, and sends via SMTP', async () => {
-    const { deps, sendMail, request, get } = makeDeps();
+    const { deps, send, request, get } = makeDeps();
 
     await sendTicketEmail(deps, { orderId: ORDER_ID, userId: USER_ID });
 
@@ -64,11 +62,11 @@ describe('sendTicketEmail', () => {
     // Falsifies: fetching the wrong S3 key (e.g. missing '.pdf' or using userId instead of orderId).
     expect(get).toHaveBeenCalledWith('o1.pdf');
 
-    // Falsifies: sending to the wrong address, wrong from, missing/misnamed/wrong-content attachment.
-    expect(sendMail).toHaveBeenCalledWith(
+    // Falsifies: sending to the wrong address, missing/misnamed/wrong-content attachment.
+    // The from address moved to @tickethub/mailer, which binds it once at construction.
+    expect(send).toHaveBeenCalledWith(
       expect.objectContaining({
         to: BUYER_EMAIL,
-        from: FROM,
         attachments: [
           expect.objectContaining({
             filename: 'ticket-o1.pdf',
@@ -82,7 +80,7 @@ describe('sendTicketEmail', () => {
 
   it('rethrows when SMTP fails so BullMQ retries', async () => {
     const smtpError = new Error('SMTP connection refused');
-    const { deps } = makeDeps({ sendMail: jest.fn().mockRejectedValue(smtpError) });
+    const { deps } = makeDeps({ send: jest.fn().mockRejectedValue(smtpError) });
 
     // Falsifies: a try/catch that swallows the SMTP failure instead of letting BullMQ retry.
     await expect(sendTicketEmail(deps, { orderId: ORDER_ID, userId: USER_ID })).rejects.toThrow(
@@ -101,13 +99,13 @@ describe('startEmailWorker', () => {
   });
 
   it('delegates a send-ticket-email job to sendTicketEmail', async () => {
-    const { deps, sendMail } = makeDeps();
+    const { deps, send } = makeDeps();
 
     startEmailWorker(deps, { host: 'localhost', port: 6379 });
 
     await processors[0]({ data: { orderId: ORDER_ID, userId: USER_ID } });
 
-    expect(sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: BUYER_EMAIL, from: FROM }));
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ to: BUYER_EMAIL }));
   });
 
   // Without a 'failed' listener a job that burns all 5 attempts vanishes silently: the buyer

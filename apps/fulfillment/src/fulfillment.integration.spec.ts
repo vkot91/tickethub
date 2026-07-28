@@ -18,8 +18,8 @@ import {
   type SeatMap,
   type ShowDetail,
 } from '@tickethub/contracts';
-import { verifyTicketToken } from './pdf/qr';
-import { S3Client } from './storage/s3.client';
+import { StorageClient } from '@tickethub/storage';
+import { verifyTicketToken } from './tickets/qr';
 import { TicketsService } from './tickets/tickets.service';
 
 jest.setTimeout(30_000);
@@ -31,6 +31,8 @@ const MESSAGE_ID = '44444444-4444-4444-8444-4444440000aa';
 const REDELIVERED_MESSAGE_ID = MESSAGE_ID;
 const OTHER_MESSAGE_ID = '55555555-5555-4555-8555-5555550000aa';
 const SEAT_ID = '66666666-6666-4666-8666-6666660000aa';
+const SECOND_SEAT_ID = '66666666-6666-4666-8666-6666660000bb';
+const OTHER_USER_ID = '99999999-9999-4999-8999-9999990000ff';
 const TICKET_TYPE_ID = '77777777-7777-4777-8777-7777770000aa';
 
 const orderPaid: OrderPaidEvent = {
@@ -57,6 +59,9 @@ const show: ShowDetail = {
   posterUrl: null,
   status: 'published',
   venueId: '88888888-8888-4888-8888-8888880000aa',
+  priceTiers: [
+    { id: TICKET_TYPE_ID, tier: 'vip', name: 'Loge', priceCents: 5000, currency: 'usd' },
+  ],
 };
 
 // The seat the order carries lives in this map, so the rendered pdf gets a human label ("A 1-3")
@@ -71,7 +76,7 @@ const seatMap: SeatMap = {
         {
           id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaa0000aa',
           number: 1,
-          seats: [{ id: SEAT_ID, number: 3 }],
+          seats: [{ id: SEAT_ID, number: 3, ticketTypeId: null, priceCents: null, tier: null }],
         },
       ],
     },
@@ -100,7 +105,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
   const s3Key = `${ORDER_ID}.pdf`;
 
   let db: Db;
-  let s3: S3Client;
+  let storage: StorageClient;
   let rawS3: AwsS3;
   let bucket: string;
   let qrSecret: string;
@@ -119,7 +124,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
     bucket = requireEnv('S3_BUCKET_TICKETS');
     qrSecret = requireEnv('TICKET_QR_SECRET');
 
-    s3 = new S3Client({ endpoint, accessKey, secretKey, bucket });
+    storage = new StorageClient({ endpoint, accessKey, secretKey, bucket });
 
     // Used only by the test itself, to count and clear objects — the service never sees it.
     rawS3 = new AwsS3({
@@ -141,7 +146,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
 
     ticketsService = new TicketsService(
       db,
-      s3,
+      storage,
       amqpStub as never,
       new OutboxRepository(db, fulfillmentOutbox),
       new InboxRepository(fulfillmentProcessedMessages),
@@ -185,7 +190,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
     expect(await countStoredObjects()).toBe(1);
 
     // Fetched back from MinIO, not merely "put was called": the bytes are a real pdf.
-    const storedPdf = await s3.get(s3Key);
+    const storedPdf = await storage.get(s3Key);
     expect(storedPdf.subarray(0, 4).toString('latin1')).toBe('%PDF');
     expect(storedPdf.length).toBeGreaterThan(1000);
 
@@ -200,7 +205,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
     await ticketsService.handleOrderPaid(orderPaid);
 
     const [firstTicket] = await db.select().from(tickets);
-    const pdfAfterFirstDelivery = await s3.get(s3Key);
+    const pdfAfterFirstDelivery = await storage.get(s3Key);
 
     await ticketsService.handleOrderPaid({ ...orderPaid, messageId: REDELIVERED_MESSAGE_ID });
 
@@ -214,7 +219,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
     expect(outboxRows).toHaveLength(1);
 
     expect(await countStoredObjects()).toBe(1);
-    expect(await s3.get(s3Key)).toEqual(pdfAfterFirstDelivery);
+    expect(await storage.get(s3Key)).toEqual(pdfAfterFirstDelivery);
 
     // The redelivery short-circuited on the committed claim, so it never even asked orders.
     expect(amqpStub.requestedRoutingKeys).toEqual([
@@ -248,8 +253,111 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
     );
 
     // The losing delivery re-rendered and overwrote the object, so it must still match the row.
-    const storedPdf = await s3.get(s3Key);
+    const storedPdf = await storage.get(s3Key);
     expect(storedPdf.subarray(0, 4).toString('latin1')).toBe('%PDF');
     expect(verifyTicketToken(ticketRows[0].qrToken, qrSecret)).toBe(ticketRows[0].id);
+  });
+
+  it('writes one row per seat, sharing a single pdf, and stays unique per (order, seat)', async () => {
+    const twoSeatOrder: OrderResponse = {
+      ...order,
+      seats: [
+        { seatId: SEAT_ID, ticketTypeId: TICKET_TYPE_ID },
+        { seatId: SECOND_SEAT_ID, ticketTypeId: TICKET_TYPE_ID },
+      ],
+    };
+
+    const stub = {
+      request: async ({ routingKey }: { routingKey: string }): Promise<unknown> => {
+        if (routingKey === ORDERS_MESSAGE_PATTERNS.GET) return twoSeatOrder;
+        if (routingKey === SHOWS_MESSAGE_PATTERNS.DETAIL) return show;
+        if (routingKey === SHOWS_MESSAGE_PATTERNS.SEAT_MAP) return seatMap;
+
+        throw new Error(`unexpected rpc routing key: ${routingKey}`);
+      },
+    };
+
+    const service = new TicketsService(
+      db,
+      storage,
+      stub as never,
+      new OutboxRepository(db, fulfillmentOutbox),
+      new InboxRepository(fulfillmentProcessedMessages),
+      qrSecret,
+    );
+
+    await service.handleOrderPaid(orderPaid);
+
+    const ticketRows = await db.select().from(tickets);
+
+    expect(ticketRows).toHaveLength(2);
+    expect(ticketRows.map((row) => row.seatId).sort()).toEqual([SEAT_ID, SECOND_SEAT_ID].sort());
+
+    // Distinct admissions: a party of two must not walk in on one scan.
+    expect(new Set(ticketRows.map((row) => row.qrToken)).size).toBe(2);
+
+    for (const row of ticketRows) {
+      expect(verifyTicketToken(row.qrToken, qrSecret)).toBe(row.id);
+      expect(row.s3Key).toBe(s3Key); // one document for the order, a page per seat
+      expect(row.tier).toBe('Loge');
+    }
+
+    // One event and one object for the order, not one per seat.
+    expect(await db.select().from(fulfillmentOutbox)).toHaveLength(1);
+    expect(await countStoredObjects()).toBe(1);
+
+    // Real UNIQUE(order_id, seat_id) in Postgres, not the fake's set: a different message about
+    // the same order adds nothing.
+    await service.handleOrderPaid({ ...orderPaid, messageId: OTHER_MESSAGE_ID });
+
+    expect(await db.select().from(tickets)).toHaveLength(2);
+    expect(await db.select().from(fulfillmentOutbox)).toHaveLength(1);
+  });
+
+  it('lists the buyer’s tickets and hides another user’s', async () => {
+    await ticketsService.handleOrderPaid(orderPaid);
+
+    const { items } = await ticketsService.listForUser(USER_ID);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual(
+      expect.objectContaining({
+        orderId: ORDER_ID,
+        showTitle: 'Radiohead Live',
+        seatLabel: 'A 1-3',
+        tier: 'Loge',
+        status: 'active',
+      }),
+    );
+    expect(items[0].pdfUrl).toBe(`/tickets/${items[0].id}/pdf`);
+
+    const other = await ticketsService.listForUser(OTHER_USER_ID);
+    expect(other.items).toEqual([]);
+  });
+
+  // The one property a unit test genuinely cannot prove: that MinIO accepts our SigV4 signature.
+  it('mints a presigned url MinIO actually serves', async () => {
+    await ticketsService.handleOrderPaid(orderPaid);
+
+    const [ticket] = await db.select().from(tickets);
+    const { url } = await ticketsService.pdfUrlFor(USER_ID, ticket.id);
+
+    const response = await fetch(url);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-disposition')).toContain('attachment');
+
+    const body = Buffer.from(await response.arrayBuffer());
+    expect(body.subarray(0, 4).toString('latin1')).toBe('%PDF');
+  });
+
+  it('refuses to mint a url for someone else’s ticket', async () => {
+    await ticketsService.handleOrderPaid(orderPaid);
+
+    const [ticket] = await db.select().from(tickets);
+
+    await expect(ticketsService.pdfUrlFor(OTHER_USER_ID, ticket.id)).rejects.toThrow(
+      'Ticket not found',
+    );
   });
 });

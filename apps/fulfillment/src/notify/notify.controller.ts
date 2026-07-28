@@ -3,12 +3,8 @@ import { RabbitSubscribe, Nack } from '@golevelup/nestjs-rabbitmq';
 import type { Queue } from 'bullmq';
 import type { Db } from '@tickethub/db';
 import { InboxRepository } from '@tickethub/outbox';
-import {
-  EVENTS_EXCHANGE,
-  EVENTS_QUEUES,
-  TICKET_ROUTING_KEYS,
-  type TicketPdfReadyEvent,
-} from '@tickethub/contracts';
+import { EVENTS_QUEUES, TICKET_ROUTING_KEYS, type TicketPdfReadyEvent } from '@tickethub/contracts';
+import { eventSub } from '@tickethub/rmq';
 
 @Controller()
 export class NotifyController {
@@ -24,12 +20,9 @@ export class NotifyController {
   // dead-letters instead of requeuing forever: the handler catches and returns `Nack(false)`,
   // because golevelup's default on an uncaught throw is an immediate requeue with no backoff —
   // which, with Redis down, would spin this handler and its Postgres transaction in a tight loop.
-  @RabbitSubscribe({
-    exchange: EVENTS_EXCHANGE,
-    routingKey: TICKET_ROUTING_KEYS.TICKET_PDF_READY,
-    queue: EVENTS_QUEUES.FULFILLMENT_TICKET_PDF_READY,
-    queueOptions: { deadLetterExchange: `${EVENTS_QUEUES.FULFILLMENT_TICKET_PDF_READY}.dlx` },
-  })
+  @RabbitSubscribe(
+    eventSub(TICKET_ROUTING_KEYS.TICKET_PDF_READY, EVENTS_QUEUES.FULFILLMENT_TICKET_PDF_READY),
+  )
   async onPdfReady(event: TicketPdfReadyEvent) {
     // The claim and the enqueue live in the same transaction, deliberately unlike the read-only
     // pre-check + separate write elsewhere in this app: there is no domain row here for the claim

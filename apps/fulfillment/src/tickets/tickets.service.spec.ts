@@ -1,5 +1,5 @@
 import { eq, Param, type SQL } from 'drizzle-orm';
-import { fulfillmentProcessedMessages } from '@tickethub/db';
+import { fulfillmentProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
 import {
   ORDERS_MESSAGE_PATTERNS,
   SHOWS_MESSAGE_PATTERNS,
@@ -10,11 +10,11 @@ import {
   type ShowDetail,
 } from '@tickethub/contracts';
 import type { OutboxMessage } from '@tickethub/outbox';
-import { renderTicketPdf } from '../pdf/pdf';
-import { verifyTicketToken } from '../pdf/qr';
+import { renderTicketPdf } from './ticket-pdf';
+import { verifyTicketToken } from './qr';
 import { TicketsService } from './tickets.service';
 
-jest.mock('../pdf/pdf', () => ({ renderTicketPdf: jest.fn() }));
+jest.mock('./ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));
 
 const renderTicketPdfMock = jest.mocked(renderTicketPdf);
 
@@ -22,6 +22,7 @@ const QR_SECRET = 'qr-secret';
 
 const ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
+const OTHER_USER_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 const SHOW_ID = '33333333-3333-4333-8333-333333333333';
 const MESSAGE_ID = '44444444-4444-4444-8444-444444444444';
 const OTHER_MESSAGE_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -30,13 +31,15 @@ const UNKNOWN_SEAT_ID = '66666666-6666-4666-8666-666666666666';
 const TICKET_TYPE_ID = '77777777-7777-4777-8777-777777777777';
 const SECOND_ORDER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
-// There is exactly one ticket per order, so the ticket id IS the order id. The QR token literal is
-// pinned rather than recomputed: signing it here with the same helper the service uses would assert
-// nothing. If the token format or the signature ever changes, every issued QR stops matching.
-const TICKET_ID_FOR_ORDER = ORDER_ID;
-const TICKET_ID_FOR_SECOND_ORDER = SECOND_ORDER_ID;
-const QR_TOKEN_FOR_ORDER =
-  '11111111-1111-4111-8111-111111111111.ICI-gKFqtynWjq4bvqmx5EAjiRqqfd8qraO88mOBmqY';
+// Ticket ids are derived from (orderId, seatId) and the QR tokens are signed from them. Both are
+// pinned as literals rather than recomputed with the service's own helpers, which would assert
+// nothing: if the derivation or the signature ever changes, every already-issued QR silently stops
+// matching its row, and these are the values that catch it.
+const TICKET_ID_KNOWN_SEAT = '9cedc9ba-1f6b-567d-a4e6-86fd401f17eb';
+const TICKET_ID_UNKNOWN_SEAT = '6cccd3e1-69ff-5c61-9f98-22adcb77aea3';
+const TICKET_ID_SECOND_ORDER = 'd3d678e1-b696-513f-ac64-da5a23d3363f';
+const QR_TOKEN_KNOWN_SEAT =
+  '9cedc9ba-1f6b-567d-a4e6-86fd401f17eb.V6dV4Ystq4QrEklteepEdrZok7QDmLmY4sQ2tX_nq60';
 
 const orderPaid: OrderPaidEvent = {
   messageId: MESSAGE_ID,
@@ -65,6 +68,9 @@ const show: ShowDetail = {
   posterUrl: null,
   status: 'published',
   venueId: '88888888-8888-4888-8888-888888888888',
+  priceTiers: [
+    { id: TICKET_TYPE_ID, tier: 'vip', name: 'Loge', priceCents: 5000, currency: 'usd' },
+  ],
 };
 
 const seatMap: SeatMap = {
@@ -77,37 +83,75 @@ const seatMap: SeatMap = {
         {
           id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
           number: 1,
-          seats: [{ id: KNOWN_SEAT_ID, number: 3 }],
+          seats: [
+            { id: KNOWN_SEAT_ID, number: 3, ticketTypeId: null, priceCents: null, tier: null },
+          ],
         },
       ],
     },
   ],
 };
 
-type TicketInsert = { id: string; orderId: string; s3Key: string; qrToken: string };
+interface TicketRow {
+  id: string;
+  orderId: string;
+  userId: string;
+  showId: string;
+  seatId: string;
+  seatLabel: string;
+  tier: string;
+  qrToken: string;
+  s3Key: string;
+  checkedInAt?: Date | null;
+  createdAt?: Date;
+}
 type RpcCall = { routingKey: string; payload: unknown };
 
-// Pulls the bound values out of a Drizzle condition, so the db fake can answer the
-// pre-check `SELECT` from its own state instead of pattern-matching on call order.
-function boundValuesOf(condition: SQL): unknown[] {
-  return condition.queryChunks.flatMap((chunk) => (chunk instanceof Param ? [chunk.value] : []));
+// Pulls the bound values out of a Drizzle condition, so the db fake can answer from its own
+// state instead of pattern-matching on call order. Walks nested SQL because `and(...)` wraps each
+// operand, and collects raw string chunks as well as Params: drizzle inlines a uuid comparison as
+// a plain string rather than binding it.
+function boundValuesOf(condition: SQL): string[] {
+  const values: string[] = [];
+
+  const walk = (sql: SQL): void => {
+    for (const chunk of sql.queryChunks) {
+      if (chunk instanceof Param) values.push(String(chunk.value));
+      else if (typeof chunk === 'string') values.push(chunk);
+      else if (chunk && typeof chunk === 'object' && 'queryChunks' in chunk) walk(chunk as SQL);
+    }
+  };
+
+  walk(condition);
+
+  return values;
 }
 
 interface FakeOptions {
   // Message ids already committed to fulfillment.processed_messages.
   committedMessageIds?: string[];
-  // Order ids that already have a ticket row (the UNIQUE constraint the insert conflicts on).
-  ticketedOrderIds?: string[];
+  // (orderId, seatId) pairs that already have a ticket row — the UNIQUE constraint the insert
+  // conflicts on.
+  ticketedOrderSeats?: string[];
+  // Rows the read paths (listForUser / pdfUrlFor) should find.
+  existingTickets?: TicketRow[];
 }
 
-function makeFakes({ committedMessageIds = [], ticketedOrderIds = [] }: FakeOptions = {}) {
+const orderSeatKey = (row: { orderId: string; seatId: string }) => `${row.orderId}:${row.seatId}`;
+
+function makeFakes({
+  committedMessageIds = [],
+  ticketedOrderSeats = [],
+  existingTickets = [],
+}: FakeOptions = {}) {
   const processedMessageIds = new Set(committedMessageIds);
-  const orderIdsWithTicket = new Set(ticketedOrderIds);
+  const takenOrderSeats = new Set(ticketedOrderSeats);
+  const storedTickets = [...existingTickets];
 
   // Every row the service *tried* to insert, including the ones the UNIQUE conflict discarded,
-  // so a losing delivery's ticket id and qr token stay observable.
-  const attemptedTickets: TicketInsert[] = [];
-  const insertedTickets: TicketInsert[] = [];
+  // so a losing delivery's ticket ids and qr tokens stay observable.
+  const attemptedTickets: TicketRow[] = [];
+  const insertedTickets: TicketRow[] = [];
   const conflictHandled: boolean[] = [];
   const selectedTables: unknown[] = [];
   const selectedConditions: SQL[] = [];
@@ -115,37 +159,54 @@ function makeFakes({ committedMessageIds = [], ticketedOrderIds = [] }: FakeOpti
 
   const tx = {
     insert: () => ({
-      values: (values: TicketInsert) => ({
+      values: (rows: TicketRow[]) => ({
         onConflictDoNothing: () => ({
           returning: async () => {
             conflictHandled.push(true);
-            attemptedTickets.push(values);
+            attemptedTickets.push(...rows);
 
-            if (orderIdsWithTicket.has(values.orderId)) return [];
+            const fresh = rows.filter((row) => !takenOrderSeats.has(orderSeatKey(row)));
 
-            orderIdsWithTicket.add(values.orderId);
-            insertedTickets.push(values);
+            for (const row of fresh) {
+              takenOrderSeats.add(orderSeatKey(row));
+              insertedTickets.push(row);
+              storedTickets.push(row);
+            }
 
-            return [values];
+            return fresh;
           },
         }),
       }),
     }),
   };
 
+  const rowsMatching = (table: unknown, condition: SQL) => {
+    if (table === fulfillmentProcessedMessages) {
+      const [messageId] = boundValuesOf(condition);
+
+      return processedMessageIds.has(String(messageId)) ? [{ messageId }] : [];
+    }
+
+    // Every bound value in the condition must appear somewhere on the row — enough to model
+    // eq(userId) and and(eq(id), eq(userId)) without reimplementing Drizzle.
+    const bound = boundValuesOf(condition);
+
+    return storedTickets.filter((row) =>
+      bound.every((value) => Object.values(row).map(String).includes(value)),
+    );
+  };
+
   const db = {
     select: () => ({
       from: (table: unknown) => ({
-        where: (condition: SQL) => ({
-          limit: async () => {
-            selectedTables.push(table);
-            selectedConditions.push(condition);
+        where: (condition: SQL) => {
+          selectedTables.push(table);
+          selectedConditions.push(condition);
 
-            const [messageId] = boundValuesOf(condition);
+          const resolve = async () => rowsMatching(table, condition);
 
-            return processedMessageIds.has(String(messageId)) ? [{ messageId }] : [];
-          },
-        }),
+          return { limit: resolve, orderBy: resolve };
+        },
       }),
     }),
     transaction: async <T>(fn: (handle: typeof tx) => Promise<T> | T): Promise<T> => fn(tx),
@@ -161,8 +222,9 @@ function makeFakes({ committedMessageIds = [], ticketedOrderIds = [] }: FakeOpti
     }),
   };
 
-  const s3 = {
+  const storage = {
     put: jest.fn(async (_key: string, _body: Buffer, _contentType: string) => {}),
+    getSignedUrl: jest.fn(async (key: string) => `https://minio.test/${key}?X-Amz-Signature=abc`),
   };
 
   const outbox = {
@@ -186,12 +248,13 @@ function makeFakes({ committedMessageIds = [], ticketedOrderIds = [] }: FakeOpti
     db,
     tx,
     amqp,
-    s3,
+    storage,
     outbox,
     inbox,
     enqueued,
     attemptedTickets,
     insertedTickets,
+    storedTickets,
     conflictHandled,
     selectedTables,
     selectedConditions,
@@ -202,7 +265,7 @@ function makeFakes({ committedMessageIds = [], ticketedOrderIds = [] }: FakeOpti
 const serviceFor = (fakes: ReturnType<typeof makeFakes>) =>
   new TicketsService(
     fakes.db as never,
-    fakes.s3 as never,
+    fakes.storage as never,
     fakes.amqp as never,
     fakes.outbox as never,
     fakes.inbox as never,
@@ -222,7 +285,7 @@ describe('TicketsService.handleOrderPaid', () => {
 
     expect(fakes.amqp.request).not.toHaveBeenCalled();
     expect(renderTicketPdfMock).not.toHaveBeenCalled();
-    expect(fakes.s3.put).not.toHaveBeenCalled();
+    expect(fakes.storage.put).not.toHaveBeenCalled();
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
     expect(fakes.insertedTickets).toEqual([]);
   });
@@ -264,7 +327,7 @@ describe('TicketsService.handleOrderPaid', () => {
     );
   });
 
-  it('renders the pdf with seat-map labels, falling back to the raw seat id', async () => {
+  it('renders one pdf page per seat, with its own QR and the organizer’s tier wording', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid(orderPaid);
@@ -274,44 +337,82 @@ describe('TicketsService.handleOrderPaid', () => {
         showTitle: 'Radiohead Live',
         startsAt: show.startsAt,
         orderId: ORDER_ID,
-        seatLabels: ['A 1-3', UNKNOWN_SEAT_ID],
+        seats: [
+          expect.objectContaining({ seatLabel: 'A 1-3', tier: 'Loge' }),
+          // A seat missing from the map still gets a ticket — falling back to its raw id beats
+          // failing the whole order.
+          expect.objectContaining({ seatLabel: UNKNOWN_SEAT_ID, tier: 'Loge' }),
+        ],
       }),
     );
 
-    const [{ qrPng }] = renderTicketPdfMock.mock.calls[0];
-    expect(Buffer.isBuffer(qrPng)).toBe(true);
-    expect(qrPng.length).toBeGreaterThan(0);
+    const [{ seats }] = renderTicketPdfMock.mock.calls[0];
+    expect(seats).toHaveLength(2);
+
+    for (const seat of seats) {
+      expect(Buffer.isBuffer(seat.qrPng)).toBe(true);
+      expect(seat.qrPng.length).toBeGreaterThan(0);
+    }
+
+    // Distinct QRs, not the same code copied onto both pages.
+    expect(seats[0].qrPng.equals(seats[1].qrPng)).toBe(false);
   });
 
-  it('stores the pdf under the order-scoped key so a redelivery overwrites it', async () => {
+  it('falls back to a generic tier when no price tier matches the ticket type', async () => {
+    const fakes = makeFakes();
+
+    fakes.amqp.request.mockImplementation(async ({ routingKey }: RpcCall) => {
+      if (routingKey === ORDERS_MESSAGE_PATTERNS.GET) return order;
+      if (routingKey === SHOWS_MESSAGE_PATTERNS.DETAIL) return { ...show, priceTiers: [] };
+      if (routingKey === SHOWS_MESSAGE_PATTERNS.SEAT_MAP) return seatMap;
+
+      throw new Error(`unexpected rpc: ${routingKey}`);
+    });
+
+    await serviceFor(fakes).handleOrderPaid(orderPaid);
+
+    expect(fakes.insertedTickets.map((ticket) => ticket.tier)).toEqual(['Standard', 'Standard']);
+  });
+
+  it('stores one pdf under the order-scoped key so a redelivery overwrites it', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid(orderPaid);
 
-    expect(fakes.s3.put).toHaveBeenCalledTimes(1);
-    expect(fakes.s3.put).toHaveBeenCalledWith(
+    expect(fakes.storage.put).toHaveBeenCalledTimes(1);
+    expect(fakes.storage.put).toHaveBeenCalledWith(
       `${ORDER_ID}.pdf`,
       Buffer.from('rendered-pdf'),
       'application/pdf',
     );
   });
 
-  it('inserts the ticket row with a verifiable qr token, ignoring a conflicting redelivery', async () => {
+  it('inserts one row per seat, each with its own verifiable qr token', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid(orderPaid);
 
-    expect(fakes.insertedTickets).toHaveLength(1);
+    expect(fakes.insertedTickets).toHaveLength(2);
 
-    const [ticket] = fakes.insertedTickets;
-    expect(ticket.orderId).toBe(ORDER_ID);
-    expect(ticket.s3Key).toBe(`${ORDER_ID}.pdf`);
-    expect(verifyTicketToken(ticket.qrToken, QR_SECRET)).toBe(ticket.id);
-    expect(verifyTicketToken(ticket.qrToken, 'other-secret')).toBeNull();
+    const [first, second] = fakes.insertedTickets;
+
+    expect(first.id).toBe(TICKET_ID_KNOWN_SEAT);
+    expect(second.id).toBe(TICKET_ID_UNKNOWN_SEAT);
+    expect(first.qrToken).toBe(QR_TOKEN_KNOWN_SEAT);
+
+    for (const ticket of fakes.insertedTickets) {
+      expect(ticket.orderId).toBe(ORDER_ID);
+      expect(ticket.userId).toBe(USER_ID);
+      expect(ticket.showId).toBe(SHOW_ID);
+      expect(ticket.s3Key).toBe(`${ORDER_ID}.pdf`);
+      expect(verifyTicketToken(ticket.qrToken, QR_SECRET)).toBe(ticket.id);
+      expect(verifyTicketToken(ticket.qrToken, 'other-secret')).toBeNull();
+    }
+
     expect(fakes.conflictHandled).toEqual([true]);
   });
 
-  it('enqueues ticket.pdf_ready on the outbox in the same transaction as the ticket row', async () => {
+  it('enqueues ticket.pdf_ready once for the order, not once per seat', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid(orderPaid);
@@ -328,7 +429,7 @@ describe('TicketsService.handleOrderPaid', () => {
     expect(message.payload.messageId).not.toBe(MESSAGE_ID);
   });
 
-  it('claims the message inside the write transaction, alongside the ticket row', async () => {
+  it('claims the message inside the write transaction, alongside the ticket rows', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid(orderPaid);
@@ -340,7 +441,7 @@ describe('TicketsService.handleOrderPaid', () => {
     const fakes = makeFakes();
 
     // The other delivery commits its claim after our pre-check has already missed.
-    fakes.s3.put.mockImplementation(async () => {
+    fakes.storage.put.mockImplementation(async () => {
       fakes.processedMessageIds.add(MESSAGE_ID);
     });
 
@@ -351,8 +452,10 @@ describe('TicketsService.handleOrderPaid', () => {
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
   });
 
-  it('does not re-emit ticket.pdf_ready when the order already has a ticket', async () => {
-    const fakes = makeFakes({ ticketedOrderIds: [ORDER_ID] });
+  it('does not re-emit ticket.pdf_ready when the order already has its tickets', async () => {
+    const fakes = makeFakes({
+      ticketedOrderSeats: [`${ORDER_ID}:${KNOWN_SEAT_ID}`, `${ORDER_ID}:${UNKNOWN_SEAT_ID}`],
+    });
 
     await serviceFor(fakes).handleOrderPaid({ ...orderPaid, messageId: OTHER_MESSAGE_ID });
 
@@ -361,51 +464,52 @@ describe('TicketsService.handleOrderPaid', () => {
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
 
     // The losing delivery still rendered and overwrote `<orderId>.pdf`. That is harmless only
-    // because it signed the very token the winner persisted, so the object still matches the row.
+    // because it signed the very tokens the winner persisted, so the object still matches the rows.
     const [losingAttempt] = fakes.attemptedTickets;
-    expect(losingAttempt.id).toBe(TICKET_ID_FOR_ORDER);
-    expect(losingAttempt.qrToken).toBe(QR_TOKEN_FOR_ORDER);
+    expect(losingAttempt.id).toBe(TICKET_ID_KNOWN_SEAT);
+    expect(losingAttempt.qrToken).toBe(QR_TOKEN_KNOWN_SEAT);
   });
 
-  it('reuses the same ticket id, qr token and pdf for every delivery of one order', async () => {
+  it('reuses the same ticket ids, qr tokens and pdf for every delivery of one order', async () => {
     const fakes = makeFakes();
     const service = serviceFor(fakes);
 
     await service.handleOrderPaid(orderPaid);
     await service.handleOrderPaid({ ...orderPaid, messageId: OTHER_MESSAGE_ID });
 
-    const [winner, loser] = fakes.attemptedTickets;
-    expect(winner.id).toBe(TICKET_ID_FOR_ORDER);
-    expect(winner.qrToken).toBe(QR_TOKEN_FOR_ORDER);
+    const [winner, , loser] = fakes.attemptedTickets;
+    expect(winner.id).toBe(TICKET_ID_KNOWN_SEAT);
+    expect(winner.qrToken).toBe(QR_TOKEN_KNOWN_SEAT);
     expect(loser.id).toBe(winner.id);
     expect(loser.qrToken).toBe(winner.qrToken);
 
     // Same key, byte-identical body: the second put overwrites the first with the same object.
-    expect(fakes.s3.put).toHaveBeenCalledTimes(2);
-    const [firstPut, secondPut] = fakes.s3.put.mock.calls;
+    // This is the property derived ticket ids exist to protect — a random id would have written a
+    // different document over the one whose tokens are in the database.
+    expect(fakes.storage.put).toHaveBeenCalledTimes(2);
+    const [firstPut, secondPut] = fakes.storage.put.mock.calls;
     expect(secondPut).toEqual(firstPut);
 
-    // And the token that survived in the ticket row still resolves to the persisted ticket id.
     const [persisted] = fakes.insertedTickets;
     expect(verifyTicketToken(persisted.qrToken, QR_SECRET)).toBe(persisted.id);
   });
 
-  it('uses a different ticket id for a different order', async () => {
+  it('uses different ticket ids for the same seat in a different order', async () => {
     const fakes = makeFakes();
 
     await serviceFor(fakes).handleOrderPaid({ ...orderPaid, orderId: SECOND_ORDER_ID });
 
     const [ticket] = fakes.insertedTickets;
-    expect(ticket.id).toBe(TICKET_ID_FOR_SECOND_ORDER);
-    expect(ticket.id).not.toBe(TICKET_ID_FOR_ORDER);
-    expect(verifyTicketToken(ticket.qrToken, QR_SECRET)).toBe(TICKET_ID_FOR_SECOND_ORDER);
+    expect(ticket.id).toBe(TICKET_ID_SECOND_ORDER);
+    expect(ticket.id).not.toBe(TICKET_ID_KNOWN_SEAT);
+    expect(verifyTicketToken(ticket.qrToken, QR_SECRET)).toBe(TICKET_ID_SECOND_ORDER);
   });
 
-  it('replays a failed delivery: the retry mints exactly one ticket and one outbox row', async () => {
+  it('replays a failed delivery: the retry mints exactly one set of tickets and one outbox row', async () => {
     const fakes = makeFakes();
     const service = serviceFor(fakes);
 
-    fakes.s3.put.mockRejectedValueOnce(new Error('s3 blip'));
+    fakes.storage.put.mockRejectedValueOnce(new Error('s3 blip'));
 
     await expect(service.handleOrderPaid(orderPaid)).rejects.toThrow('s3 blip');
 
@@ -414,14 +518,14 @@ describe('TicketsService.handleOrderPaid', () => {
 
     await service.handleOrderPaid(orderPaid);
 
-    expect(fakes.insertedTickets).toHaveLength(1);
+    expect(fakes.insertedTickets).toHaveLength(2);
     expect(fakes.enqueued).toHaveLength(1);
   });
 
-  it('propagates an s3 failure so the message is nacked, without writing the ticket', async () => {
+  it('propagates an s3 failure so the message is nacked, without writing the tickets', async () => {
     const fakes = makeFakes();
 
-    fakes.s3.put.mockRejectedValueOnce(new Error('s3 down'));
+    fakes.storage.put.mockRejectedValueOnce(new Error('s3 down'));
 
     await expect(serviceFor(fakes).handleOrderPaid(orderPaid)).rejects.toThrow('s3 down');
 
@@ -429,7 +533,7 @@ describe('TicketsService.handleOrderPaid', () => {
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
   });
 
-  it('propagates an rpc failure so the message is nacked, without writing the ticket', async () => {
+  it('propagates an rpc failure so the message is nacked, without writing the tickets', async () => {
     const fakes = makeFakes();
 
     fakes.amqp.request.mockRejectedValueOnce(new Error('orders rpc down'));
@@ -437,20 +541,172 @@ describe('TicketsService.handleOrderPaid', () => {
     await expect(serviceFor(fakes).handleOrderPaid(orderPaid)).rejects.toThrow('orders rpc down');
 
     expect(renderTicketPdfMock).not.toHaveBeenCalled();
-    expect(fakes.s3.put).not.toHaveBeenCalled();
+    expect(fakes.storage.put).not.toHaveBeenCalled();
     expect(fakes.insertedTickets).toEqual([]);
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
   });
 
-  it('propagates a pdf render failure so the message is nacked, without writing the ticket', async () => {
+  it('propagates a pdf render failure so the message is nacked, without writing the tickets', async () => {
     const fakes = makeFakes();
 
     renderTicketPdfMock.mockRejectedValueOnce(new Error('pdf render failed'));
 
     await expect(serviceFor(fakes).handleOrderPaid(orderPaid)).rejects.toThrow('pdf render failed');
 
-    expect(fakes.s3.put).not.toHaveBeenCalled();
+    expect(fakes.storage.put).not.toHaveBeenCalled();
     expect(fakes.insertedTickets).toEqual([]);
     expect(fakes.outbox.enqueue).not.toHaveBeenCalled();
+  });
+});
+
+const storedTicket = (overrides: Partial<TicketRow> = {}): TicketRow => ({
+  id: TICKET_ID_KNOWN_SEAT,
+  orderId: ORDER_ID,
+  userId: USER_ID,
+  showId: SHOW_ID,
+  seatId: KNOWN_SEAT_ID,
+  seatLabel: 'A 1-3',
+  tier: 'Loge',
+  qrToken: QR_TOKEN_KNOWN_SEAT,
+  s3Key: `${ORDER_ID}.pdf`,
+  checkedInAt: null,
+  createdAt: new Date('2026-07-20T10:00:00.000Z'),
+  ...overrides,
+});
+
+describe('TicketsService.listForUser', () => {
+  it('scopes the query to the caller', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(fakes.selectedTables).toEqual([ticketsTable]);
+    expect(fakes.selectedConditions).toEqual([eq(ticketsTable.userId, USER_ID)]);
+  });
+
+  it('returns nothing for a user with no tickets, without calling shows', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    const list = await serviceFor(fakes).listForUser(OTHER_USER_ID);
+
+    expect(list.items).toEqual([]);
+    expect(fakes.amqp.request).not.toHaveBeenCalled();
+  });
+
+  it('joins the live show title and start time rather than a snapshot', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    const { items } = await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: TICKET_ID_KNOWN_SEAT,
+        orderId: ORDER_ID,
+        showTitle: 'Radiohead Live',
+        showStartsAt: show.startsAt,
+        seatLabel: 'A 1-3',
+        tier: 'Loge',
+        qrToken: QR_TOKEN_KNOWN_SEAT,
+        status: 'active',
+      }),
+    ]);
+  });
+
+  // A rescheduled show must display its new date, which is the whole reason the title and time
+  // are fetched rather than persisted on the row.
+  it('follows the show when it moves', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    fakes.amqp.request.mockResolvedValue({ ...show, startsAt: '2026-09-09T20:00:00.000Z' });
+
+    const { items } = await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(items[0].showStartsAt).toBe('2026-09-09T20:00:00.000Z');
+  });
+
+  it('fetches each distinct show once, not once per ticket', async () => {
+    const fakes = makeFakes({
+      existingTickets: [
+        storedTicket(),
+        storedTicket({ id: TICKET_ID_UNKNOWN_SEAT, seatId: UNKNOWN_SEAT_ID, seatLabel: 'A 1-4' }),
+      ],
+    });
+
+    await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(fakes.amqp.request).toHaveBeenCalledTimes(1);
+  });
+
+  it('degrades a purged show instead of failing the whole page', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    fakes.amqp.request.mockRejectedValue(new Error('shows rpc down'));
+
+    const { items } = await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(items[0].showTitle).toBe('Unavailable show');
+    // The QR is still the thing that gets its holder through the gate.
+    expect(items[0].qrToken).toBe(QR_TOKEN_KNOWN_SEAT);
+  });
+
+  it('carries a stable app path for the pdf, never a signed url', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    const { items } = await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(items[0].pdfUrl).toBe(`/tickets/${TICKET_ID_KNOWN_SEAT}/pdf`);
+    // A perishable credential in a cacheable list response is the bug this shape exists to avoid.
+    expect(fakes.storage.getSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('reports a scanned ticket as checked in', async () => {
+    const fakes = makeFakes({
+      existingTickets: [storedTicket({ checkedInAt: new Date('2026-08-01T18:05:00.000Z') })],
+    });
+
+    const { items } = await serviceFor(fakes).listForUser(USER_ID);
+
+    expect(items[0].status).toBe('checked_in');
+  });
+});
+
+describe('TicketsService.pdfUrlFor', () => {
+  it('mints a short-lived signed url for the ticket’s object', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    const { url } = await serviceFor(fakes).pdfUrlFor(USER_ID, TICKET_ID_KNOWN_SEAT);
+
+    expect(fakes.storage.getSignedUrl).toHaveBeenCalledWith(
+      `${ORDER_ID}.pdf`,
+      expect.objectContaining({ ttl: 60 }),
+    );
+    expect(url).toContain('X-Amz-Signature');
+  });
+
+  it('names the download after the ticket', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    await serviceFor(fakes).pdfUrlFor(USER_ID, TICKET_ID_KNOWN_SEAT);
+
+    expect(fakes.storage.getSignedUrl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ filename: 'ticket-TH-9CED-C9BA.pdf' }),
+    );
+  });
+
+  // Authorization happens here, at click time — not when the list was rendered. Someone else's
+  // ticket id must not mint a URL, and must not be distinguishable from one that does not exist.
+  it('refuses another user’s ticket without confirming it exists', async () => {
+    const fakes = makeFakes({ existingTickets: [storedTicket()] });
+
+    await expect(serviceFor(fakes).pdfUrlFor(OTHER_USER_ID, TICKET_ID_KNOWN_SEAT)).rejects.toThrow(
+      'Ticket not found',
+    );
+
+    await expect(
+      serviceFor(fakes).pdfUrlFor(OTHER_USER_ID, TICKET_ID_SECOND_ORDER),
+    ).rejects.toThrow('Ticket not found');
+
+    expect(fakes.storage.getSignedUrl).not.toHaveBeenCalled();
   });
 });

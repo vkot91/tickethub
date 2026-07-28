@@ -1,6 +1,15 @@
 import type { Db } from '../client';
 import { users } from '../schema/auth';
-import { organizers, venues, sections, rows, seats, shows } from '../schema/shows';
+import {
+  organizers,
+  venues,
+  sections,
+  rows,
+  seats,
+  shows,
+  ticketTypes,
+  showSectionPricing,
+} from '../schema/shows';
 
 // Monotonic suffix so repeated seeds in one db don't collide on unique columns
 // (users.email, shows.title).
@@ -25,6 +34,10 @@ export async function seedUser(db: Db, overrides: Insert<typeof users.$inferInse
 export interface ShowGraphSpec {
   show?: Insert<typeof shows.$inferInsert>;
   sections?: { name?: string; rows?: number; seatsPerRow?: number }[];
+  /** A seated ticket type is seeded by default and mapped onto every section above, so the
+   *  whole graph is on sale. Pass `false` to seed no ticket type and no mapping — the
+   *  show-without-pricing case, and the starting point for a test that maps sections itself. */
+  ticketType?: false | Insert<typeof ticketTypes.$inferInsert>;
 }
 
 export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
@@ -79,5 +92,24 @@ export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
     })
     .returning();
 
-  return { show, organizer, venue, sections: builtSections };
+  const [ticketType] =
+    spec.ticketType === false
+      ? [undefined]
+      : await db
+          .insert(ticketTypes)
+          .values({ showId: show.id, name: 'Standard', priceCents: 5000, ...spec.ticketType })
+          .returning();
+
+  if (ticketType && builtSections.length > 0) {
+    await db.insert(showSectionPricing).values(
+      builtSections.map(({ section }) => ({
+        showId: show.id,
+        sectionId: section.id,
+        venueId: venue.id,
+        ticketTypeId: ticketType.id,
+      })),
+    );
+  }
+
+  return { show, organizer, venue, sections: builtSections, ticketType };
 }

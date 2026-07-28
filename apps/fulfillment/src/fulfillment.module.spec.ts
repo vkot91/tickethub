@@ -4,7 +4,8 @@ import { OutboxPoller, OutboxRepository, InboxRepository } from '@tickethub/outb
 import { TicketsService } from './tickets/tickets.service';
 import { TicketsController } from './tickets/tickets.controller';
 import { NotifyController } from './notify/notify.controller';
-import { S3Client } from './storage/s3.client';
+import { StorageClient } from '@tickethub/storage';
+import { Mailer } from '@tickethub/mailer';
 
 // The schema demands at least 32 chars; this is an obvious placeholder, not a real key.
 const QR_SECRET = 'test-qr-secret-not-a-real-key-0123456789';
@@ -80,11 +81,11 @@ describe('FulfillmentModule', () => {
     const moduleRef = await compileModule();
 
     expect(moduleRef.get('DB')).toBeDefined();
-    expect(moduleRef.get(S3Client)).toBeInstanceOf(S3Client);
+    expect(moduleRef.get(StorageClient)).toBeInstanceOf(StorageClient);
     expect(moduleRef.get(OutboxRepository)).toBeInstanceOf(OutboxRepository);
     expect(moduleRef.get(InboxRepository)).toBeInstanceOf(InboxRepository);
     expect(moduleRef.get(OutboxPoller)).toBeInstanceOf(OutboxPoller);
-    expect(moduleRef.get('MAILER')).toBeDefined();
+    expect(moduleRef.get(Mailer)).toBeInstanceOf(Mailer);
 
     await moduleRef.close();
   });

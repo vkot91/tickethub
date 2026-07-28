@@ -1,0 +1,40 @@
+{
+  "name": "@tickethub/web-kit",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./middleware": "./src/middleware.ts",
+    "./query-provider": "./src/query-provider.tsx"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "catalog:",
+    "@tickethub/contracts": "workspace:*",
+    "server-only": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "next": "^15.1.0",
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tickethub/eslint-config": "workspace:*",
+    "@tickethub/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "eslint": "^8.57.0",
+    "jsdom": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

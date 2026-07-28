@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
 // Import through the package barrel so index.ts is covered too.
 import { RpcToHttpExceptionFilter } from '../index';
 
@@ -10,13 +10,26 @@ function mockHost() {
 describe('RpcToHttpExceptionFilter', () => {
   const filter = new RpcToHttpExceptionFilter();
 
-  it('maps an HttpException to its own status and body', () => {
+  // rpcRequest rethrows a service error as `new HttpException(message, status)`, whose
+  // getResponse() is the bare string — clients read `message`, so it has to be an object.
+  it('wraps an HttpException carrying a string body into { statusCode, message }', () => {
     const { res, host } = mockHost();
 
     filter.catch(new HttpException('nope', HttpStatus.FORBIDDEN), host);
 
     expect(res.status).toHaveBeenCalledWith(HttpStatus.FORBIDDEN);
-    expect(res.json).toHaveBeenCalledWith('nope');
+    expect(res.json).toHaveBeenCalledWith({ statusCode: HttpStatus.FORBIDDEN, message: 'nope' });
+  });
+
+  it('passes an object body through untouched', () => {
+    const { res, host } = mockHost();
+
+    filter.catch(new BadRequestException('Unknown ticketTypeId abc'), host);
+
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Unknown ticketTypeId abc' }),
+    );
   });
 
   it('maps a plain RPC error with a numeric status', () => {

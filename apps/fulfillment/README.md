@@ -1,33 +1,51 @@
 # @tickethub/fulfillment
 
-Fulfillment microservice: turns a paid order into a QR-stamped PDF ticket in object storage and
-emails it to the buyer. Owns `pgSchema('fulfillment')` (`tickets`, `outbox`, `processed_messages`).
+Fulfillment microservice: turns a paid order into QR-stamped PDF tickets in object storage, emails
+them to the buyer, and serves the buyer's ticket list. Owns `pgSchema('fulfillment')` (`tickets`,
+`outbox`, `processed_messages`).
 
-One app, two RMQ subscribers plus one BullMQ worker — it has **no HTTP port** (`main.ts` calls
-`app.init()`, golevelup discovers the `@RabbitSubscribe` handlers by module scanning).
+**One ticket = one seat.** A three-seat order mints three rows, each with its own QR token and its
+own `checked_in_at`, because a ticket is what a gate scanner admits. They share a single PDF
+document (one page per seat) at one S3 key.
+
+Two RMQ subscribers, two RPC handlers and one BullMQ worker — **no HTTP port** (`main.ts` calls
+`app.init()`, golevelup discovers the handlers by module scanning).
+
+Object storage, SMTP and PDF mechanics live in `@tickethub/storage`, `@tickethub/mailer` and
+`@tickethub/pdf`. What stays here is the domain: the ticket layout, the QR signing, the email
+template and the delivery/retry policy.
 
 ## Responsibilities
 
 - **Consumer** `order.paid` (queue `fulfillment.order-paid` + DLX) — renders and stores the ticket:
   1. RPC `orders.get` (seats on the order), `shows.detail` (title + start time),
      `shows.seatMap` (seat id → `Section Row-Seat` label).
-  2. `ticketId = orderId` — one ticket per order, so a redelivery re-derives the same ticket id and
-     the same QR token. The re-rendered PDF is equivalent but _not_ byte-identical
-     (`pdf-lib` stamps a fresh `CreationDate`/`ModDate` on each `save()`);
-     idempotency comes from the fixed S3 key (a re-put overwrites instead of littering the bucket)
-     and the `tickets_order_uq` unique constraint (one ticket row, one email).
-  3. QR payload = `ticketId.HMAC-SHA256(ticketId, TICKET_QR_SECRET)` (base64url), rendered to PNG
-     and embedded in an A5 PDF (`pdf-lib`). Text is drawn in a bundled, subsetted DejaVu Sans
-     (`src/assets/fonts`) — the built-in Helvetica is WinAnsi-only and throws on a Cyrillic title.
-  4. `PUT s3://$S3_BUCKET_TICKETS/<orderId>.pdf`.
-  5. One transaction: claim `processed_messages`, insert the `tickets` row (`onConflictDoNothing`),
-     enqueue `ticket.pdf_ready` in the outbox. No row inserted → no second event, no duplicate email.
+  2. `ticketId = sha256(orderId:seatId)` as a v5-shaped uuid — **derived, not random**. The PDF is
+     rendered and its tokens signed _before_ the rows are inserted, so a random id would let a
+     redelivery write a second document (over the same key) carrying tokens that match nothing in
+     the database. Deriving makes every retry re-sign identical tokens.
+  3. QR payload = `ticketId.HMAC-SHA256(ticketId, TICKET_QR_SECRET)` (base64url), one per seat,
+     rendered to PNG and embedded on that seat's A5 page. Text is drawn in a subsetted DejaVu Sans
+     vendored in `@tickethub/pdf` — the built-in Helvetica is WinAnsi-only and throws on a Cyrillic
+     title.
+  4. `PUT s3://$S3_BUCKET_TICKETS/<orderId>.pdf` — one document, a page per seat. A re-put
+     overwrites instead of littering the bucket.
+  5. One transaction: claim `processed_messages`, insert the `tickets` rows
+     (`onConflictDoNothing` against `tickets_order_seat_uq`), enqueue `ticket.pdf_ready` in the
+     outbox. No rows inserted → no second event, no duplicate email.
 - **Consumer** `ticket.pdf_ready` (queue `fulfillment.ticket-pdf-ready` + DLX) — claims
   `processed_messages` and adds a BullMQ `send-ticket-email` job with `jobId = orderId`, both in the
   same transaction. Biases at-least-once email over at-most-once: a duplicate beats a missing ticket.
 - **BullMQ worker** `send-ticket-email` (5 attempts, exponential backoff from 2 s) — RPC
   `auth.getUser` for the address, `GET` the PDF back from S3, send via SMTP with the PDF attached.
   Failures propagate on purpose so BullMQ retries.
+- **RPC** `tickets.list` — the caller's tickets, newest first. `showTitle`/`showStartsAt` are
+  fetched from `shows.detail` (once per distinct show), never snapshotted, so a rescheduled show
+  displays its new date. `seatLabel` and `tier` _are_ snapshotted: they are what was sold.
+- **RPC** `tickets.pdfUrl` — checks ownership and mints a **60-second presigned S3 URL**. The list
+  carries a stable `/tickets/:id/pdf` path instead, which the gateway 302s to a URL minted at click
+  time: authorization happens on the click, not when the page was rendered, and no perishable
+  credential ever lands in a cacheable response.
 
 Publishing is outbox-only (`OutboxPoller` → `EVENTS_EXCHANGE`); both consumers dedupe via
 `processed_messages`.
@@ -40,6 +58,7 @@ Publishing is outbox-only (`OutboxPoller` → `EVENTS_EXCHANGE`); both consumers
 | `RABBITMQ_URL`                    | RMQ: two subscriber queues, the RPC calls, and the outbox publisher                   |
 | `REDIS_URL`                       | BullMQ connection for the `send-ticket-email` queue/worker                            |
 | `S3_ENDPOINT`                     | MinIO/S3 endpoint (path-style addressing)                                             |
+| `S3_PUBLIC_ENDPOINT`              | Browser-reachable endpoint used **only** for presigning (SigV4 covers `host`)         |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Object-storage credentials                                                            |
 | `S3_BUCKET_TICKETS`               | Bucket the ticket PDFs live in (`tickets` locally)                                    |
 | `SMTP_HOST` / `SMTP_PORT`         | SMTP relay — Mailpit locally (`localhost:1025`), SES in prod                          |
@@ -97,6 +116,8 @@ Ran exactly as above against the seeded `Demo Concert (seated)` show, two seats 
 - `GET /orders/:id` → `"status":"paid"`, both seat reservations `confirmed`.
 - `fulfillment.tickets` → **exactly one** row, `id = order_id`,
   `s3_key = 8007f42b-….pdf`, `qr_token` re-verified against `TICKET_QR_SECRET` out of band.
+  (Recorded before the per-seat regrain — the same run today mints one row per seat, each with its
+  own `qr_token`, still one object and one email.)
 - `fulfillment.outbox` → one `ticket.pdf_ready` row with `published_at` set.
 - `fulfillment.processed_messages` → two rows (`order.paid` and `ticket.pdf_ready`).
 - MinIO `tickets` bucket → **exactly one** object, `8007f42b-….pdf`.

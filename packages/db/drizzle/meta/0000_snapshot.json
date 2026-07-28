@@ -1,5 +1,5 @@
 {
-  "id": "8360c77f-c3af-4306-9c23-b1f43a21f77c",
+  "id": "7d5a6267-08b4-4c66-9fe8-a751e760fd51",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -367,11 +367,25 @@
           "primaryKey": false,
           "notNull": true
         },
+        "section_id": {
+          "name": "section_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "seat_tier",
+          "typeSchema": "shows",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'standard'"
         },
         "price_cents": {
           "name": "price_cents",
@@ -401,6 +415,16 @@
           "tableTo": "shows",
           "schemaTo": "shows",
           "columnsFrom": ["show_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "ticket_types_section_id_sections_id_fk": {
+          "name": "ticket_types_section_id_sections_id_fk",
+          "tableFrom": "ticket_types",
+          "tableTo": "sections",
+          "schemaTo": "shows",
+          "columnsFrom": ["section_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -848,6 +872,155 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {}
+    },
+    "fulfillment.outbox": {
+      "name": "outbox",
+      "schema": "fulfillment",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "routing_key": {
+          "name": "routing_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "fulfillment.processed_messages": {
+      "name": "processed_messages",
+      "schema": "fulfillment",
+      "columns": {
+        "message_id": {
+          "name": "message_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "fulfillment.tickets": {
+      "name": "tickets",
+      "schema": "fulfillment",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "show_id": {
+          "name": "show_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_id": {
+          "name": "seat_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "seat_label": {
+          "name": "seat_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tier": {
+          "name": "tier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qr_token": {
+          "name": "qr_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "s3_key": {
+          "name": "s3_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "checked_in_at": {
+          "name": "checked_in_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "tickets_order_seat_uq": {
+          "name": "tickets_order_seat_uq",
+          "nullsNotDistinct": false,
+          "columns": ["order_id", "seat_id"]
+        }
+      }
     }
   },
   "enums": {
@@ -855,6 +1028,11 @@
       "name": "role",
       "schema": "auth",
       "values": ["user", "organizer", "admin"]
+    },
+    "shows.seat_tier": {
+      "name": "seat_tier",
+      "schema": "shows",
+      "values": ["vip", "standard", "economy"]
     },
     "shows.show_status": {
       "name": "show_status",
@@ -881,7 +1059,8 @@
     "auth": "auth",
     "shows": "shows",
     "orders": "orders",
-    "payments": "payments"
+    "payments": "payments",
+    "fulfillment": "fulfillment"
   },
   "sequences": {},
   "_meta": {

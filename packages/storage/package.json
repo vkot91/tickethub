@@ -1,0 +1,38 @@
+{
+  "name": "@tickethub/storage",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "@tickethub/config": "workspace:*",
+    "@nestjs/common": "catalog:",
+    "zod": "catalog:",
+    "@aws-sdk/client-s3": "catalog:",
+    "@aws-sdk/s3-request-presigner": "catalog:"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "@tickethub/eslint-config": "workspace:*",
+    "@tickethub/jest-config": "workspace:*",
+    "reflect-metadata": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "ts-node": "catalog:"
+  }
+}

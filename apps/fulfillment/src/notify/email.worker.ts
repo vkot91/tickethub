@@ -1,17 +1,16 @@
 import { Worker } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import type { Transporter } from 'nodemailer';
+import type { StorageClient } from '@tickethub/storage';
+import type { Mailer } from '@tickethub/mailer';
 import { rpcRequest } from '@tickethub/rmq';
 import { AUTH_MESSAGE_PATTERNS, type GetUserResponse } from '@tickethub/contracts';
 import { renderTicketEmail } from './email.template';
-import type { S3Client } from '../storage/s3.client';
 
 export interface EmailDeps {
   amqp: AmqpConnection;
-  s3: S3Client;
-  mailer: Transporter;
-  from: string;
+  storage: StorageClient;
+  mailer: Mailer;
 }
 
 export interface SendTicketEmailJob {
@@ -27,10 +26,9 @@ export async function sendTicketEmail(deps: EmailDeps, data: SendTicketEmailJob)
     userId: data.userId,
   });
 
-  const pdf = await deps.s3.get(`${data.orderId}.pdf`);
+  const pdf = await deps.storage.get(`${data.orderId}.pdf`);
 
-  await deps.mailer.sendMail({
-    from: deps.from,
+  await deps.mailer.send({
     to: user.email,
     subject: 'Your TicketHub ticket',
     html: renderTicketEmail({ orderId: data.orderId }),

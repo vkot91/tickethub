@@ -13,6 +13,7 @@ import { GatewayAuthController } from './auth/auth.controller';
 import { GatewayShowsController } from './shows/shows.controller';
 import { GatewayOrdersController } from './orders/orders.controller';
 import { GatewayPaymentsController } from './payments/payments.controller';
+import { GatewayTicketsController } from './tickets/tickets.controller';
 import { HealthController } from './health/health.controller';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 import { schema, type Config } from './config';
@@ -54,6 +55,7 @@ const queueDashboardImports =
     GatewayShowsController,
     GatewayOrdersController,
     GatewayPaymentsController,
+    GatewayTicketsController,
     HealthController,
   ],
   providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }],

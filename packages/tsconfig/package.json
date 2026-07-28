@@ -4,6 +4,7 @@
   "private": true,
   "files": [
     "base.json",
-    "nest.json"
+    "nest.json",
+    "next.json"
   ]
 }

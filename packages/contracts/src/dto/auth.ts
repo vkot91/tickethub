@@ -23,6 +23,7 @@ export const authTokensSchema = z.object({
   accessToken: z.string(),
   refreshToken: z.string(),
 });
+
 export type AuthTokens = z.infer<typeof authTokensSchema>;
 
 export const refreshSchema = z.object({ refreshToken: z.string() });

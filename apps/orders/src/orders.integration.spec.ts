@@ -1,10 +1,13 @@
 import { loadEnv, requireEnv } from '@tickethub/env';
-import { sql } from 'drizzle-orm';
+import { BadRequestException } from '@nestjs/common';
+import { asc, eq, sql } from 'drizzle-orm';
 import Redis from 'ioredis';
 import {
   createDb,
   orders,
   seatReservations,
+  seats,
+  ticketTypes,
   ordersOutbox,
   ordersProcessedMessages,
   type Db,
@@ -64,6 +67,56 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
   });
 
   const dtoFor = () => ({ showId, seats: [{ seatId, ticketTypeId: ttId }] });
+
+  // The price a buyer pays comes from the seat's section via show_section_pricing, never from the
+  // ticketTypeId they posted. Trusting that field let anyone send a cheap band's id for an
+  // expensive seat and be charged the cheap price.
+  it('ignores a forged ticketTypeId and charges the seat’s own section price', async () => {
+    const [cheapest] = await db
+      .select({ id: ticketTypes.id, priceCents: ticketTypes.priceCents })
+      .from(ticketTypes)
+      .orderBy(asc(ticketTypes.priceCents))
+      .limit(1);
+
+    const [real] = await db
+      .select({ priceCents: ticketTypes.priceCents })
+      .from(ticketTypes)
+      .where(eq(ticketTypes.id, ttId));
+
+    // Guard the premise: the forged type must actually be cheaper, or this proves nothing.
+    expect(cheapest.id).not.toBe(ttId);
+    expect(cheapest.priceCents).toBeLessThan(real.priceCents);
+
+    const order = await svc.create('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'forge', {
+      showId,
+      seats: [{ seatId, ticketTypeId: cheapest.id }],
+    } as never);
+
+    expect(order.totalCents).toBe(real.priceCents);
+    // The reservation records the resolved band too, so tickets snapshot the right tier.
+    expect(order.seats).toEqual([{ seatId, ticketTypeId: ttId }]);
+    const [reservation] = await db
+      .select({ ticketTypeId: seatReservations.ticketTypeId })
+      .from(seatReservations)
+      .where(eq(seatReservations.seatId, seatId));
+    expect(reservation.ticketTypeId).toBe(ttId);
+  });
+
+  it('refuses a seat the show does not sell', async () => {
+    // A seat from another venue entirely: it joins to no show_section_pricing row for this show.
+    const [foreign] = await db
+      .select({ id: seats.id })
+      .from(seats)
+      .where(sql`${seats.id} <> ${seatId}`)
+      .limit(1);
+
+    await expect(
+      svc.create('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'foreign', {
+        showId,
+        seats: [{ seatId: foreign.id, ticketTypeId: ttId }],
+      } as never),
+    ).rejects.toThrow(BadRequestException);
+  });
 
   it('lets exactly one of two concurrent buyers win the single seat', async () => {
     const results = await Promise.allSettled([
@@ -129,5 +182,63 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     const response = await svc.get(userId, order.id);
 
     expect(response.seats).toEqual([{ seatId: confirmedSeatId, ticketTypeId: ttId }]);
+  });
+
+  // The keyset is a Postgres row comparison — only a real database proves it orders and
+  // paginates the way the page expects, so the rows go in directly rather than through create().
+  describe('list', () => {
+    const buyer = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+    const stranger = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+
+    const orderRow = (userId: string, key: string, createdAt: string) => ({
+      userId,
+      showId,
+      idempotencyKey: key,
+      status: 'awaiting_payment' as const,
+      totalCents: 5000,
+      currency: 'usd',
+      expiresAt: new Date('2030-01-01'),
+      createdAt: new Date(createdAt),
+    });
+
+    it('pages the buyer own orders newest first', async () => {
+      const inserted = await db
+        .insert(orders)
+        .values([
+          orderRow(buyer, 'list-old', '2026-07-01T00:00:00Z'),
+          orderRow(buyer, 'list-mid', '2026-07-02T00:00:00Z'),
+          orderRow(buyer, 'list-new', '2026-07-03T00:00:00Z'),
+        ])
+        .returning();
+      const byKey = new Map(inserted.map((order) => [order.idempotencyKey, order.id]));
+
+      const first = await svc.list(buyer, { limit: 2 });
+
+      expect(first.items.map((item) => item.id)).toEqual([
+        byKey.get('list-new'),
+        byKey.get('list-mid'),
+      ]);
+      expect(first.nextCursor).toBe(byKey.get('list-mid'));
+
+      const second = await svc.list(buyer, { limit: 2, cursor: first.nextCursor as string });
+
+      expect(second.items.map((item) => item.id)).toEqual([byKey.get('list-old')]);
+      expect(second.nextCursor).toBeNull();
+    });
+
+    it('never leaks another buyer orders', async () => {
+      await db
+        .insert(orders)
+        .values([
+          orderRow(buyer, 'mine', '2026-07-01T00:00:00Z'),
+          orderRow(stranger, 'theirs', '2026-07-02T00:00:00Z'),
+        ])
+        .returning();
+
+      const page = await svc.list(buyer, { limit: 20 });
+
+      expect(page.items).toHaveLength(1);
+      expect(page.items[0].showId).toBe(showId);
+    });
   });
 });

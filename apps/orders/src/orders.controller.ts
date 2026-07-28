@@ -1,6 +1,11 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { ORDERS_MESSAGE_PATTERNS, RPC_EXCHANGE, type CreateOrderDto } from '@tickethub/contracts';
+import {
+  ORDERS_MESSAGE_PATTERNS,
+  RPC_EXCHANGE,
+  type CreateOrderDto,
+  type OrderListQuery,
+} from '@tickethub/contracts';
 import { OrdersService } from './orders.service';
 
 @Controller()
@@ -23,6 +28,15 @@ export class OrdersController {
   })
   get(payload: { userId: string; orderId: string }) {
     return this.ordersService.get(payload.userId, payload.orderId);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: ORDERS_MESSAGE_PATTERNS.LIST,
+    queue: ORDERS_MESSAGE_PATTERNS.LIST,
+  })
+  list(payload: { userId: string; query: OrderListQuery }) {
+    return this.ordersService.list(payload.userId, payload.query);
   }
 
   @RabbitRPC({

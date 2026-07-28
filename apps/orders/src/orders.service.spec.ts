@@ -22,6 +22,10 @@ function selectFake(rows: unknown[], seats: unknown[] = []) {
 }
 
 function deps(overrides: Record<string, unknown> = {}, seats: unknown[] = []) {
+  // What price() resolves for the dto's seat s1 from show_section_pricing — the server's own answer,
+  // which is deliberately independent of whatever ticketTypeId the dto carries.
+  const pricedSeats = [{ seatId: 's1', ticketTypeId: 'tt1', priceCents: 5000, currency: 'usd' }];
+
   const redis = {
     acquireSeatLocks: jest.fn().mockResolvedValue(true),
     releaseSeatLocks: jest.fn(),
@@ -41,9 +45,16 @@ function deps(overrides: Record<string, unknown> = {}, seats: unknown[] = []) {
     transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         insert: () => ({ values: () => ({ returning: async () => [order] }) }),
-        select: () => ({
-          from: () => ({ where: async () => [{ id: 'tt1', priceCents: 5000, currency: 'usd' }] }),
-        }),
+        // price() walks seats → rows → show_section_pricing → ticket_types, so the fake has to be
+        // chainable on innerJoin and resolve at .where(). Seat ids come from the dto under test.
+        select: () => {
+          const chain = {
+            from: () => chain,
+            innerJoin: () => chain,
+            where: async () => pricedSeats,
+          };
+          return chain;
+        },
       }),
     ...overrides,
   };
@@ -105,11 +116,19 @@ describe('OrdersService.create', () => {
     expect(d.redis.acquireSeatLocks).not.toHaveBeenCalled();
   });
 
-  it('rejects an unknown ticket type instead of pricing it as 0', async () => {
+  it('rejects a seat the show does not sell instead of pricing it as 0', async () => {
     const d = deps({
       transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
         fn({
-          select: () => ({ from: () => ({ where: async () => [] }) }), // no matching ticket types
+          // The seat joins to no show_section_pricing row: not on sale.
+          select: () => {
+            const chain = {
+              from: () => chain,
+              innerJoin: () => chain,
+              where: async () => [],
+            };
+            return chain;
+          },
         }),
     });
 
@@ -216,5 +235,80 @@ describe('OrdersService.requestRefund', () => {
     const d = refundDeps({ ...paidOrder, status: 'awaiting_payment' });
 
     await expect(d.service.requestRefund('u1', 'ord1')).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('OrdersService.list', () => {
+  const orderRow = (id: string, createdAt: string) => ({
+    id,
+    userId: 'u1',
+    showId: 'show1',
+    status: 'awaiting_payment',
+    totalCents: 5000,
+    currency: 'usd',
+    expiresAt: new Date('2030-01-01'),
+    createdAt: new Date(createdAt),
+  });
+
+  // The list is the one read that chains .orderBy(), and it groups reservations from a
+  // separate column-select — so it gets its own fake rather than bending `selectFake`.
+  function listService(rows: unknown[], reservations: unknown[] = []) {
+    const select = (columns?: unknown) =>
+      columns
+        ? { from: () => ({ where: async () => reservations }) }
+        : {
+            from: () => ({
+              where: () => ({
+                orderBy: () => ({ limit: async () => rows }),
+                limit: async () => rows.slice(0, 1), // the cursor lookup
+              }),
+            }),
+          };
+
+    return deps({ select }).service;
+  }
+
+  it('returns the page with each order its seats, and no cursor when it is not full', async () => {
+    const service = listService(
+      [orderRow('ord1', '2026-07-02'), orderRow('ord2', '2026-07-01')],
+      [
+        { orderId: 'ord1', seatId: 'seat1', ticketTypeId: 'tt1' },
+        { orderId: 'ord1', seatId: 'seat2', ticketTypeId: 'tt1' },
+        { orderId: 'ord2', seatId: 'seat3', ticketTypeId: 'tt1' },
+      ],
+    );
+
+    const page = await service.list('u1', { limit: 20 });
+
+    expect(page.nextCursor).toBeNull();
+    expect(page.items.map((item) => item.id)).toEqual(['ord1', 'ord2']);
+    expect(page.items[0].showId).toBe('show1');
+    expect(page.items[0].seats).toEqual([
+      { seatId: 'seat1', ticketTypeId: 'tt1' },
+      { seatId: 'seat2', ticketTypeId: 'tt1' },
+    ]);
+    // Held seats count here: an awaiting_payment order still has seats worth showing.
+    expect(page.items[1].seats).toHaveLength(1);
+  });
+
+  it('trims the extra row and hands back the last item as the cursor', async () => {
+    const service = listService([
+      orderRow('ord1', '2026-07-03'),
+      orderRow('ord2', '2026-07-02'),
+      orderRow('ord3', '2026-07-01'),
+    ]);
+
+    const page = await service.list('u1', { limit: 2 });
+
+    expect(page.items.map((item) => item.id)).toEqual(['ord1', 'ord2']);
+    expect(page.nextCursor).toBe('ord2');
+  });
+
+  it('rejects a cursor that is not an order the caller owns', async () => {
+    const service = listService([]);
+
+    await expect(service.list('u1', { limit: 20, cursor: 'nope' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });

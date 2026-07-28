@@ -1,0 +1,38 @@
+{
+  "name": "@tickethub/pdf",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "fonts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src",
+    "test": "jest --coverage"
+  },
+  "dependencies": {
+    "pdf-lib": "catalog:",
+    "@pdf-lib/fontkit": "^1.1.1"
+  },
+  "devDependencies": {
+    "@tickethub/tsconfig": "workspace:*",
+    "@tickethub/eslint-config": "workspace:*",
+    "@tickethub/jest-config": "workspace:*",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "ts-node": "catalog:"
+  }
+}
