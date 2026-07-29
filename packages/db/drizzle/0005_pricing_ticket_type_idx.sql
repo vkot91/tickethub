@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "show_section_pricing_ticket_type_idx" ON "shows"."show_section_pricing" USING btree ("ticket_type_id");
