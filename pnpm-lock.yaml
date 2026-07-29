@@ -1189,9 +1189,6 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 20.19.43
-      drizzle-dbml-generator:
-        specifier: ^0.9.0
-        version: 0.9.0(drizzle-orm@0.33.0(@electric-sql/pglite@0.2.17)(@types/react@19.2.17)(postgres@3.4.9)(react@19.2.8))
       drizzle-kit:
         specifier: ^0.24.0
         version: 0.24.2
@@ -7407,14 +7404,6 @@ packages:
         integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==,
       }
     engines: { node: '>=12' }
-
-  drizzle-dbml-generator@0.9.0:
-    resolution:
-      {
-        integrity: sha512-R/INfHUJNtxUkanSng8suh6er3snYKzMLFCeshqMMtGbrzo1+ulOY6qyrWXkY1d5jLuFwydySUD6bIZSyr0aSg==,
-      }
-    peerDependencies:
-      drizzle-orm: '>=0.32.0'
 
   drizzle-kit@0.24.2:
     resolution:
@@ -16422,10 +16411,6 @@ snapshots:
   dotenv-expand@10.0.0: {}
 
   dotenv@16.4.5: {}
-
-  drizzle-dbml-generator@0.9.0(drizzle-orm@0.33.0(@electric-sql/pglite@0.2.17)(@types/react@19.2.17)(postgres@3.4.9)(react@19.2.8)):
-    dependencies:
-      drizzle-orm: 0.33.0(@electric-sql/pglite@0.2.17)(@types/react@19.2.17)(postgres@3.4.9)(react@19.2.8)
 
   drizzle-kit@0.24.2:
     dependencies:
