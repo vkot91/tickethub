@@ -1,8 +1,11 @@
 import {
   catalogPageSchema,
   createShowSchema,
+  recentOrdersSchema,
+  showStatsSchema,
   showSummarySchema,
   updateShowSchema,
+  type ShowStats,
 } from '@tickethub/contracts';
 import { z } from 'zod';
 
@@ -14,38 +17,6 @@ export const organizerKeys = {
   stats: (showId: string) => [...organizerKeys.all, 'stats', showId] as const,
   recentOrders: () => [...organizerKeys.all, 'recent-orders'] as const,
 };
-
-/**
- * None of the organizer endpoints exist yet (BACKEND-GAPS.md §6–§8). These schemas are the
- * shapes the UI needs; move them into `packages/contracts` as each RPC lands. Show create and
- * update are the real thing already.
- */
-export const showStatsSchema = z.object({
-  soldCount: z.number().int(),
-  capacity: z.number().int(),
-  revenueCents: z.number().int(),
-  refundedCents: z.number().int(),
-  byDay: z.array(
-    z.object({
-      date: z.string(),
-      revenueCents: z.number().int(),
-      count: z.number().int(),
-    }),
-  ),
-});
-export type ShowStats = z.infer<typeof showStatsSchema>;
-
-export const recentOrderSchema = z.object({
-  id: z.string().uuid(),
-  showTitle: z.string(),
-  buyerEmail: z.string().email(),
-  seatLabels: z.array(z.string()),
-  totalCents: z.number().int(),
-  status: z.enum(['awaiting_payment', 'paid', 'expired', 'cancelled', 'refunded']),
-});
-export type RecentOrder = z.infer<typeof recentOrderSchema>;
-
-export const recentOrdersSchema = z.object({ items: z.array(recentOrderSchema) });
 
 /** The scanner holds the QR's HMAC token, not a ticket id, so check-in is keyed by code. */
 export const checkInSchema = z.object({ code: z.string().min(1) });

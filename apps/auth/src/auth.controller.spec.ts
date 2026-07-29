@@ -8,6 +8,7 @@ describe('AuthController', () => {
     refresh: jest.fn().mockResolvedValue('ref'),
     validate: jest.fn().mockResolvedValue('val'),
     getUser: jest.fn().mockResolvedValue({ userId: 'u1', email: 'a@b.com' }),
+    getUsersByIds: jest.fn().mockResolvedValue([{ id: 'u1', email: 'a@b.com' }]),
     becomeOrganizer: jest.fn().mockResolvedValue('tokens'),
   };
   const controller = new AuthController(service as never);
@@ -39,5 +40,13 @@ describe('AuthController', () => {
   it('delegates becomeOrganizer, unwrapping the userId', async () => {
     await expect(controller.becomeOrganizer({ userId: 'u1' })).resolves.toBe('tokens');
     expect(service.becomeOrganizer).toHaveBeenCalledWith('u1');
+  });
+
+  it('delegates getUsersByIds, unwrapping the ids', async () => {
+    await expect(controller.getUsersByIds({ ids: ['u1'] })).resolves.toEqual([
+      { id: 'u1', email: 'a@b.com' },
+    ]);
+
+    expect(service.getUsersByIds).toHaveBeenCalledWith(['u1']);
   });
 });

@@ -481,3 +481,52 @@ describe('OrganizerShowsService ownership', () => {
     expect(stored).toBeDefined();
   });
 });
+
+describe('OrganizerShowsService.capacity', () => {
+  it('counts the seats of priced sections only', async () => {
+    const {
+      show,
+      venue,
+      sections: built,
+      ticketType,
+    } = await seedShowGraph(db, {
+      sections: [
+        { name: 'Stalls', rows: 2, seatsPerRow: 3 },
+        { name: 'Balcony', rows: 1, seatsPerRow: 4 },
+      ],
+    });
+
+    // seedShowGraph prices every section; drop the balcony back off sale.
+    await db
+      .delete(showSectionPricing)
+      .where(
+        and(
+          eq(showSectionPricing.showId, show.id),
+          eq(showSectionPricing.sectionId, built[1].section.id),
+        ),
+      );
+
+    expect(ticketType).toBeDefined();
+    expect(venue).toBeDefined();
+    await expect(svc.capacity([show.id])).resolves.toEqual([{ showId: show.id, capacity: 6 }]);
+  });
+
+  it('returns a row per requested show, zero included, batched in one call', async () => {
+    const priced = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 2 }] });
+    const unpriced = await seedShowGraph(db, {
+      sections: [{ rows: 1, seatsPerRow: 2 }],
+      ticketType: false,
+    });
+
+    const capacities = await svc.capacity([priced.show.id, unpriced.show.id]);
+
+    expect(capacities).toEqual([
+      { showId: priced.show.id, capacity: 2 },
+      { showId: unpriced.show.id, capacity: 0 },
+    ]);
+  });
+
+  it('returns nothing for an empty list', async () => {
+    await expect(svc.capacity([])).resolves.toEqual([]);
+  });
+});

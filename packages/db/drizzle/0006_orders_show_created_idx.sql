@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS "orders_show_created_idx" ON "orders"."orders" USING btree ("show_id","created_at");

@@ -60,6 +60,15 @@ export class AuthController {
 
   @RabbitRPC({
     exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS,
+    queue: AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS,
+  })
+  getUsersByIds(params: { ids: string[] }) {
+    return this.authService.getUsersByIds(params.ids);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
     routingKey: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
     queue: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
   })

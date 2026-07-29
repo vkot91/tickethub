@@ -23,6 +23,8 @@ export const stats = {
   capacity: 400,
   revenueCents: 2_400_000,
   refundedCents: 100_000,
+  checkedInCount: 64,
+  byTier: [],
   byDay: [
     { date: '2026-08-01', revenueCents: 100_000, count: 4 },
     { date: '2026-08-02', revenueCents: 300_000, count: 11 },
@@ -38,6 +40,7 @@ export const recentOrders = {
       seatLabels: ['A1', 'A2'],
       totalCents: 64000,
       status: 'paid',
+      createdAt: '2026-08-01T18:00:00.000Z',
     },
   ],
 };

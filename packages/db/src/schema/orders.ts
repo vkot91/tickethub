@@ -1,4 +1,13 @@
-import { pgSchema, uuid, text, integer, timestamp, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  pgSchema,
+  uuid,
+  text,
+  integer,
+  timestamp,
+  unique,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createOutboxTable, createProcessedMessagesTable } from './outbox';
 
@@ -32,6 +41,8 @@ export const orders = ordersSchema.table(
   },
   (t) => ({
     userIdemUq: unique('orders_user_idem_uq').on(t.userId, t.idempotencyKey),
+    // The organizer dashboard aggregates by show over a date window; this is the index it scans.
+    showCreatedIdx: index('orders_show_created_idx').on(t.showId, t.createdAt),
   }),
 );
 

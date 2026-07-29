@@ -33,6 +33,15 @@ export class OrganizerShowsController {
 
   @RabbitRPC({
     exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.CAPACITY,
+    queue: ORGANIZER_MESSAGE_PATTERNS.CAPACITY,
+  })
+  capacity(params: { showIds: string[] }) {
+    return this.showsService.capacity(params.showIds);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
     routingKey: ORGANIZER_MESSAGE_PATTERNS.MY_SHOWS,
     queue: ORGANIZER_MESSAGE_PATTERNS.MY_SHOWS,
   })

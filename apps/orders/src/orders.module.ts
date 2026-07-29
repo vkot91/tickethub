@@ -11,6 +11,8 @@ import { OrdersService } from './orders.service';
 import { OrderSagaController } from './saga/saga.controller';
 import { OrderSagaService } from './saga/saga.service';
 import { OrderRepository } from './orders.repository';
+import { OrganizerStatsController } from './organizer/stats.controller';
+import { OrganizerStatsService } from './organizer/stats.service';
 import { startReleaseWorker } from './release/release.worker';
 import { schema, type Config } from './config';
 
@@ -26,7 +28,7 @@ const get = <K extends keyof Config>(c: Cfg, k: K) => c.get(k, { infer: true });
     OutboxModule.forFeature({ outbox: ordersOutbox, processed: ordersProcessedMessages }),
     rmqRootModule(),
   ],
-  controllers: [OrdersController, OrderSagaController],
+  controllers: [OrdersController, OrderSagaController, OrganizerStatsController],
   providers: [
     // Everything the services can't reach by class token: the queue and the TTL.
     {
@@ -43,6 +45,7 @@ const get = <K extends keyof Config>(c: Cfg, k: K) => c.get(k, { infer: true });
     OrderRepository,
     OrdersService,
     OrderSagaService,
+    OrganizerStatsService,
     {
       provide: 'RELEASE_WORKER',
       inject: [OrderSagaService, ConfigService],

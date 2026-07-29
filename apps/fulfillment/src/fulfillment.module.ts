@@ -12,6 +12,8 @@ import { StorageModule, StorageClient } from '@tickethub/storage';
 import { MailerModule, Mailer } from '@tickethub/mailer';
 import { TicketsController } from './tickets/tickets.controller';
 import { NotifyController } from './notify/notify.controller';
+import { OrganizerStatsController } from './organizer/stats.controller';
+import { OrganizerStatsService } from './organizer/stats.service';
 import { TicketsService } from './tickets/tickets.service';
 import { startEmailWorker } from './notify/email.worker';
 import { schema, type Config } from './config';
@@ -29,8 +31,13 @@ const get = <K extends keyof Config>(config: Cfg, key: K) => config.get(key, { i
     StorageModule.forBucket('S3_BUCKET_TICKETS'),
     MailerModule,
   ],
-  controllers: [TicketsController, NotifyController],
+  controllers: [TicketsController, NotifyController, OrganizerStatsController],
   providers: [
+    {
+      provide: OrganizerStatsService,
+      inject: ['DB'],
+      useFactory: (db: Db) => new OrganizerStatsService(db),
+    },
     // A useFactory, not @Injectable auto-wiring: the qrSecret is a plain string and Nest has no
     // type to resolve it by.
     {

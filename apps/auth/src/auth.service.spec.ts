@@ -195,3 +195,38 @@ describe('AuthService.validate', () => {
     await expect(svc.validate('garbage')).rejects.toThrow(UnauthorizedException);
   });
 });
+
+describe('AuthService.getUsersByIds', () => {
+  it('resolves a whole page of buyers in one call', async () => {
+    const first = await seedUser(db, { email: 'one@x.com' });
+    const second = await seedUser(db, { email: 'two@x.com' });
+    const { svc } = makeService();
+
+    const found = await svc.getUsersByIds(['' + second.id, first.id]);
+
+    expect(found).toEqual(
+      expect.arrayContaining([
+        { id: first.id, email: 'one@x.com' },
+        { id: second.id, email: 'two@x.com' },
+      ]),
+    );
+    expect(found).toHaveLength(2);
+  });
+
+  // A deleted buyer must not take a dashboard page down with it — the caller degrades to
+  // "Unknown buyer" on the rows it did not get back.
+  it('omits ids that do not exist rather than throwing', async () => {
+    const user = await seedUser(db, { email: 'only@x.com' });
+    const { svc } = makeService();
+
+    await expect(
+      svc.getUsersByIds([user.id, '00000000-0000-0000-0000-000000000000']),
+    ).resolves.toEqual([{ id: user.id, email: 'only@x.com' }]);
+  });
+
+  it('returns nothing for an empty list, without a query', async () => {
+    const { svc } = makeService();
+
+    await expect(svc.getUsersByIds([])).resolves.toEqual([]);
+  });
+});

@@ -56,6 +56,8 @@ export const AUTH_MESSAGE_PATTERNS = {
   REFRESH: 'auth.refresh',
   VALIDATE: 'auth.validate',
   GET_USER: 'auth.getUser',
+  // Batched sibling of GET_USER: one call resolves a whole page of buyer emails.
+  GET_USERS_BY_IDS: 'auth.getUsersByIds',
   BECOME_ORGANIZER: 'auth.becomeOrganizer',
 } as const;
 
@@ -82,6 +84,8 @@ export const ORGANIZER_MESSAGE_PATTERNS = {
   PUBLISH_CHECKLIST: 'organizer.publishChecklist',
   PUBLISH_SHOW: 'organizer.publishShow',
   POSTER_UPLOAD_URL: 'organizer.posterUploadUrl',
+  // Seats on sale per show, batched. Organizer-only today — the buyer catalog never asks.
+  CAPACITY: 'organizer.capacity',
 } as const;
 
 // The shared venue catalogue. Its own map because it is nobody's property: an organizer reads it
@@ -96,11 +100,15 @@ export const ORDERS_MESSAGE_PATTERNS = {
   GET: 'orders.get',
   LIST: 'orders.list',
   REQUEST_REFUND: 'orders.requestRefund',
+  // Organizer dashboard. Both take a resolved `showIds[]` — Orders never learns who owns what.
+  STATS: 'orders.stats',
+  RECENT: 'orders.recent',
 } as const;
 
 export const TICKETS_MESSAGE_PATTERNS = {
   LIST: 'tickets.list',
   PDF_URL: 'tickets.pdfUrl',
+  CHECKED_IN_COUNT: 'tickets.checkedInCount',
 } as const;
 
 export const PAYMENTS_MESSAGE_PATTERNS = {
