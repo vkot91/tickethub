@@ -271,7 +271,22 @@ async function ensureShow(
     .onConflictDoNothing()
     .returning();
 
-  const show = inserted ?? (await db.select().from(shows).where(eq(shows.title, spec.title)))[0];
+  // Re-select by the same key the UNIQUE now uses. Title alone would pick the wrong row — and
+  // silently — the day the same title runs in a second venue or a second slot.
+  const show =
+    inserted ??
+    (
+      await db
+        .select()
+        .from(shows)
+        .where(
+          and(
+            eq(shows.venueId, venueId),
+            eq(shows.title, spec.title),
+            eq(shows.startsAt, new Date(spec.startsAt)),
+          ),
+        )
+    )[0];
 
   const venueSections = await db.select().from(sections).where(eq(sections.venueId, venueId));
   const sectionIdByName = new Map(venueSections.map((s) => [s.name, s.id]));

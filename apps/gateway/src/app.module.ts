@@ -20,6 +20,7 @@ import { RateLimitGuard } from './guards/rate-limit.guard';
 import { schema, type Config } from './config';
 import { OrganizerShowsService } from './organizer/shows.service';
 import { GatewayOrganizerVenuesController } from './organizer/venues.controller';
+import { GatewayOrganizerShowsController } from './organizer/shows.controller';
 
 // The delayed-release queue owned by the orders service (apps/orders); we attach read/monitor
 // access here so bull-board can inspect it.
@@ -60,6 +61,7 @@ const queueDashboardImports =
     GatewayUserPaymentsController,
     GatewayUserTicketsController,
     GatewayOrganizerVenuesController,
+    GatewayOrganizerShowsController,
     HealthController,
   ],
   // No UserModule/OrganizerModule: Nest cannot scope a guard to a module (only APP_GUARD, which

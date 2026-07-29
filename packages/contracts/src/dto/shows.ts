@@ -70,6 +70,36 @@ export const createShowSchema = z.object({
 });
 export type CreateShowDto = z.infer<typeof createShowSchema>;
 
+// Nullable where the column is: clearing a poster or a sale start is a real edit, and
+// `undefined` (absent) already means "leave it alone".
+export const updateShowSchema = createShowSchema.partial().extend({
+  posterUrl: z.string().url().nullable().optional(),
+  saleStartsAt: z.string().datetime().nullable().optional(),
+});
+export type UpdateShowDto = z.infer<typeof updateShowSchema>;
+
+/**
+ * One row of the organizer's own show list. `soldCount`/`capacity`/`revenueCents` live in
+ * `apps/orders` and come back zero from `apps/shows` — zero rather than omitted, so the shape is
+ * the same before and after slice 6 merges the real numbers in.
+ */
+export const organizerShowSchema = showSummarySchema.extend({
+  venueId: z.string().uuid(),
+  venueName: z.string(),
+  city: z.string().nullable(),
+  description: z.string(),
+  saleStartsAt: z.string().nullable(),
+  soldCount: z.number().int(),
+  capacity: z.number().int(),
+  revenueCents: z.number().int(),
+});
+export type OrganizerShow = z.infer<typeof organizerShowSchema>;
+
+export const organizerShowsQuerySchema = z.object({
+  status: z.enum(['draft', 'published', 'cancelled', 'finished']).optional(),
+});
+export type OrganizerShowsQuery = z.infer<typeof organizerShowsQuerySchema>;
+
 export const catalogQuerySchema = z.object({
   cursor: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
