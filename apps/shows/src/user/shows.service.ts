@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, gt } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ne } from 'drizzle-orm';
 import {
   shows,
   sections,
@@ -10,6 +10,17 @@ import {
   type Db,
 } from '@tickethub/db';
 import type { CatalogQuery, ShowSummary, ShowDetail, SeatMap } from '@tickethub/contracts';
+
+/**
+ * A permalink resolves anything that ever went public — `published`, `cancelled`, `finished` —
+ * and hides only `draft`. Deliberately *not* `catalog()`'s `published` filter: that is a browse
+ * surface listing what is on sale, while these are permalinks, and `apps/fulfillment` reads the
+ * title and start time back through them for tickets to shows that have since been cancelled.
+ * Narrowing this to `published` silently renders those as 'Unavailable show'.
+ *
+ * A draft is a 404, never a 403 — a 403 confirms the id is real.
+ */
+const publicShow = (id: string) => and(eq(shows.id, id), ne(shows.status, 'draft'));
 
 @Injectable()
 export class UserShowsService {
@@ -40,7 +51,7 @@ export class UserShowsService {
   }
 
   async detail(id: string): Promise<ShowDetail> {
-    const [e] = await this.db.select().from(shows).where(eq(shows.id, id)).limit(1);
+    const [e] = await this.db.select().from(shows).where(publicShow(id)).limit(1);
     if (!e) throw new NotFoundException('Show not found');
 
     // Only bands that actually price a section: a ticket type mapped to nothing sells no seat,
@@ -72,7 +83,7 @@ export class UserShowsService {
   }
 
   async seatMap(id: string): Promise<SeatMap> {
-    const [e] = await this.db.select().from(shows).where(eq(shows.id, id)).limit(1);
+    const [e] = await this.db.select().from(shows).where(publicShow(id)).limit(1);
     if (!e) throw new NotFoundException('Show not found');
 
     // `show_section_pricing` is the entry point, not the venue's section list: it names exactly the

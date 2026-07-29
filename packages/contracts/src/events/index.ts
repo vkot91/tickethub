@@ -72,6 +72,7 @@ export const ORGANIZER_MESSAGE_PATTERNS = {
   CREATE: 'organizer.create',
   SHOW_IDS: 'organizer.showIds',
   MY_SHOWS: 'organizer.myShows',
+  GET_SHOW: 'organizer.getShow',
   CREATE_SHOW: 'organizer.createShow',
   UPDATE_SHOW: 'organizer.updateShow',
   // Not DELETE_DRAFT: the service branches on the show's own status (draft → delete,

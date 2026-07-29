@@ -8,6 +8,7 @@ describe('OrganizerShowsController', () => {
     createShow: jest.fn().mockResolvedValue({ id: 's1' }),
     updateShow: jest.fn().mockResolvedValue({ id: 's1' }),
     deleteShow: jest.fn().mockResolvedValue(undefined),
+    getShow: jest.fn().mockResolvedValue({ id: 's1' }),
   };
   const publishing = {
     putPricing: jest.fn().mockResolvedValue(undefined),
@@ -33,6 +34,11 @@ describe('OrganizerShowsController', () => {
       { id: 's1' },
     ]);
     expect(svc.myShows).toHaveBeenCalledWith('u1', { status: 'draft' });
+  });
+
+  it('delegates getShow', async () => {
+    await expect(controller.getShow({ userId: 'u1', showId: 's1' })).resolves.toEqual({ id: 's1' });
+    expect(svc.getShow).toHaveBeenCalledWith('u1', 's1');
   });
 
   it('delegates createShow', async () => {

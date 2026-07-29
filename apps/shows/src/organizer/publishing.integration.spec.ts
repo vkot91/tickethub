@@ -95,6 +95,10 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
       assignments: [{ sectionId: stalls.section.id, ticketTypeKey: 'vip' }],
     });
 
+    // The buyer's read is a public permalink, and a draft 404s there — publishing is what makes
+    // the seat map reachable at all, so the round trip has to go through it.
+    await svc.publishShow(organizer.userId, show.id);
+
     const map = await buyerView.seatMap(show.id);
 
     expect(map.sections.map((section) => section.id)).toEqual([stalls.section.id]);
@@ -121,6 +125,7 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
       ticketTypes: [{ key: 'new', name: 'New', tier: 'vip', priceCents: 7000 }],
       assignments: [{ sectionId: built[0].section.id, ticketTypeKey: 'new' }],
     });
+    await svc.publishShow(organizer.userId, show.id);
 
     const map = await buyerView.seatMap(show.id);
     const offered = map.sections.flatMap((section) => section.rows.flatMap((row) => row.seats));

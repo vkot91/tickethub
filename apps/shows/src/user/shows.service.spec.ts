@@ -71,6 +71,20 @@ describe('UserShowsService.detail', () => {
     );
   });
 
+  it('throws NotFound for a draft show', async () => {
+    const { show } = await seedShowGraph(db, { sections: [], show: { status: 'draft' } });
+
+    await expect(svc.detail(show.id)).rejects.toThrow(NotFoundException);
+  });
+
+  // The regression guard for the browse-vs-permalink rule: buyers hold tickets to a cancelled
+  // show, and their ticket list reads the title back through this very method.
+  it('still resolves a cancelled show', async () => {
+    const { show } = await seedShowGraph(db, { sections: [], show: { status: 'cancelled' } });
+
+    expect((await svc.detail(show.id)).status).toBe('cancelled');
+  });
+
   // The show page's price list. Dearest first, and every field is the organizer's own —
   // the page has nothing left to invent.
   it('returns the price tiers dearest first', async () => {
@@ -134,6 +148,15 @@ describe('UserShowsService.seatMap', () => {
     await expect(svc.seatMap('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('throws NotFound for a draft show', async () => {
+    const { show } = await seedShowGraph(db, {
+      sections: [{ name: 'A', rows: 1, seatsPerRow: 1 }],
+      show: { status: 'draft' },
+    });
+
+    await expect(svc.seatMap(show.id)).rejects.toThrow(NotFoundException);
   });
 
   it('builds the seat map from sections, rows, and seats', async () => {

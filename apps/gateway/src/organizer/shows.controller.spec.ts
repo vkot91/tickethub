@@ -40,6 +40,17 @@ describe('GatewayOrganizerShowsController', () => {
     expect(amqp.request).not.toHaveBeenCalled();
   });
 
+  it('forwards a single show read by id', async () => {
+    await controller.getOne(req, 's1');
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.getShow',
+        payload: { userId: 'u1', showId: 's1' },
+      }),
+    );
+  });
+
   it('forwards a create with the parsed dto', async () => {
     const dto = {
       title: 'Neon Nights',
