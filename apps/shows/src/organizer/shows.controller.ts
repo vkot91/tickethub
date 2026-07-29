@@ -5,11 +5,13 @@ import {
   RPC_EXCHANGE,
   type CreateShowDto,
   type OrganizerShowsQuery,
+  type PosterUploadRequestDto,
   type PutPricingDto,
   type UpdateShowDto,
 } from '@tickethub/contracts';
 import { OrganizerShowsService } from './shows.service';
 import { OrganizerPublishingService } from './publishing.service';
+import { OrganizerPosterService } from './poster.service';
 
 // An organizer's own shows. The buyer-facing catalog stays in `user/shows.controller.ts`.
 @Controller()
@@ -17,6 +19,7 @@ export class OrganizerShowsController {
   constructor(
     private readonly showsService: OrganizerShowsService,
     private readonly publishingService: OrganizerPublishingService,
+    private readonly posterService: OrganizerPosterService,
   ) {}
 
   @RabbitRPC({
@@ -89,5 +92,14 @@ export class OrganizerShowsController {
   })
   publishShow(params: { userId: string; showId: string }) {
     return this.publishingService.publishShow(params.userId, params.showId);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.POSTER_UPLOAD_URL,
+    queue: ORGANIZER_MESSAGE_PATTERNS.POSTER_UPLOAD_URL,
+  })
+  posterUploadUrl(params: { userId: string; showId: string; dto: PosterUploadRequestDto }) {
+    return this.posterService.posterUploadUrl(params.userId, params.showId, params.dto.contentType);
   }
 }

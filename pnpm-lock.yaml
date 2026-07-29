@@ -780,6 +780,9 @@ importers:
       '@tickethub/rmq':
         specifier: workspace:*
         version: link:../../packages/rmq
+      '@tickethub/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       amqp-connection-manager:
         specifier: 'catalog:'
         version: 4.1.15(amqplib@0.10.9)

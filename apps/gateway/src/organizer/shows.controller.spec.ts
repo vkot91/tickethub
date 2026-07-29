@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { ROLES_KEY } from '@tickethub/common';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -31,9 +32,11 @@ describe('GatewayOrganizerShowsController', () => {
     );
   });
 
-  // The parse runs before the RPC, so a bad query never reaches the broker.
+  // The parse runs before the RPC, so a bad query never reaches the broker. Asserting the
+  // exception *type* matters: a bare `.toThrow()` is satisfied by the raw ZodError a plain
+  // `schema.parse()` throws, which Nest renders as a 500 — bad input has to be a 400.
   it('rejects a status that is not a show status', () => {
-    expect(() => controller.getList(req, { status: 'sold-out' })).toThrow();
+    expect(() => controller.getList(req, { status: 'sold-out' })).toThrow(BadRequestException);
     expect(amqp.request).not.toHaveBeenCalled();
   });
 
@@ -56,7 +59,9 @@ describe('GatewayOrganizerShowsController', () => {
   });
 
   it('rejects a create with no title before it reaches the service', () => {
-    expect(() => controller.create(req, { description: '', venueId: 'x', startsAt })).toThrow();
+    expect(() => controller.create(req, { description: '', venueId: 'x', startsAt })).toThrow(
+      BadRequestException,
+    );
     expect(amqp.request).not.toHaveBeenCalled();
   });
 
@@ -126,7 +131,27 @@ describe('GatewayOrganizerShowsController', () => {
         ticketTypes: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: -1 }],
         assignments: [],
       }),
-    ).toThrow();
+    ).toThrow(BadRequestException);
+    expect(amqp.request).not.toHaveBeenCalled();
+  });
+
+  it('forwards a poster upload-url request with the parsed content type', async () => {
+    await controller.posterUploadUrl(req, 's1', { contentType: 'image/png' });
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.posterUploadUrl',
+        payload: { userId: 'u1', showId: 's1', dto: { contentType: 'image/png' } },
+      }),
+    );
+  });
+
+  it('rejects a content type outside the three image types', () => {
+    // The signature pins this value onto the object, so anything that gets past here is what the
+    // public bucket ends up serving — `text/html` included.
+    expect(() => controller.posterUploadUrl(req, 's1', { contentType: 'text/html' })).toThrow(
+      BadRequestException,
+    );
     expect(amqp.request).not.toHaveBeenCalled();
   });
 

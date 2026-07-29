@@ -144,6 +144,24 @@ export const putPricingSchema = z.object({
 });
 export type PutPricingDto = z.infer<typeof putPricingSchema>;
 
+/**
+ * The three types MinIO is allowed to accept for a poster. The signature covers the content type,
+ * so an upload URL minted for `image/png` cannot be reused to store a script.
+ */
+export const POSTER_CONTENT_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+export const posterUploadRequestSchema = z.object({
+  contentType: z.enum(POSTER_CONTENT_TYPES),
+});
+export type PosterUploadRequestDto = z.infer<typeof posterUploadRequestSchema>;
+
+export const posterUploadUrlSchema = z.object({
+  uploadUrl: z.string().url(),
+  // What the client then PATCHes onto the show. Not derived client-side — the key layout is the
+  // server's business and it changes the day the bucket does.
+  posterUrl: z.string().url(),
+});
+export type PosterUploadUrl = z.infer<typeof posterUploadUrlSchema>;
+
 export const showPublishedSchema = z.object({
   messageId: z.string().uuid(),
   showId: z.string().uuid(),

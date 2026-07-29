@@ -57,15 +57,15 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
     "@tickethub/tsconfig": "workspace:*",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
     "drizzle-kit": "^0.24.0",
-    "tsx": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
-    "@types/jest": "catalog:",
-    "typescript": "catalog:",
-    "@types/node": "catalog:",
-    "@tickethub/jest-config": "workspace:*",
-    "ts-node": "catalog:"
+    "ts-node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

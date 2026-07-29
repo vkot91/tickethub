@@ -80,6 +80,7 @@ export const ORGANIZER_MESSAGE_PATTERNS = {
   PUT_PRICING: 'organizer.putPricing',
   PUBLISH_CHECKLIST: 'organizer.publishChecklist',
   PUBLISH_SHOW: 'organizer.publishShow',
+  POSTER_UPLOAD_URL: 'organizer.posterUploadUrl',
 } as const;
 
 // The shared venue catalogue. Its own map because it is nobody's property: an organizer reads it
