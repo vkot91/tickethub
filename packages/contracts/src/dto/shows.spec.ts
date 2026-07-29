@@ -4,7 +4,27 @@ import {
   createShowSchema,
   priceTierSchema,
   showDetailSchema,
+  updateShowSchema,
 } from './shows';
+
+describe('updateShowSchema', () => {
+  it('lets an update carry only the fields being changed', () => {
+    expect(updateShowSchema.parse({ title: 'New title' })).toEqual({ title: 'New title' });
+  });
+
+  it('still rejects a bad value on a partial update', () => {
+    expect(() => updateShowSchema.parse({ venueId: 'not-a-uuid' })).toThrow();
+  });
+
+  // Null clears the column; absent leaves it alone. Both have to survive the parse, or the
+  // organizer can never take a poster back down.
+  it('accepts null for the clearable fields', () => {
+    expect(updateShowSchema.parse({ posterUrl: null, saleStartsAt: null })).toEqual({
+      posterUrl: null,
+      saleStartsAt: null,
+    });
+  });
+});
 
 describe('catalogQuerySchema', () => {
   it('defaults limit to 20 and coerces a string limit', () => {

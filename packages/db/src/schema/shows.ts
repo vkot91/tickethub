@@ -85,7 +85,7 @@ export const shows = showsSchema.table(
     venueId: uuid('venue_id')
       .notNull()
       .references(() => venues.id),
-    title: text('title').notNull().unique(),
+    title: text('title').notNull(),
     description: text('description').notNull().default(''),
     posterUrl: text('poster_url'),
     startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
@@ -94,6 +94,11 @@ export const shows = showsSchema.table(
   },
   (t) => ({
     idVenueUq: unique('shows_id_venue_uq').on(t.id, t.venueId),
+    // A title is claimed by a hall for one slot, not forever and not globally. "Neon Nights" at
+    // Zenith tonight does not stop the same title at Zenith next week, by this organizer or any
+    // other — a title that ran once is not retired. What it does stop is the same show being
+    // entered twice into the same slot, which is the only duplicate a buyer could not tell apart.
+    venueTitleSlotUq: unique('shows_venue_title_slot_uq').on(t.venueId, t.title, t.startsAt),
   }),
 );
 

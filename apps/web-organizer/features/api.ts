@@ -1,4 +1,9 @@
-import { catalogPageSchema, createShowSchema, showSummarySchema } from '@tickethub/contracts';
+import {
+  catalogPageSchema,
+  createShowSchema,
+  showSummarySchema,
+  updateShowSchema,
+} from '@tickethub/contracts';
 import { z } from 'zod';
 
 import { clientApi } from '@tickethub/web-kit';
@@ -12,12 +17,9 @@ export const organizerKeys = {
 
 /**
  * None of the organizer endpoints exist yet (BACKEND-GAPS.md §6–§8). These schemas are the
- * shapes the UI needs; move them into `packages/contracts` as each RPC lands. `createShowSchema`
- * is the real thing already — only the update variant is local.
+ * shapes the UI needs; move them into `packages/contracts` as each RPC lands. Show create and
+ * update are the real thing already.
  */
-export const updateShowSchema = createShowSchema.partial();
-export type UpdateShowDto = z.infer<typeof updateShowSchema>;
-
 export const showStatsSchema = z.object({
   soldCount: z.number().int(),
   capacity: z.number().int(),
