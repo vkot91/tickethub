@@ -73,6 +73,13 @@ export const ORGANIZER_MESSAGE_PATTERNS = {
   SHOW_IDS: 'organizer.showIds',
 } as const;
 
+// The shared venue catalogue. Its own map because it is nobody's property: an organizer reads it
+// to pick a hall, and no audience owns a row in it.
+export const VENUES_MESSAGE_PATTERNS = {
+  GET_LIST: 'venues.getList',
+  GET_ONE: 'venues.getOne',
+} as const;
+
 export const ORDERS_MESSAGE_PATTERNS = {
   CREATE: 'orders.create',
   GET: 'orders.get',
