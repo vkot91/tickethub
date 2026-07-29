@@ -42,6 +42,15 @@ export class OrganizerShowsController {
 
   @RabbitRPC({
     exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.GET_SHOW,
+    queue: ORGANIZER_MESSAGE_PATTERNS.GET_SHOW,
+  })
+  getShow(params: { userId: string; showId: string }) {
+    return this.showsService.getShow(params.userId, params.showId);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
     routingKey: ORGANIZER_MESSAGE_PATTERNS.CREATE_SHOW,
     queue: ORGANIZER_MESSAGE_PATTERNS.CREATE_SHOW,
   })

@@ -60,6 +60,14 @@ export class GatewayOrganizerShowsController {
     });
   }
 
+  @Get(':id')
+  getOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.GET_SHOW, {
+      userId: req.user.id,
+      showId: id,
+    });
+  }
+
   @Post()
   create(@Req() req: { user: { id: string } }, @Body() body: unknown) {
     return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.CREATE_SHOW, {

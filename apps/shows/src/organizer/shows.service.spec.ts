@@ -112,6 +112,20 @@ describe('OrganizerShowsService.myShows', () => {
   });
 });
 
+describe('OrganizerShowsService.getShow', () => {
+  // Same shape as the list, so the console's card and its detail page share one type.
+  it('returns the caller’s own show, shaped exactly as the list row', async () => {
+    const { show, organizer } = await seedShowGraph(db, {
+      sections: [],
+      show: { status: 'draft' },
+    });
+
+    const [listed] = await svc.myShows(organizer.userId);
+
+    expect(await svc.getShow(organizer.userId, show.id)).toEqual(listed);
+  });
+});
+
 describe('OrganizerShowsService.createShow', () => {
   const dto = (venueId: string, title = 'Neon Nights') => ({
     title,
@@ -421,6 +435,11 @@ describe('OrganizerShowsService ownership', () => {
       'deleteShow',
       (service: OrganizerShowsService, userId: string, showId: string) =>
         service.deleteShow(userId, showId),
+    ],
+    [
+      'getShow',
+      (service: OrganizerShowsService, userId: string, showId: string) =>
+        service.getShow(userId, showId),
     ],
   ] as const;
 

@@ -36,6 +36,13 @@
       "when": 1785317848913,
       "tag": "0004_shows_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785332780943,
+      "tag": "0005_pricing_ticket_type_idx",
+      "breakpoints": true
     }
   ]
 }

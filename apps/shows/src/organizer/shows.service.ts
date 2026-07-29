@@ -81,6 +81,15 @@ export class OrganizerShowsService {
     return listed.map(toOrganizerShow);
   }
 
+  /** The list's row on its own, for a cold deep-link to the console's show page. */
+  async getShow(userId: string, showId: string): Promise<OrganizerShow> {
+    const organizerId = await this.organizerIdFor(userId);
+
+    await this.ownedShow(organizerId, showId);
+
+    return this.one(showId);
+  }
+
   async createShow(userId: string, dto: CreateShowDto): Promise<OrganizerShow> {
     const organizerId = await this.organizerIdFor(userId);
 
