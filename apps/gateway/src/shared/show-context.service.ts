@@ -1,13 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
-import {
-  SHOWS_MESSAGE_PATTERNS,
-  type OrderList,
-  type OrderSummary,
-  type SeatMap,
-  type ShowDetail,
-} from '@tickethub/contracts';
+import { SHOWS_MESSAGE_PATTERNS, type SeatMap, type ShowDetail } from '@tickethub/contracts';
 
 /** Row 1 seat 2 → "A2", matching what the seat map screen renders. */
 const seatLabel = (rowNumber: number, seatNumber: number): string =>
@@ -16,6 +10,12 @@ const seatLabel = (rowNumber: number, seatNumber: number): string =>
 interface ShowContext {
   title: string;
   labels: Map<string, string>;
+}
+
+/** All this merge needs of a row: which show, and which seats. The rest rides along untouched. */
+interface Contextual {
+  showId: string;
+  seats: { seatId: string }[];
 }
 
 const UNKNOWN_SHOW: ShowContext = { title: 'Unavailable show', labels: new Map() };
@@ -31,7 +31,9 @@ const UNKNOWN_SHOW: ShowContext = { title: 'Unavailable show', labels: new Map()
 export class ShowContextService {
   constructor(private readonly amqp: AmqpConnection) {}
 
-  async withShowContext(items: OrderSummary[]): Promise<OrderList['items']> {
+  async withShowContext<T extends Contextual>(
+    items: T[],
+  ): Promise<(T & { showTitle: string; seatLabels: string[] })[]> {
     const showIds = [...new Set(items.map((item) => item.showId))];
 
     const contexts = new Map(

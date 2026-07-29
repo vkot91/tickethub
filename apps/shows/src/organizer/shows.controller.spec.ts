@@ -4,6 +4,7 @@ import { OrganizerShowsController } from './shows.controller';
 describe('OrganizerShowsController', () => {
   const svc = {
     showIds: jest.fn().mockResolvedValue(['s1']),
+    capacity: jest.fn().mockResolvedValue([{ showId: 's1', capacity: 12 }]),
     myShows: jest.fn().mockResolvedValue([{ id: 's1' }]),
     createShow: jest.fn().mockResolvedValue({ id: 's1' }),
     updateShow: jest.fn().mockResolvedValue({ id: 's1' }),
@@ -27,6 +28,13 @@ describe('OrganizerShowsController', () => {
   it('delegates showIds, unwrapping the userId', async () => {
     await expect(controller.showIds({ userId: 'u1' })).resolves.toEqual(['s1']);
     expect(svc.showIds).toHaveBeenCalledWith('u1');
+  });
+
+  it('delegates capacity, batched', async () => {
+    await expect(controller.capacity({ showIds: ['s1'] })).resolves.toEqual([
+      { showId: 's1', capacity: 12 },
+    ]);
+    expect(svc.capacity).toHaveBeenCalledWith(['s1']);
   });
 
   it('delegates myShows with its status filter', async () => {

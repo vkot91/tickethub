@@ -11,9 +11,18 @@ export const createOrderSchema = z.object({
 });
 export type CreateOrderDto = z.infer<typeof createOrderSchema>;
 
+export const orderStatusSchema = z.enum([
+  'awaiting_payment',
+  'paid',
+  'expired',
+  'cancelled',
+  'refunded',
+]);
+export type OrderStatus = z.infer<typeof orderStatusSchema>;
+
 export const orderResponseSchema = z.object({
   id: uuid,
-  status: z.enum(['awaiting_payment', 'paid', 'expired', 'cancelled', 'refunded']),
+  status: orderStatusSchema,
   totalCents: z.number().int(),
   currency: z.string(),
   expiresAt: z.string(),

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { users, type Db } from '@tickethub/db';
 import type {
   RegisterDto,
@@ -117,6 +117,19 @@ export class AuthService {
     if (!user) throw new NotFoundException('User not found');
 
     return { userId: user.id, email: user.email };
+  }
+
+  /**
+   * The batched sibling of `getUser`: one call resolves every buyer on a page. Missing ids are
+   * simply absent — a deleted buyer is a blank cell, not a failed dashboard.
+   */
+  async getUsersByIds(ids: string[]): Promise<{ id: string; email: string }[]> {
+    if (ids.length === 0) return [];
+
+    return this.db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(inArray(users.id, ids));
   }
 
   async validate(accessToken: string) {

@@ -7,7 +7,7 @@ import * as schema from '../schema';
 import type { Db } from '../client';
 
 // Service schemas to wipe between tests. Add new pgSchema names here as services grow.
-const APP_SCHEMAS = ['auth', 'shows', 'orders', 'payments'];
+const APP_SCHEMAS = ['auth', 'shows', 'orders', 'payments', 'fulfillment'];
 
 // The generated drizzle migrations live at packages/db/drizzle. Under ts-jest,
 // __dirname resolves to src/testing, so the folder is two levels up.

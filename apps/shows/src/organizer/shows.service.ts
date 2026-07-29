@@ -1,6 +1,15 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, type SQL } from 'drizzle-orm';
-import { organizers, shows, showSectionPricing, ticketTypes, venues, type Db } from '@tickethub/db';
+import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import {
+  organizers,
+  rows,
+  seats,
+  shows,
+  showSectionPricing,
+  ticketTypes,
+  venues,
+  type Db,
+} from '@tickethub/db';
 import type {
   CreateShowDto,
   OrganizerShow,
@@ -67,6 +76,34 @@ export class OrganizerShowsService {
       .where(eq(organizers.userId, userId));
 
     return owned.map((show) => show.id);
+  }
+
+  /**
+   * Seats on sale per show — the denominator behind every "sold / capacity" the console shows.
+   * Only sections the show actually prices count; an unpriced section is furniture, not stock.
+   *
+   * Batched on purpose: the dashboard asks about several shows at once, and one round trip per
+   * show is how a dashboard becomes slow. Ownership was resolved by the caller.
+   */
+  async capacity(showIds: string[]): Promise<{ showId: string; capacity: number }[]> {
+    if (showIds.length === 0) return [];
+
+    const counted = await this.db
+      .select({
+        showId: showSectionPricing.showId,
+        capacity: sql<number>`count(${seats.id})::int`,
+      })
+      .from(showSectionPricing)
+      .innerJoin(rows, eq(rows.sectionId, showSectionPricing.sectionId))
+      .innerJoin(seats, eq(seats.rowId, rows.id))
+      .where(inArray(showSectionPricing.showId, showIds))
+      .groupBy(showSectionPricing.showId);
+
+    const byShow = new Map(counted.map((row) => [row.showId, row.capacity]));
+
+    // A show with nothing priced has no group above; it still owes the caller a row, or the
+    // dashboard silently drops the show instead of showing it at zero.
+    return showIds.map((showId) => ({ showId, capacity: byShow.get(showId) ?? 0 }));
   }
 
   async myShows(userId: string, query: OrganizerShowsQuery = {}): Promise<OrganizerShow[]> {

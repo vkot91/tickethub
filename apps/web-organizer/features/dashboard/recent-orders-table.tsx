@@ -1,6 +1,6 @@
 import { Card, formatPrice, OrderStatusPill } from '@tickethub/ui';
 
-import { type RecentOrder } from '../api';
+import { type RecentOrder } from '@tickethub/contracts';
 
 /**
  * ponytail: a plain table. Six static columns, no sorting, filtering or virtualisation —
@@ -48,7 +48,9 @@ export function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
                       {order.id.slice(0, 8)}
                     </td>
                     <td className="py-3 pr-4">{order.showTitle}</td>
-                    <td className="py-3 pr-4 text-fg-muted">{order.buyerEmail}</td>
+                    <td className="py-3 pr-4 text-fg-muted">
+                      {order.buyerEmail ?? 'Unknown buyer'}
+                    </td>
                     <td className="py-3 pr-4 font-mono text-xs text-fg-secondary">
                       {order.seatLabels.join(', ')}
                     </td>

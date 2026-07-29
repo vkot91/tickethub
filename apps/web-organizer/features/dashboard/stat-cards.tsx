@@ -1,6 +1,6 @@
 import { Card, formatPrice } from '@tickethub/ui';
 
-import { type ShowStats } from '../api';
+import { type ShowStats } from '@tickethub/contracts';
 
 function percent(part: number, whole: number): string {
   return whole === 0 ? '—' : `${Math.round((part / whole) * 100)}%`;
