@@ -56,12 +56,21 @@ export const AUTH_MESSAGE_PATTERNS = {
   REFRESH: 'auth.refresh',
   VALIDATE: 'auth.validate',
   GET_USER: 'auth.getUser',
+  BECOME_ORGANIZER: 'auth.becomeOrganizer',
 } as const;
 
+// The buyer-facing surface of apps/shows: catalog reads, no auth.
 export const SHOWS_MESSAGE_PATTERNS = {
   CATALOG: 'shows.catalog',
   DETAIL: 'shows.detail',
   SEAT_MAP: 'shows.seatMap',
+} as const;
+
+// The organizer-facing surface of the same service. A separate map because it is a separate
+// audience with a separate controller — the import line then says which surface a file talks to.
+export const ORGANIZER_MESSAGE_PATTERNS = {
+  CREATE: 'organizer.create',
+  SHOW_IDS: 'organizer.showIds',
 } as const;
 
 export const ORDERS_MESSAGE_PATTERNS = {

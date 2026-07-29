@@ -1,4 +1,9 @@
-import { AUTH_MESSAGE_PATTERNS, SHOWS_MESSAGE_PATTERNS, SHOW_ROUTING_KEYS } from './index';
+import {
+  AUTH_MESSAGE_PATTERNS,
+  ORGANIZER_MESSAGE_PATTERNS,
+  SHOWS_MESSAGE_PATTERNS,
+  SHOW_ROUTING_KEYS,
+} from './index';
 import { userRegisteredSchema } from '../dto/auth';
 import { showPublishedSchema } from '../dto/shows';
 
@@ -6,6 +11,7 @@ describe('contract constants', () => {
   it('exposes the RPC patterns and queue names', () => {
     expect(AUTH_MESSAGE_PATTERNS.LOGIN).toBe('auth.login');
     expect(SHOWS_MESSAGE_PATTERNS.CATALOG).toBe('shows.catalog');
+    expect(ORGANIZER_MESSAGE_PATTERNS.CREATE).toBe('organizer.create');
     expect(SHOW_ROUTING_KEYS.SHOW_CANCELLED).toBe('show.cancelled');
   });
 });

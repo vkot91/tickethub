@@ -138,6 +138,49 @@ describe('AuthService.getUser', () => {
   });
 });
 
+describe('AuthService.becomeOrganizer', () => {
+  it('flips a user to organizer and returns tokens carrying the new role', async () => {
+    const user = await seedUser(db, { email: 'buyer@x.com' });
+    const { svc, redis } = makeService();
+
+    const tokens = await svc.becomeOrganizer(user.id);
+
+    await expect(svc.validate(tokens.accessToken)).resolves.toMatchObject({ role: 'organizer' });
+    expect(redis.set).toHaveBeenCalledWith(
+      `refresh:${user.id}`,
+      tokens.refreshToken,
+      'EX',
+      expect.any(Number),
+    );
+  });
+
+  it('is idempotent for an existing organizer', async () => {
+    const user = await seedUser(db, { role: 'organizer' });
+    const { svc } = makeService();
+
+    const tokens = await svc.becomeOrganizer(user.id);
+
+    await expect(svc.validate(tokens.accessToken)).resolves.toMatchObject({ role: 'organizer' });
+  });
+
+  it('leaves an admin untouched', async () => {
+    const user = await seedUser(db, { role: 'admin' });
+    const { svc } = makeService();
+
+    const tokens = await svc.becomeOrganizer(user.id);
+
+    await expect(svc.validate(tokens.accessToken)).resolves.toMatchObject({ role: 'admin' });
+  });
+
+  it('throws NotFound for an unknown id', async () => {
+    const { svc } = makeService();
+
+    await expect(svc.becomeOrganizer('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
+});
+
 describe('AuthService.validate', () => {
   it('returns the payload for a valid access token', async () => {
     const { accessToken } = await jwt.createTokens({ id: 'u1', email: 'a@b.com', role: 'user' });

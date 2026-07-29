@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuid } from 'uuid';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { users, type Db } from '@tickethub/db';
 import type {
   RegisterDto,
@@ -82,6 +82,31 @@ export class AuthService {
     const tokens = await this.jwt.createTokens({ id: user.id, email: user.email, role: user.role });
 
     await this.redis.set(`refresh:${user.id}`, tokens.refreshToken, 'EX', 60 * 60 * 24 * 30); // rotation
+
+    return tokens;
+  }
+
+  /**
+   * Self-serve role flip. Only `user` is promoted — an admin keeps its role and an existing
+   * organizer is a no-op, so the route is safe to retry.
+   *
+   * Returns a fresh token pair because the caller's JWT still says `user` and every organizer
+   * route is behind RolesGuard; the refresh token is rotated into Redis like login does, or the
+   * next refresh would fail against the stored one.
+   */
+  async becomeOrganizer(userId: string): Promise<AuthTokens> {
+    await this.db
+      .update(users)
+      .set({ role: 'organizer' })
+      .where(and(eq(users.id, userId), eq(users.role, 'user')));
+
+    const user = await this.db.query.users.findFirst({ where: eq(users.id, userId) });
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const tokens = await this.jwt.createTokens({ id: user.id, email: user.email, role: user.role });
+
+    await this.redis.set(`refresh:${user.id}`, tokens.refreshToken, 'EX', 60 * 60 * 24 * 30);
 
     return tokens;
   }

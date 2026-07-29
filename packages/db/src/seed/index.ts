@@ -50,6 +50,9 @@ interface ShowSpec {
   soldEveryNthPair?: number;
 }
 
+// The venue catalogue, curated by hand. Venues belong to nobody: any organizer books any hall,
+// so this list is shared demo furniture, not one organizer's property. Add a hall here until
+// something owns the write path.
 const VENUES: VenueSpec[] = [
   {
     name: 'Demo Arena',
@@ -207,7 +210,7 @@ const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i + 1
 const buyerId = (index: number): string =>
   `0000${String(index % 10000).padStart(4, '0')}-0000-4000-8000-000000000000`;
 
-async function ensureVenue(db: Db, organizerId: string, spec: VenueSpec): Promise<string> {
+async function ensureVenue(db: Db, spec: VenueSpec): Promise<string> {
   const [existing] = await db.select().from(venues).where(eq(venues.name, spec.name));
 
   const venue =
@@ -215,7 +218,7 @@ async function ensureVenue(db: Db, organizerId: string, spec: VenueSpec): Promis
     (
       await db
         .insert(venues)
-        .values({ organizerId, name: spec.name, address: spec.address, city: spec.city })
+        .values({ name: spec.name, address: spec.address, city: spec.city })
         .returning()
     )[0];
 
@@ -433,7 +436,7 @@ export async function seed(db: Db): Promise<{
 
   const venueIds = new Map<string, string>();
   for (const venueSpec of VENUES) {
-    venueIds.set(venueSpec.name, await ensureVenue(db, orgRow.id, venueSpec));
+    venueIds.set(venueSpec.name, await ensureVenue(db, venueSpec));
   }
 
   const showIds = new Map<string, string>();
@@ -450,7 +453,7 @@ export async function seed(db: Db): Promise<{
   // Flash-sale target: its own venue/section/row with exactly ONE seat, published
   // show — the contended seat for the k6 oversell test. Idempotent via select-first.
   const flashTitle = 'Flash Sale (1 seat)';
-  const flashVenueId = await ensureVenue(db, orgRow.id, {
+  const flashVenueId = await ensureVenue(db, {
     name: 'Flash Arena',
     address: '1 Flash St',
     city: 'Kyiv',

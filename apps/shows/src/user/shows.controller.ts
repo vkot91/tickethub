@@ -1,11 +1,11 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import { RPC_EXCHANGE, SHOWS_MESSAGE_PATTERNS, type CatalogQuery } from '@tickethub/contracts';
-import { ShowsService } from './shows.service';
+import { UserShowsService } from './shows.service';
 
 @Controller()
-export class ShowsController {
-  constructor(private readonly showsService: ShowsService) {}
+export class UserShowsController {
+  constructor(private readonly showsService: UserShowsService) {}
 
   @RabbitRPC({
     exchange: RPC_EXCHANGE,

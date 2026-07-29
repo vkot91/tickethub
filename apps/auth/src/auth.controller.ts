@@ -57,4 +57,13 @@ export class AuthController {
   getUser(params: { userId: string }) {
     return this.authService.getUser(params.userId);
   }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
+    queue: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
+  })
+  becomeOrganizer(params: { userId: string }) {
+    return this.authService.becomeOrganizer(params.userId);
+  }
 }

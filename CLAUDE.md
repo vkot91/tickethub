@@ -44,6 +44,17 @@ transactions (saga + outbox), concurrency.
   `Slot` for `asChild` composition, `Label`, `Dialog`, `Toast`, `Progress`, `Select`, `Tabs`.
   Radix owns behavior and accessibility (focus, keyboard, ARIA); we own only the `cva` variants
   that map design tokens onto it. Do not hand-roll a control Radix already ships.
+- **Audience folders in every app that serves more than one.** `src/user/` is buyer-facing
+  (`apps/web-user`), `src/organizer/` is the console (`apps/web-organizer`), `src/shared/` holds only
+  what both genuinely use — and is not created until something does. **Folder is the audience, file is
+  the resource, class is `<Audience><Resource><Kind>`**: `organizer/shows.controller.ts` →
+  `OrganizerShowsController`, `user/shows.controller.ts` → `UserShowsController`. Both may talk to the
+  same tables; they are different files because they serve different callers, return different shapes
+  and carry different guards. A file is never half public catalog and half authenticated authoring —
+  that is how a route ends up unguarded. Applies to `apps/gateway` and `apps/shows` today, and to any
+  service the console reaches into next (`apps/orders` stats, `apps/fulfillment` check-in).
+  RPC pattern maps follow the same seam: `SHOWS_MESSAGE_PATTERNS` is the buyer catalog surface,
+  `ORGANIZER_MESSAGE_PATTERNS` the console's — one map per audience surface, never one map mixing both.
 - Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
   (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
   `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level

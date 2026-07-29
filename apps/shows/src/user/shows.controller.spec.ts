@@ -1,12 +1,12 @@
-import { ShowsController } from './shows.controller';
+import { UserShowsController } from './shows.controller';
 
-describe('ShowsController', () => {
+describe('UserShowsController', () => {
   const svc = {
     catalog: jest.fn().mockResolvedValue('cat'),
     detail: jest.fn().mockResolvedValue('det'),
     seatMap: jest.fn().mockResolvedValue('map'),
   };
-  const controller = new ShowsController(svc as never);
+  const controller = new UserShowsController(svc as never);
 
   it('delegates catalog to the service', async () => {
     await controller.catalog({ limit: 20 } as never);
