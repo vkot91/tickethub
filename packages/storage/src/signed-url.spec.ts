@@ -63,3 +63,59 @@ describe('StorageClient.getSignedUrl', () => {
     expect(url.host).toBe('minio:9000');
   });
 });
+
+// Same offline-signing rationale as above: the upload URL is a capability string, and everything
+// that makes it safe — the host, the expiry, the content type it pins the object to — is readable
+// straight out of the query string.
+describe('StorageClient.getSignedUploadUrl', () => {
+  const config = {
+    endpoint: 'http://minio:9000',
+    publicEndpoint: 'http://localhost:9000',
+    accessKey: 'key',
+    secretKey: 'secret',
+    bucket: 'posters',
+  };
+
+  const uploadUrl = (contentType = 'image/png') =>
+    new StorageClient(config).getSignedUploadUrl('show-1/abc.png', { ttl: 300, contentType });
+
+  it('signs against the browser-reachable host — the browser is what PUTs here', async () => {
+    const url = new URL(await uploadUrl());
+
+    expect(url.host).toBe('localhost:9000');
+    expect(url.pathname).toBe('/posters/show-1/abc.png');
+  });
+
+  it('covers the content type in the signature', async () => {
+    // Without content-type among the signed headers the URL stops being "store one PNG here" and
+    // becomes "store anything here" — a script uploaded under an image key, served from a
+    // public-read bucket.
+    const url = new URL(await uploadUrl());
+
+    expect(url.searchParams.get('X-Amz-SignedHeaders')).toContain('content-type');
+  });
+
+  it('carries the requested ttl as the expiry', async () => {
+    const url = new URL(await uploadUrl());
+
+    expect(url.searchParams.get('X-Amz-Expires')).toBe('300');
+  });
+
+  it('gives the plain public URL of the same key, with no signature on it', async () => {
+    // What the client PATCHes onto the show. A signed URL here would rot after the ttl and leave
+    // the show pointing at a 403.
+    const url = new URL(new StorageClient(config).publicUrl('show-1/abc.png'));
+
+    expect(url.host).toBe('localhost:9000');
+    expect(url.pathname).toBe('/posters/show-1/abc.png');
+    expect(url.search).toBe('');
+  });
+
+  it('signs a different content type differently', async () => {
+    const [png, webp] = await Promise.all([uploadUrl('image/png'), uploadUrl('image/webp')]);
+
+    expect(new URL(png).searchParams.get('X-Amz-Signature')).not.toBe(
+      new URL(webp).searchParams.get('X-Amz-Signature'),
+    );
+  });
+});

@@ -45,6 +45,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:test": "drizzle-kit migrate --config=drizzle.test.config.ts",
     "db:studio": "drizzle-kit studio",
+    "db:dbml": "tsx dbml.ts",
     "db:seed": "tsx src/seed/index.ts",
     "db:reset": "tsx src/reset.ts && drizzle-kit migrate"
   },
@@ -57,15 +58,16 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "catalog:",
+    "@tickethub/jest-config": "workspace:*",
     "@tickethub/tsconfig": "workspace:*",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "drizzle-dbml-generator": "^0.9.0",
     "drizzle-kit": "^0.24.0",
-    "tsx": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
-    "@types/jest": "catalog:",
-    "typescript": "catalog:",
-    "@types/node": "catalog:",
-    "@tickethub/jest-config": "workspace:*",
-    "ts-node": "catalog:"
+    "ts-node": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
   }
 }

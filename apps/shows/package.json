@@ -19,6 +19,7 @@
     "@tickethub/env": "workspace:*",
     "@tickethub/rmq": "workspace:*",
     "@tickethub/outbox": "workspace:*",
+    "@tickethub/storage": "workspace:*",
     "@nestjs/common": "catalog:",
     "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/core": "catalog:",

@@ -46,6 +46,10 @@ services:
     environment:
       MINIO_ROOT_USER: tickethub
       MINIO_ROOT_PASSWORD: tickethub
+      # Poster upload is the one request that leaves the browser for a non-gateway origin: the
+      # organizer PUTs straight here with a presigned URL. Without CORS the preflight fails in the
+      # browser and nowhere else — every test still passes, because none of them are a browser.
+      MINIO_API_CORS_ALLOW_ORIGIN: 'http://admin.localhost:4001,http://app.localhost:4000'
     volumes: ['miniodata:/data']
   # One-shot: create the posters/tickets buckets, then exit. ponytail: retries until MinIO is up.
   minio-setup:

@@ -14,7 +14,14 @@ describe('OrganizerShowsController', () => {
     publishChecklist: jest.fn().mockResolvedValue({ hasTicketTypes: true }),
     publishShow: jest.fn().mockResolvedValue(undefined),
   };
-  const controller = new OrganizerShowsController(svc as never, publishing as never);
+  const poster = {
+    posterUploadUrl: jest.fn().mockResolvedValue({ uploadUrl: 'u', posterUrl: 'p' }),
+  };
+  const controller = new OrganizerShowsController(
+    svc as never,
+    publishing as never,
+    poster as never,
+  );
 
   it('delegates showIds, unwrapping the userId', async () => {
     await expect(controller.showIds({ userId: 'u1' })).resolves.toEqual(['s1']);
@@ -72,5 +79,13 @@ describe('OrganizerShowsController', () => {
     await controller.publishShow({ userId: 'u1', showId: 's1' });
 
     expect(publishing.publishShow).toHaveBeenCalledWith('u1', 's1');
+  });
+
+  it('delegates posterUploadUrl, unwrapping the content type out of the dto', async () => {
+    await expect(
+      controller.posterUploadUrl({ userId: 'u1', showId: 's1', dto: { contentType: 'image/png' } }),
+    ).resolves.toEqual({ uploadUrl: 'u', posterUrl: 'p' });
+
+    expect(poster.posterUploadUrl).toHaveBeenCalledWith('u1', 's1', 'image/png');
   });
 });
