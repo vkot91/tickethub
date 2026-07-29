@@ -26,12 +26,16 @@ export const organizers = showsSchema.table('organizers', {
   name: text('name').notNull(),
 });
 
+/**
+ * A building, not a possession. Venues are a shared catalogue: one organizer runs shows in several
+ * halls, and one hall hosts several organizers. Nothing here references `organizers`.
+ *
+ * ponytail: seeded by hand for now (`src/seed/index.ts`). Whoever curates it later — an admin
+ * surface, an import — owns the write path; organizers only ever pick from the list.
+ */
 export const venues = showsSchema.table('venues', {
   id: uuid('id').primaryKey().defaultRandom(),
-  organizerId: uuid('organizer_id')
-    .notNull()
-    .references(() => organizers.id),
-  name: text('name').notNull(),
+  name: text('name').notNull().unique(),
   address: text('address'),
   city: text('city'),
 });

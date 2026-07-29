@@ -18,6 +18,7 @@ import { ShowContextService } from './shared/show-context.service';
 import { HealthController } from './health/health.controller';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 import { schema, type Config } from './config';
+import { OrganizerShowsService } from './organizer/shows.service';
 
 // The delayed-release queue owned by the orders service (apps/orders); we attach read/monitor
 // access here so bull-board can inspect it.
@@ -61,7 +62,11 @@ const queueDashboardImports =
   ],
   // No UserModule/OrganizerModule: Nest cannot scope a guard to a module (only APP_GUARD, which
   // is global), so a module per audience would be grouping for its own sake. The folders group.
-  providers: [{ provide: APP_GUARD, useClass: RateLimitGuard }, ShowContextService],
+  providers: [
+    { provide: APP_GUARD, useClass: RateLimitGuard },
+    ShowContextService,
+    OrganizerShowsService,
+  ],
 })
 export class AppModule implements NestModule {
   // Seed the correlation id at the edge, for every route, before the handlers run.

@@ -12,7 +12,7 @@ import {
 import type { CatalogQuery, ShowSummary, ShowDetail, SeatMap } from '@tickethub/contracts';
 
 @Injectable()
-export class ShowsService {
+export class UserShowsService {
   constructor(private readonly db: Db) {}
 
   async catalog(q: CatalogQuery): Promise<{ items: ShowSummary[]; nextCursor: string | null }> {

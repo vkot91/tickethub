@@ -2,18 +2,18 @@ import { NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { showSectionPricing, ticketTypes } from '@tickethub/db';
 import { getTestDb, seedShowGraph, type TestDb } from '@tickethub/db/testing';
-import { ShowsService } from './shows.service';
+import { UserShowsService } from './shows.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.
 let db: TestDb;
-let svc: ShowsService;
+let svc: UserShowsService;
 
 beforeEach(async () => {
   db = await getTestDb();
-  svc = new ShowsService(db);
+  svc = new UserShowsService(db);
 });
 
-describe('ShowsService.catalog', () => {
+describe('UserShowsService.catalog', () => {
   it('returns items and a nextCursor when the page is full', async () => {
     const ids: string[] = [];
     for (let i = 0; i < 21; i++) {
@@ -55,7 +55,7 @@ describe('ShowsService.catalog', () => {
   });
 });
 
-describe('ShowsService.detail', () => {
+describe('UserShowsService.detail', () => {
   it('returns the show when found', async () => {
     const { show } = await seedShowGraph(db, { sections: [], show: { title: 'Show' } });
 
@@ -129,7 +129,7 @@ describe('ShowsService.detail', () => {
   });
 });
 
-describe('ShowsService.seatMap', () => {
+describe('UserShowsService.seatMap', () => {
   it('throws NotFound when the show is missing', async () => {
     await expect(svc.seatMap('00000000-0000-0000-0000-000000000000')).rejects.toThrow(
       NotFoundException,

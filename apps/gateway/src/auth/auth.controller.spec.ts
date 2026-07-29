@@ -19,4 +19,23 @@ describe('GatewayAuthController', () => {
       }),
     );
   });
+
+  it('materialises the organizer before flipping the role, and returns the new tokens', async () => {
+    amqp.request.mockClear();
+
+    await expect(
+      controller.becomeOrganizer({ user: { id: 'u1' } }, { name: 'Anna' }),
+    ).resolves.toBe('tokens');
+
+    expect(amqp.request.mock.calls.map(([opts]) => opts.routingKey)).toEqual([
+      'organizer.create',
+      'auth.becomeOrganizer',
+    ]);
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.create',
+        payload: { userId: 'u1', name: 'Anna' },
+      }),
+    );
+  });
 });

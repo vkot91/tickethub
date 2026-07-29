@@ -15,6 +15,13 @@
       "when": 1785220783179,
       "tag": "0001_show_section_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785311562857,
+      "tag": "0002_venues_are_shared",
+      "breakpoints": true
     }
   ]
 }

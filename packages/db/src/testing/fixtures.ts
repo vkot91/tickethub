@@ -52,7 +52,7 @@ export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
 
   const [venue] = await db
     .insert(venues)
-    .values({ organizerId: organizer.id, name: `Venue ${n}` })
+    .values({ name: `Venue ${n}` })
     .returning();
 
   const sectionSpecs = spec.sections ?? [{ rows: 1, seatsPerRow: 1 }];
