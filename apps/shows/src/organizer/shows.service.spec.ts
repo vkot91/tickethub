@@ -2,7 +2,10 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { organizers, shows, showSectionPricing, ticketTypes, venues } from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
+import { OutboxRepository } from '@tickethub/outbox';
+import { showsOutbox } from '@tickethub/db';
 import { OrganizerShowsService } from './shows.service';
+import { OrganizerPublishingService } from './publishing.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.
 let db: TestDb;
@@ -10,7 +13,10 @@ let svc: OrganizerShowsService;
 
 beforeEach(async () => {
   db = await getTestDb();
-  svc = new OrganizerShowsService(db);
+  svc = new OrganizerShowsService(
+    db,
+    new OrganizerPublishingService(db, new OutboxRepository(db, showsOutbox)),
+  );
 });
 
 const UNKNOWN_ID = '00000000-0000-0000-0000-000000000000';
@@ -377,14 +383,29 @@ describe('OrganizerShowsService.deleteShow', () => {
     ).toEqual([]);
   });
 
-  it.each(['published', 'cancelled', 'finished'] as const)(
-    'refuses to delete a %s show',
-    async (status) => {
-      const { show, organizer } = await seedShowGraph(db, { show: { status }, sections: [] });
+  // The published branch: a show people hold tickets to is cancelled and kept, never deleted, and
+  // the refund fan-out rides the outbox message written in the same transaction.
+  it('cancels a published show instead of deleting it, and enqueues show.cancelled', async () => {
+    const { show, organizer } = await seedShowGraph(db, { show: { status: 'published' } });
 
-      await expect(svc.deleteShow(organizer.userId, show.id)).rejects.toThrow(ConflictException);
-    },
-  );
+    await svc.deleteShow(organizer.userId, show.id);
+
+    const [kept] = await db.select().from(shows).where(eq(shows.id, show.id));
+    expect(kept.status).toBe('cancelled');
+
+    const messages = await db
+      .select()
+      .from(showsOutbox)
+      .where(eq(showsOutbox.routingKey, 'show.cancelled'));
+    expect(messages).toHaveLength(1);
+    expect(messages[0].payload).toMatchObject({ showId: show.id });
+  });
+
+  it.each(['cancelled', 'finished'] as const)('refuses to delete a %s show', async (status) => {
+    const { show, organizer } = await seedShowGraph(db, { show: { status }, sections: [] });
+
+    await expect(svc.deleteShow(organizer.userId, show.id)).rejects.toThrow(ConflictException);
+  });
 });
 
 // Ownership is a 404, never a 403: an organizer must not be able to probe for a competitor's

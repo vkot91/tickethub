@@ -9,7 +9,12 @@ describe('OrganizerShowsController', () => {
     updateShow: jest.fn().mockResolvedValue({ id: 's1' }),
     deleteShow: jest.fn().mockResolvedValue(undefined),
   };
-  const controller = new OrganizerShowsController(svc as never);
+  const publishing = {
+    putPricing: jest.fn().mockResolvedValue(undefined),
+    publishChecklist: jest.fn().mockResolvedValue({ hasTicketTypes: true }),
+    publishShow: jest.fn().mockResolvedValue(undefined),
+  };
+  const controller = new OrganizerShowsController(svc as never, publishing as never);
 
   it('delegates showIds, unwrapping the userId', async () => {
     await expect(controller.showIds({ userId: 'u1' })).resolves.toEqual(['s1']);
@@ -46,5 +51,26 @@ describe('OrganizerShowsController', () => {
     await controller.deleteShow({ userId: 'u1', showId: 's1' });
 
     expect(svc.deleteShow).toHaveBeenCalledWith('u1', 's1');
+  });
+
+  it('delegates putPricing to the publishing service', async () => {
+    const dto = { ticketTypes: [], assignments: [] };
+
+    await controller.putPricing({ userId: 'u1', showId: 's1', dto });
+
+    expect(publishing.putPricing).toHaveBeenCalledWith('u1', 's1', dto);
+  });
+
+  it('delegates publishChecklist', async () => {
+    await expect(controller.publishChecklist({ userId: 'u1', showId: 's1' })).resolves.toEqual({
+      hasTicketTypes: true,
+    });
+    expect(publishing.publishChecklist).toHaveBeenCalledWith('u1', 's1');
+  });
+
+  it('delegates publishShow', async () => {
+    await controller.publishShow({ userId: 'u1', showId: 's1' });
+
+    expect(publishing.publishShow).toHaveBeenCalledWith('u1', 's1');
   });
 });

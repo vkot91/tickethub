@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -16,6 +17,7 @@ import {
   ORGANIZER_MESSAGE_PATTERNS,
   createShowSchema,
   organizerShowsQuerySchema,
+  putPricingSchema,
   updateShowSchema,
 } from '@tickethub/contracts';
 import { rpcRequest } from '@tickethub/rmq';
@@ -61,8 +63,36 @@ export class GatewayOrganizerShowsController {
     });
   }
 
-  // One pattern, whatever the status: slice 4 turns this into delete-or-cancel inside `apps/shows`,
-  // where the status is read and acted on in the same place.
+  // What still stands between this draft and going on sale. A convenience for the popover — the
+  // publish route re-checks the same rules, because this answer is stale the moment it is read.
+  @Get(':id/publish-checklist')
+  publishChecklist(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUBLISH_CHECKLIST, {
+      userId: req.user.id,
+      showId: id,
+    });
+  }
+
+  @Post(':id/publish')
+  publish(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUBLISH_SHOW, {
+      userId: req.user.id,
+      showId: id,
+    });
+  }
+
+  // PUT, not PATCH: the body is the show's whole pricing, and `apps/shows` replaces it wholesale.
+  @Put(':id/pricing')
+  putPricing(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: unknown) {
+    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUT_PRICING, {
+      userId: req.user.id,
+      showId: id,
+      dto: putPricingSchema.parse(body),
+    });
+  }
+
+  // One pattern, whatever the status: `apps/shows` reads the status and either deletes the draft
+  // or cancels the published show, so the client never picks a verb from a stale status.
   @Delete(':id')
   remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.DELETE_SHOW, {

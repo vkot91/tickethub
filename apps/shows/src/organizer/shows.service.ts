@@ -7,6 +7,7 @@ import type {
   OrganizerShowsQuery,
   UpdateShowDto,
 } from '@tickethub/contracts';
+import { OrganizerPublishingService } from './publishing.service';
 
 /**
  * Which fields an edit may touch, per status. A published show's building and start time are
@@ -49,7 +50,10 @@ const toOrganizerShow = (show: ShowRow): OrganizerShow => ({
  */
 @Injectable()
 export class OrganizerShowsService {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly publishing: OrganizerPublishingService,
+  ) {}
 
   /**
    * The single mechanism by which orders, fulfillment and the gateway fan-outs learn what an
@@ -142,13 +146,17 @@ export class OrganizerShowsService {
   }
 
   /**
-   * Draft only for now. Slice 4 adds the published → cancel branch behind this same method: the
-   * status has to be read and acted on in one place, or the caller acts on a stale one.
+   * Delete or cancel, decided here rather than by the caller — the status has to be read and acted
+   * on in one place, or the client picks its verb from a status that has since moved on. A draft
+   * never sold anything and is removed; a published show is cancelled and kept, because people
+   * hold tickets to it and `apps/orders` refunds them off the event.
    */
   async deleteShow(userId: string, showId: string): Promise<void> {
     const organizerId = await this.organizerIdFor(userId);
 
     const show = await this.ownedShow(organizerId, showId);
+
+    if (show.status === 'published') return this.publishing.cancelShow(userId, showId);
 
     if (show.status !== 'draft') throw new ConflictException(`Cannot delete a ${show.status} show`);
 
