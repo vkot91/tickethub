@@ -7,7 +7,8 @@
     "dev": "node --watch --conditions=development -r ts-node/register src/main.ts",
     "start": "node dist/main",
     "lint": "eslint src",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test:integration": "jest --testPathIgnorePatterns=/node_modules/ --testMatch='**/*.integration.spec.ts' --coverage=false --forceExit --runInBand --setupFiles @tickethub/db/testing/integration-env"
   },
   "dependencies": {
     "zod": "catalog:",
@@ -15,7 +16,9 @@
     "@tickethub/config": "workspace:*",
     "@tickethub/common": "workspace:*",
     "@tickethub/db": "workspace:*",
+    "@tickethub/env": "workspace:*",
     "@tickethub/rmq": "workspace:*",
+    "@tickethub/outbox": "workspace:*",
     "@nestjs/common": "catalog:",
     "@golevelup/nestjs-rabbitmq": "catalog:",
     "@nestjs/core": "catalog:",

@@ -82,6 +82,54 @@ describe('GatewayOrganizerShowsController', () => {
     );
   });
 
+  it('forwards a publish-checklist read by show id', async () => {
+    await controller.publishChecklist(req, 's1');
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.publishChecklist',
+        payload: { userId: 'u1', showId: 's1' },
+      }),
+    );
+  });
+
+  it('forwards a publish by show id', async () => {
+    await controller.publish(req, 's1');
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.publishShow',
+        payload: { userId: 'u1', showId: 's1' },
+      }),
+    );
+  });
+
+  it('forwards pricing with the parsed dto', async () => {
+    const dto = {
+      ticketTypes: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: 9000 }],
+      assignments: [{ sectionId: crypto.randomUUID(), ticketTypeKey: 'vip' }],
+    };
+
+    await controller.putPricing(req, 's1', dto);
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.putPricing',
+        payload: { userId: 'u1', showId: 's1', dto },
+      }),
+    );
+  });
+
+  it('rejects a negative price before it reaches the service', () => {
+    expect(() =>
+      controller.putPricing(req, 's1', {
+        ticketTypes: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: -1 }],
+        assignments: [],
+      }),
+    ).toThrow();
+    expect(amqp.request).not.toHaveBeenCalled();
+  });
+
   // Guards on the class, not the handlers: a route added later must be guarded by default.
   // Anonymous → 401 from JwtAuthGuard, a `user`-role token → 403 from RolesGuard.
   it('guards every route at the class level', () => {

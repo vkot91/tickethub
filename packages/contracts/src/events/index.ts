@@ -77,6 +77,9 @@ export const ORGANIZER_MESSAGE_PATTERNS = {
   // Not DELETE_DRAFT: the service branches on the show's own status (draft → delete,
   // published → cancel in slice 4). The gateway cannot branch without reading a stale status.
   DELETE_SHOW: 'organizer.deleteShow',
+  PUT_PRICING: 'organizer.putPricing',
+  PUBLISH_CHECKLIST: 'organizer.publishChecklist',
+  PUBLISH_SHOW: 'organizer.publishShow',
 } as const;
 
 // The shared venue catalogue. Its own map because it is nobody's property: an organizer reads it

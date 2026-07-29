@@ -29,6 +29,13 @@
       "when": 1785315917375,
       "tag": "0003_show_title_per_venue_slot",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785317848913,
+      "tag": "0004_shows_outbox",
+      "breakpoints": true
     }
   ]
 }

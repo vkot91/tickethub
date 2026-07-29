@@ -106,6 +106,44 @@ export const catalogQuerySchema = z.object({
 });
 export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
 
+/**
+ * What still stands between a draft and going on sale. The popover renders it; it is never the
+ * gate — `publishShow` re-evaluates the same three booleans server-side, because the client's
+ * copy is stale the moment anything else changes the show.
+ */
+export const publishChecklistSchema = z.object({
+  hasTicketTypes: z.boolean(),
+  hasPricedSections: z.boolean(),
+  startsInFuture: z.boolean(),
+  pricedSectionCount: z.number().int(),
+  sectionCount: z.number().int(),
+  seatsOnSale: z.number().int(),
+});
+export type PublishChecklist = z.infer<typeof publishChecklistSchema>;
+
+/**
+ * Draft-only, transactional, wholesale replace of a show's bands and which sections they price.
+ * `key` is a client-side handle so an assignment can reference a band that has no id yet; the
+ * server maps it to the inserted id and never persists it.
+ */
+export const putPricingSchema = z.object({
+  ticketTypes: z.array(
+    z.object({
+      key: z.string().min(1),
+      name: z.string().min(1),
+      tier: seatTierSchema,
+      priceCents: z.number().int().min(0),
+    }),
+  ),
+  assignments: z.array(
+    z.object({
+      sectionId: z.string().uuid(),
+      ticketTypeKey: z.string().min(1),
+    }),
+  ),
+});
+export type PutPricingDto = z.infer<typeof putPricingSchema>;
+
 export const showPublishedSchema = z.object({
   messageId: z.string().uuid(),
   showId: z.string().uuid(),

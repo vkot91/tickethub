@@ -5,14 +5,19 @@ import {
   RPC_EXCHANGE,
   type CreateShowDto,
   type OrganizerShowsQuery,
+  type PutPricingDto,
   type UpdateShowDto,
 } from '@tickethub/contracts';
 import { OrganizerShowsService } from './shows.service';
+import { OrganizerPublishingService } from './publishing.service';
 
 // An organizer's own shows. The buyer-facing catalog stays in `user/shows.controller.ts`.
 @Controller()
 export class OrganizerShowsController {
-  constructor(private readonly showsService: OrganizerShowsService) {}
+  constructor(
+    private readonly showsService: OrganizerShowsService,
+    private readonly publishingService: OrganizerPublishingService,
+  ) {}
 
   @RabbitRPC({
     exchange: RPC_EXCHANGE,
@@ -57,5 +62,32 @@ export class OrganizerShowsController {
   })
   deleteShow(params: { userId: string; showId: string }) {
     return this.showsService.deleteShow(params.userId, params.showId);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.PUT_PRICING,
+    queue: ORGANIZER_MESSAGE_PATTERNS.PUT_PRICING,
+  })
+  putPricing(params: { userId: string; showId: string; dto: PutPricingDto }) {
+    return this.publishingService.putPricing(params.userId, params.showId, params.dto);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.PUBLISH_CHECKLIST,
+    queue: ORGANIZER_MESSAGE_PATTERNS.PUBLISH_CHECKLIST,
+  })
+  publishChecklist(params: { userId: string; showId: string }) {
+    return this.publishingService.publishChecklist(params.userId, params.showId);
+  }
+
+  @RabbitRPC({
+    exchange: RPC_EXCHANGE,
+    routingKey: ORGANIZER_MESSAGE_PATTERNS.PUBLISH_SHOW,
+    queue: ORGANIZER_MESSAGE_PATTERNS.PUBLISH_SHOW,
+  })
+  publishShow(params: { userId: string; showId: string }) {
+    return this.publishingService.publishShow(params.userId, params.showId);
   }
 }

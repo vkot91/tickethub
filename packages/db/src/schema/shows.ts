@@ -8,6 +8,7 @@ import {
   primaryKey,
   foreignKey,
 } from 'drizzle-orm/pg-core';
+import { createOutboxTable, createProcessedMessagesTable } from './outbox';
 
 export const showsSchema = pgSchema('shows');
 export const showStatusEnum = showsSchema.enum('show_status', [
@@ -149,3 +150,9 @@ export const showSectionPricing = showsSchema.table(
     }),
   }),
 );
+
+// `shows` publishes `show.published` and `show.cancelled`; both must commit with the status
+// change that caused them, never after it. No consumer lives here yet — `processed_messages` is
+// created anyway, because the day one does, its absence is a silent double-processing bug.
+export const showsOutbox = createOutboxTable(showsSchema);
+export const showsProcessedMessages = createProcessedMessagesTable(showsSchema);
