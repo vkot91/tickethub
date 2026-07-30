@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { ORGANIZER_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import { ORGANIZER_PROFILE_MESSAGE_PATTERNS } from '@tickethub/contracts';
 import { rpcSub } from '@tickethub/rmq';
 import { OrganizerService } from './organizer.service';
 
@@ -10,7 +10,7 @@ import { OrganizerService } from './organizer.service';
 export class OrganizerController {
   constructor(private readonly organizerService: OrganizerService) {}
 
-  @RabbitRPC(rpcSub(ORGANIZER_MESSAGE_PATTERNS.CREATE))
+  @RabbitRPC(rpcSub(ORGANIZER_PROFILE_MESSAGE_PATTERNS.CREATE))
   create(params: { userId: string; name: string }) {
     return this.organizerService.create(params.userId, params.name);
   }

@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { ORDERS_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import { ORGANIZER_ORDERS_MESSAGE_PATTERNS } from '@tickethub/contracts';
 import { rpcSub } from '@tickethub/rmq';
 import { OrganizerStatsService } from './stats.service';
 
@@ -10,12 +10,12 @@ import { OrganizerStatsService } from './stats.service';
 export class OrganizerStatsController {
   constructor(private readonly statsService: OrganizerStatsService) {}
 
-  @RabbitRPC(rpcSub(ORDERS_MESSAGE_PATTERNS.STATS))
+  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS))
   stats(params: { showIds: string[]; from?: string; to?: string }) {
     return this.statsService.stats(params);
   }
 
-  @RabbitRPC(rpcSub(ORDERS_MESSAGE_PATTERNS.RECENT))
+  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT))
   recent(params: { showIds: string[]; limit?: number }) {
     return this.statsService.recent(params);
   }

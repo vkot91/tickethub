@@ -15,7 +15,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type { ZodSchema, TypeOf } from 'zod';
 import { Roles, ZodValidationPipe } from '@tickethub/common';
 import {
-  ORGANIZER_MESSAGE_PATTERNS,
+  ORGANIZER_SHOWS_MESSAGE_PATTERNS,
   createShowSchema,
   organizerShowsQuerySchema,
   posterUploadRequestSchema,
@@ -54,7 +54,7 @@ export class GatewayOrganizerShowsController {
 
   @Get()
   getList(@Req() req: { user: { id: string } }, @Query() query: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.MY_SHOWS, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS, {
       userId: req.user.id,
       ...parse(organizerShowsQuerySchema, query),
     });
@@ -62,7 +62,7 @@ export class GatewayOrganizerShowsController {
 
   @Get(':id')
   getOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.GET_SHOW, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET, {
       userId: req.user.id,
       showId: id,
     });
@@ -70,7 +70,7 @@ export class GatewayOrganizerShowsController {
 
   @Post()
   create(@Req() req: { user: { id: string } }, @Body() body: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.CREATE_SHOW, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CREATE, {
       userId: req.user.id,
       dto: parse(createShowSchema, body),
     });
@@ -78,7 +78,7 @@ export class GatewayOrganizerShowsController {
 
   @Patch(':id')
   update(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.UPDATE_SHOW, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.UPDATE, {
       userId: req.user.id,
       showId: id,
       dto: parse(updateShowSchema, body),
@@ -89,7 +89,7 @@ export class GatewayOrganizerShowsController {
   // publish route re-checks the same rules, because this answer is stale the moment it is read.
   @Get(':id/publish-checklist')
   publishChecklist(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUBLISH_CHECKLIST, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUBLISH_CHECKLIST, {
       userId: req.user.id,
       showId: id,
     });
@@ -97,7 +97,7 @@ export class GatewayOrganizerShowsController {
 
   @Post(':id/publish')
   publish(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUBLISH_SHOW, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUBLISH, {
       userId: req.user.id,
       showId: id,
     });
@@ -106,7 +106,7 @@ export class GatewayOrganizerShowsController {
   // PUT, not PATCH: the body is the show's whole pricing, and `apps/shows` replaces it wholesale.
   @Put(':id/pricing')
   putPricing(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.PUT_PRICING, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUT_PRICING, {
       userId: req.user.id,
       showId: id,
       dto: parse(putPricingSchema, body),
@@ -121,7 +121,7 @@ export class GatewayOrganizerShowsController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.POSTER_UPLOAD_URL, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.POSTER_UPLOAD_URL, {
       userId: req.user.id,
       showId: id,
       dto: parse(posterUploadRequestSchema, body),
@@ -132,7 +132,7 @@ export class GatewayOrganizerShowsController {
   // or cancels the published show, so the client never picks a verb from a stale status.
   @Delete(':id')
   remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.DELETE_SHOW, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.DELETE, {
       userId: req.user.id,
       showId: id,
     });

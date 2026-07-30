@@ -1,9 +1,16 @@
 import type { AuthRpcContracts } from './auth/wire';
-import type { OrdersEventContracts, OrdersRpcContracts } from './orders/wire';
-import type { OrganizerRpcContracts } from './organizer/wire';
-import type { PaymentsEventContracts, PaymentsRpcContracts } from './payments/wire';
-import type { ShowsEventContracts, ShowsRpcContracts } from './shows/wire';
-import type { TicketsEventContracts, TicketsRpcContracts } from './tickets/wire';
+import type { OrdersEventContracts } from './orders/events';
+import type { OrganizerOrdersRpcContracts } from './orders/organizer/wire';
+import type { OrdersRpcContracts } from './orders/user/wire';
+import type { OrganizerProfileRpcContracts } from './organizer/wire';
+import type { PaymentsEventContracts } from './payments/events';
+import type { PaymentsRpcContracts } from './payments/wire';
+import type { ShowsEventContracts } from './shows/events';
+import type { OrganizerShowsRpcContracts } from './shows/organizer/wire';
+import type { ShowsRpcContracts } from './shows/user/wire';
+import type { TicketsEventContracts } from './tickets/events';
+import type { OrganizerTicketsRpcContracts } from './tickets/organizer/wire';
+import type { TicketsRpcContracts } from './tickets/user/wire';
 import type { VenuesRpcContracts } from './venues/wire';
 
 /**
@@ -16,8 +23,9 @@ import type { VenuesRpcContracts } from './venues/wire';
  * promise made to itself across a wire the compiler could not see.
  *
  * **Adding an RPC**: add the routing key to its `*_MESSAGE_PATTERNS` map and a line to the
- * `*RpcContracts` interface directly below it — both live in that feature's `wire.ts`, so the
- * key and its two halves are three lines apart. The keys are computed from the map, so a typo is
+ * `*RpcContracts` interface directly below it — both live in the `wire.ts` of the service folder's
+ * audience subfolder (`shows/organizer/wire.ts`), so the key and its two halves are three lines
+ * apart, and the folder you had to open already decided who is allowed to call it. The keys are computed from the map, so a typo is
  * a compile error, and the two halves should mirror the `@RabbitRPC` handler's parameter and
  * return type. That mirroring is by hand: handler and caller live in different services, so
  * nothing but this map can relate them.
@@ -34,12 +42,17 @@ import type { VenuesRpcContracts } from './venues/wire';
 export interface RpcContracts
   extends
     AuthRpcContracts,
-    ShowsRpcContracts,
-    OrganizerRpcContracts,
     VenuesRpcContracts,
+    PaymentsRpcContracts,
+    // Buyer surfaces.
+    ShowsRpcContracts,
     OrdersRpcContracts,
     TicketsRpcContracts,
-    PaymentsRpcContracts {}
+    // Console surfaces — one per service the console reaches into, plus the account itself.
+    OrganizerProfileRpcContracts,
+    OrganizerShowsRpcContracts,
+    OrganizerOrdersRpcContracts,
+    OrganizerTicketsRpcContracts {}
 
 /** Every routing key that is an RPC — anything else is not callable via `rpcRequest`. */
 export type RpcKey = keyof RpcContracts;
@@ -57,9 +70,10 @@ export type RpcResult<K extends RpcKey> = RpcContracts[K]['result'];
  * a stray key, a missing field or a payload filed under the wrong routing key were all silent, and
  * only turned up as an undefined property inside a consumer in another service.
  *
- * **Adding an event**: add the routing key to its `*_ROUTING_KEYS` map, the payload schema to that
- * feature's `schema.ts`, and one line to its `*EventContracts` interface. All three are in the same
- * folder. Writing the key without the contract line is a compile error at the first publish site.
+ * **Adding an event**: all three parts — routing key, payload schema, contract line — go in the
+ * publishing service's `events.ts`. Events sit beside the audience folders rather than inside one
+ * because they have no audience: a consumer is always another service, never a buyer or an
+ * organizer. Writing the key without the contract line is a compile error at the first publish site.
  */
 export interface EventContracts
   extends

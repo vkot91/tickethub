@@ -25,10 +25,10 @@ describe('eventSub', () => {
 
 describe('rpcSub', () => {
   it('binds the pattern as both routing key and queue on the RPC exchange', () => {
-    expect(rpcSub('orders.stats')).toEqual({
+    expect(rpcSub('organizer.orders.stats')).toEqual({
       exchange: RPC_EXCHANGE,
-      routingKey: 'orders.stats',
-      queue: 'orders.stats',
+      routingKey: 'organizer.orders.stats',
+      queue: 'organizer.orders.stats',
     });
   });
 

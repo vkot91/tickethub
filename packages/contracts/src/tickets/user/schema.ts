@@ -1,14 +1,9 @@
 import { z } from 'zod';
 
-const uuid = z.string().uuid();
+// A buyer's own tickets. The console's only question about tickets is a check-in *count* — a bare
+// number, so `../organizer` needs a wire file and no schema of its own.
 
-// Event payloads carry domain fields only — `messageId` is stamped by the transport and reaches
-// consumers as `EventEnvelope<K>`. See `../registry`.
-export const ticketPdfReadySchema = z.object({
-  orderId: uuid,
-  userId: uuid,
-});
-export type TicketPdfReadyEvent = z.infer<typeof ticketPdfReadySchema>;
+const uuid = z.string().uuid();
 
 /**
  * One ticket = one seat. `showTitle`/`showStartsAt`/`venueName` live in Shows and are added at

@@ -1,6 +1,6 @@
 import { ConflictException, HttpException } from '@nestjs/common';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { ORGANIZER_MESSAGE_PATTERNS, RPC_EXCHANGE } from '@tickethub/contracts';
+import { ORGANIZER_SHOWS_MESSAGE_PATTERNS, RPC_EXCHANGE } from '@tickethub/contracts';
 import { rpcErrorReplyHandler, rpcRequest } from './rpc';
 
 function channelSpy() {
@@ -88,12 +88,12 @@ describe('rpcRequest', () => {
     const amqp = { request: jest.fn().mockResolvedValue([]) } as unknown as AmqpConnection;
 
     // @ts-expect-error — CAPACITY takes { showIds }, not a number
-    await rpcRequest(amqp, ORGANIZER_MESSAGE_PATTERNS.CAPACITY, 123);
+    await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, 123);
 
     // @ts-expect-error — not a routing key in RpcContracts
-    await rpcRequest(amqp, 'organizer.capacty', { showIds: ['s1'] });
+    await rpcRequest(amqp, 'organizer.shows.capacty', { showIds: ['s1'] });
 
-    const capacities = await rpcRequest(amqp, ORGANIZER_MESSAGE_PATTERNS.CAPACITY, {
+    const capacities = await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, {
       showIds: ['s1'],
     });
 

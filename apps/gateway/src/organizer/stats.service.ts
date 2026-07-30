@@ -3,10 +3,10 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
 import {
   AUTH_MESSAGE_PATTERNS,
-  ORDERS_MESSAGE_PATTERNS,
-  ORGANIZER_MESSAGE_PATTERNS,
+  ORGANIZER_ORDERS_MESSAGE_PATTERNS,
+  ORGANIZER_SHOWS_MESSAGE_PATTERNS,
+  ORGANIZER_TICKETS_MESSAGE_PATTERNS,
   SHOWS_MESSAGE_PATTERNS,
-  TICKETS_MESSAGE_PATTERNS,
   type OrderStats,
   type RecentOrders,
   type SeatTier,
@@ -55,13 +55,13 @@ export class OrganizerStatsService {
     const showIds = query.showId ? [query.showId] : owned;
 
     const [orders, capacities, checkedInCount] = await Promise.all([
-      rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.STATS, {
+      rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS, {
         showIds,
         from: query.from,
         to: query.to,
       }),
-      rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.CAPACITY, { showIds }),
-      rpcRequest(this.amqp, TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
+      rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, { showIds }),
+      rpcRequest(this.amqp, ORGANIZER_TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
     ]);
 
     return {
@@ -80,7 +80,7 @@ export class OrganizerStatsService {
 
     if (showIds.length === 0) return { items: [] };
 
-    const rows = await rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.RECENT, {
+    const rows = await rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT, {
       showIds,
       limit,
     });

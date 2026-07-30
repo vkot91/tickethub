@@ -1,7 +1,6 @@
-import { TICKET_ROUTING_KEYS } from './wire';
-import { ticketPdfReadySchema } from './schema';
+import { TICKET_ROUTING_KEYS, ticketPdfReadySchema } from './events';
 
-describe('ticket contracts', () => {
+describe('tickets events', () => {
   it('routing key is stable', () => {
     expect(TICKET_ROUTING_KEYS.TICKET_PDF_READY).toBe('ticket.pdf_ready');
   });

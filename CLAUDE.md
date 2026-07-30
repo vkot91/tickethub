@@ -54,7 +54,25 @@ transactions (saga + outbox), concurrency.
   that is how a route ends up unguarded. Applies to `apps/gateway` and `apps/shows` today, and to any
   service the console reaches into next (`apps/orders` stats, `apps/fulfillment` check-in).
   RPC pattern maps follow the same seam: `SHOWS_MESSAGE_PATTERNS` is the buyer catalog surface,
-  `ORGANIZER_MESSAGE_PATTERNS` the console's — one map per audience surface, never one map mixing both.
+  `ORGANIZER_SHOWS_MESSAGE_PATTERNS` the console's — one map per audience surface, never one map
+  mixing both.
+- **`packages/contracts` splits service-then-audience.** One folder per owning service; inside it
+  `schema.ts` (only what both audiences extend), `events.ts` (routing keys + payloads — events have
+  no audience, every consumer is another service), and one folder per audience carrying its own
+  `schema.ts` + `wire.ts`: `shows/user/wire.ts` is the buyer catalog, `shows/organizer/wire.ts` the
+  console. The service is outer because it is the deploy seam; the audience is inner because it is
+  what decides the guard. A stats shape then has nowhere to land but an `organizer/` folder, and a
+  map cannot quietly grow a second audience's key — which `ORDERS_MESSAGE_PATTERNS.STATS` once did.
+  A service with one audience (`auth`, `venues`, `payments`) has no subfolders; add them when a
+  second audience actually turns up. Top-level `organizer/` is the organizer _resource_ — the
+  account, plus the dashboard shapes the gateway stitches from three services and no one folder owns.
+- **Wire values are `<audience>.<service>.<action>`**, with the buyer unprefixed as the default
+  audience: `shows.catalog` and `orders.create`, but `organizer.shows.putPricing`,
+  `organizer.orders.stats`, `organizer.profile.create`. Audience first because it decides the guard,
+  service second because it decides the queue. `admin.*` slots in as a sibling with nothing to
+  rethink. Action names never repeat their map (`ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET`, not
+  `.GET_SHOW`). Renaming one of these renames its RMQ queue — a breaking change for a running
+  deployment, so say so in the commit.
 - Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
   (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
   `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level

@@ -18,7 +18,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.myShows',
+        routingKey: 'organizer.shows.myShows',
         payload: { userId: 'u1' },
       }),
     );
@@ -45,7 +45,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.getShow',
+        routingKey: 'organizer.shows.get',
         payload: { userId: 'u1', showId: 's1' },
       }),
     );
@@ -63,7 +63,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.createShow',
+        routingKey: 'organizer.shows.create',
         payload: { userId: 'u1', dto },
       }),
     );
@@ -81,7 +81,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.updateShow',
+        routingKey: 'organizer.shows.update',
         payload: { userId: 'u1', showId: 's1', dto: { title: 'Renamed' } },
       }),
     );
@@ -92,7 +92,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.deleteShow',
+        routingKey: 'organizer.shows.delete',
         payload: { userId: 'u1', showId: 's1' },
       }),
     );
@@ -103,7 +103,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.publishChecklist',
+        routingKey: 'organizer.shows.publishChecklist',
         payload: { userId: 'u1', showId: 's1' },
       }),
     );
@@ -114,7 +114,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.publishShow',
+        routingKey: 'organizer.shows.publish',
         payload: { userId: 'u1', showId: 's1' },
       }),
     );
@@ -130,7 +130,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.putPricing',
+        routingKey: 'organizer.shows.putPricing',
         payload: { userId: 'u1', showId: 's1', dto },
       }),
     );
@@ -151,7 +151,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.posterUploadUrl',
+        routingKey: 'organizer.shows.posterUploadUrl',
         payload: { userId: 'u1', showId: 's1', dto: { contentType: 'image/png' } },
       }),
     );
