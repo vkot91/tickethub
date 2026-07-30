@@ -1,13 +1,20 @@
 import {
   catalogPageSchema,
+  checkInResultSchema,
+  checkInSchema,
   createShowSchema,
   recentOrdersSchema,
   showStatsSchema,
   showSummarySchema,
   updateShowSchema,
+  type CheckInDto,
+  type CheckInResult,
   type ShowStats,
 } from '@tickethub/contracts';
-import { z } from 'zod';
+
+// Re-exported so the scanner screens keep importing their shapes from one place. The schemas
+// themselves live in contracts — a local copy is how the union quietly lost its fourth result.
+export type { CheckInDto, CheckInResult };
 
 import { clientApi } from '@tickethub/web-kit';
 
@@ -17,19 +24,6 @@ export const organizerKeys = {
   stats: (showId: string) => [...organizerKeys.all, 'stats', showId] as const,
   recentOrders: () => [...organizerKeys.all, 'recent-orders'] as const,
 };
-
-/** The scanner holds the QR's HMAC token, not a ticket id, so check-in is keyed by code. */
-export const checkInSchema = z.object({ code: z.string().min(1) });
-
-export const checkInResultSchema = z.object({
-  result: z.enum(['valid', 'used', 'invalid']),
-  seatLabel: z.string().nullable(),
-  showTitle: z.string().nullable(),
-  checkedInAt: z.string().nullable(),
-  checkedInCount: z.number().int(),
-  capacity: z.number().int(),
-});
-export type CheckInResult = z.infer<typeof checkInResultSchema>;
 
 export function fetchOrganizerShows() {
   return clientApi('/shows?organizer=me', {}, catalogPageSchema);
@@ -64,6 +58,11 @@ export function cancelShow(showId: string) {
   return clientApi(`/shows/${showId}`, { method: 'DELETE' }, showSummarySchema);
 }
 
-export function checkIn(code: string): Promise<CheckInResult> {
-  return clientApi('/tickets/check-in', { method: 'POST', body: { code } }, checkInResultSchema);
+/** `showId` is the gate — the show whose door is being scanned, not just any show you own. */
+export function checkIn(scan: CheckInDto): Promise<CheckInResult> {
+  return clientApi(
+    '/organizer/check-in',
+    { method: 'POST', body: checkInSchema.parse(scan) },
+    checkInResultSchema,
+  );
 }

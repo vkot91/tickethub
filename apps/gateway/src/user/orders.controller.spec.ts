@@ -105,7 +105,10 @@ describe('GatewayUserOrdersController', () => {
       const res = await ctrl.list({ user: { id: 'u1' } } as never, { limit: '20' });
 
       expect(res).toEqual({
-        items: [{ ...summary, showTitle: 'Demo Concert', seatLabels: ['A1', 'A2'] }],
+        // Section-prefixed: the one seat-label format, shared with the ticket the gate scans.
+        items: [
+          { ...summary, showTitle: 'Demo Concert', seatLabels: ['Parterre A1', 'Parterre A2'] },
+        ],
         nextCursor: null,
       });
       expect(amqpList.request).toHaveBeenCalledWith(

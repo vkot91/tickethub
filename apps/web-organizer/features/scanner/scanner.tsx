@@ -25,23 +25,30 @@ interface RecentScan {
   result: CheckInResult['result'];
 }
 
-export function Scanner() {
+/**
+ * `showId` is the gate this scanner is standing at. Required, not inferred: a scan scoped to every
+ * show the organizer owns would admit next week's ticket tonight.
+ */
+export function Scanner({ showId }: { showId: string }) {
   const [recent, setRecent] = useState<RecentScan[]>([]);
 
   const check = useMutation({
     mutationFn: checkIn,
-    onSuccess: (outcome, code) =>
+    onSuccess: (outcome, scan) =>
       setRecent((scans) =>
-        [{ key: Date.now(), code, result: outcome.result }, ...scans].slice(0, RECENT_LIMIT),
+        [{ key: Date.now(), code: scan.code, result: outcome.result }, ...scans].slice(
+          0,
+          RECENT_LIMIT,
+        ),
       ),
   });
 
   // Stable identity: the scan loop holds on to this between frames.
   const onScan = useCallback(
     (code: string) => {
-      if (!check.isPending) check.mutate(code);
+      if (!check.isPending) check.mutate({ code, showId });
     },
-    [check],
+    [check, showId],
   );
 
   const camera = useQrScanner(onScan);
@@ -93,7 +100,7 @@ export function Scanner() {
 
             const code = new FormData(submitEvent.currentTarget).get('code');
 
-            if (code) check.mutate(String(code));
+            if (code) check.mutate({ code: String(code), showId });
           }}
         >
           <Field label="Ticket code" htmlFor="code" className="flex-1">

@@ -14,6 +14,8 @@ import { TicketsController } from './tickets/tickets.controller';
 import { NotifyController } from './notify/notify.controller';
 import { OrganizerStatsController } from './organizer/stats.controller';
 import { OrganizerStatsService } from './organizer/stats.service';
+import { OrganizerCheckInController } from './organizer/check-in.controller';
+import { OrganizerCheckInService } from './organizer/check-in.service';
 import { TicketsService } from './tickets/tickets.service';
 import { startEmailWorker } from './notify/email.worker';
 import { schema, type Config } from './config';
@@ -31,12 +33,24 @@ const get = <K extends keyof Config>(config: Cfg, key: K) => config.get(key, { i
     StorageModule.forBucket('S3_BUCKET_TICKETS'),
     MailerModule,
   ],
-  controllers: [TicketsController, NotifyController, OrganizerStatsController],
+  controllers: [
+    TicketsController,
+    NotifyController,
+    OrganizerStatsController,
+    OrganizerCheckInController,
+  ],
   providers: [
     {
       provide: OrganizerStatsService,
       inject: ['DB'],
       useFactory: (db: Db) => new OrganizerStatsService(db),
+    },
+    // Same reason as TicketsService below: the qrSecret is a plain string Nest cannot resolve.
+    {
+      provide: OrganizerCheckInService,
+      inject: ['DB', ConfigService],
+      useFactory: (db: Db, config: Cfg) =>
+        new OrganizerCheckInService(db, get(config, 'TICKET_QR_SECRET')),
     },
     // A useFactory, not @Injectable auto-wiring: the qrSecret is a plain string and Nest has no
     // type to resolve it by.

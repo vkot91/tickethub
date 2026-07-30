@@ -39,8 +39,11 @@ function mockCheckIn(replies: { status: number; body: unknown }[]) {
   return fetchMock;
 }
 
+/** The gate this scanner stands at — every scan is scoped to it. */
+const SHOW_ID = '11111111-1111-4111-8111-111111111111';
+
 function renderScanner() {
-  return renderWithQuery(<Scanner />);
+  return renderWithQuery(<Scanner showId={SHOW_ID} />);
 }
 
 async function checkInCode(code: string) {
@@ -67,8 +70,8 @@ describe('Scanner', () => {
 
     const [url, init] = fetchMock.mock.calls[0];
 
-    expect(url).toBe('/api/gateway/tickets/check-in');
-    expect(JSON.parse(init?.body as string)).toEqual({ code: 'TH-A1-1042' });
+    expect(url).toBe('/api/gateway/organizer/check-in');
+    expect(JSON.parse(init?.body as string)).toEqual({ code: 'TH-A1-1042', showId: SHOW_ID });
   });
 
   it('reports a ticket that was already used, with when', async () => {
@@ -92,6 +95,20 @@ describe('Scanner', () => {
     await checkInCode('nonsense');
 
     expect(await screen.findByText('Invalid ticket')).toBeInTheDocument();
+  });
+
+  // A genuine ticket at the wrong door reads as a warning, not a forgery — the holder needs
+  // directions, not security.
+  it('tells the attendant a real ticket is for another show', async () => {
+    mockCheckIn([
+      { status: 200, body: result({ result: 'wrongShow', seatLabel: null, showTitle: null }) },
+    ]);
+    renderScanner();
+
+    await checkInCode('TH-B7-2291');
+
+    expect(await screen.findByText('Wrong show')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid ticket')).not.toBeInTheDocument();
   });
 
   it('tracks the gate count against capacity', async () => {

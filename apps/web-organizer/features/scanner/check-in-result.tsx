@@ -20,6 +20,14 @@ const outcomes = {
     tone: 'border-danger/40 bg-danger/10 text-danger',
     title: 'Invalid ticket',
   },
+  // A real ticket at the wrong door — another organizer's show, or another of this organizer's.
+  // Worth its own wording: "Invalid ticket" would send an attendant hunting for a forgery that does
+  // not exist, when the holder just needs directions.
+  wrongShow: {
+    Icon: AlertTriangle,
+    tone: 'border-warn/40 bg-warn/10 text-warn',
+    title: 'Wrong show',
+  },
 } as const satisfies Record<CheckInResult['result'], unknown>;
 
 const checkedInAt = new Intl.DateTimeFormat('en-GB', {

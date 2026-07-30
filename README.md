@@ -27,3 +27,10 @@ Event ticketing platform. Pet project for training skills: microservices, queues
 2. **Saga with compensation** — reserve seats → payment → issue tickets; failure at any step rolls back the previous ones.
 3. **Idempotent Stripe webhooks** — duplicates and out-of-order events don't corrupt state.
 4. **Eventual consistency** — outbox pattern + RabbitMQ, no distributed transactions across services.
+
+## Conventions worth knowing before you "fix" them
+
+- **Seat labels** are one format everywhere — `"<Section> <RowLetter><Seat>"`, e.g. `"Parterre A2"`,
+  from `seatLabel()` in `packages/common`. Tickets issued before it was unified keep their old
+  `"Parterre 1-1"` value: `fulfillment.tickets.seat_label` is a **snapshot of what was sold**, not a
+  cache of the current geometry, so there is deliberately no backfill.
