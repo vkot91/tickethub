@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
 import { authTokensSchema, loginSchema, registerSchema } from '@tickethub/contracts';
-import type { UserPayload } from '@tickethub/contracts';
+import type { AuthTokens, UserPayload } from '@tickethub/contracts';
 import type { ZodType } from 'zod';
 
 import { cookieOptions, type SessionConfig } from './config';
@@ -55,6 +55,18 @@ export function createServerSession({ accessCookie, refreshCookie, gatewayUrl }:
   }
 
   /**
+   * Writes a token pair to this app's session cookies. Any Server Action that gets fresh tokens
+   * back from the gateway ends here — signing in, and becoming an organizer, whose response is a
+   * re-issued pair carrying the new role.
+   */
+  async function setSession(tokens: AuthTokens) {
+    const jar = await cookies();
+
+    jar.set(accessCookie, tokens.accessToken, cookieOptions);
+    jar.set(refreshCookie, tokens.refreshToken, cookieOptions);
+  }
+
+  /**
    * Exchanges credentials for this app's session cookies. Call it from a Server Action — the
    * tokens are written straight to the cookie jar, so they never reach client JavaScript, and
    * the sign-in form keeps working with JS disabled. Throws `ApiError` on a rejected login.
@@ -66,10 +78,7 @@ export function createServerSession({ accessCookie, refreshCookie, gatewayUrl }:
       authTokensSchema,
     );
 
-    const jar = await cookies();
-
-    jar.set(accessCookie, tokens.accessToken, cookieOptions);
-    jar.set(refreshCookie, tokens.refreshToken, cookieOptions);
+    await setSession(tokens);
   }
 
   /** `POST /api/auth/logout` — the one auth step that stays a route, because the sign-out
@@ -162,7 +171,15 @@ export function createServerSession({ accessCookie, refreshCookie, gatewayUrl }:
     }
   }
 
-  return { getAccessToken, getCurrentUser, serverApi, signIn, logoutRoute, gatewayRoute };
+  return {
+    getAccessToken,
+    getCurrentUser,
+    serverApi,
+    setSession,
+    signIn,
+    logoutRoute,
+    gatewayRoute,
+  };
 }
 
 export type ServerSession = ReturnType<typeof createServerSession>;

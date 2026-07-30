@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { Button, LogoutButton, type NavTab, NavTabs } from '@tickethub/ui';
+import { LogoutButton, type NavTab, NavTabs } from '@tickethub/ui';
 import { getCurrentUser } from '@/lib/session';
 
 const TABS: NavTab[] = [
@@ -31,15 +31,11 @@ export async function ConsoleHeader() {
         {/* A signed-in `user` is parked on /become and has nothing to navigate to yet. */}
         {user && user.role !== 'user' && <NavTabs tabs={TABS} />}
 
-        {user ? (
+        {user && (
           <div className="flex items-center gap-3">
             <span className="hidden font-mono text-xs text-fg-faint sm:inline">{user.email}</span>
             <LogoutButton />
           </div>
-        ) : (
-          <Button asChild variant="secondary" size="sm">
-            <Link href="/login">Sign in</Link>
-          </Button>
         )}
       </div>
     </header>
