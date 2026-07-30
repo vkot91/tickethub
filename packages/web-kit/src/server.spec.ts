@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { NextRequest } from 'next/server';
 
 vi.mock('server-only', () => ({}));
+
+const jarSet = vi.fn();
+
 vi.mock('next/headers', () => ({
-  cookies: () => Promise.resolve({ get: () => undefined }),
+  cookies: () => Promise.resolve({ get: () => undefined, set: jarSet }),
 }));
 
 const { createServerSession } = await import('./server');
@@ -31,7 +34,47 @@ function gatewayResponds(headers: Record<string, string>) {
   return vi.fn().mockResolvedValue(new Response('%PDF-1.7', { status: 200, headers }));
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+
+describe('session cookies', () => {
+  const tokens = { accessToken: 'access.jwt', refreshToken: 'refresh.jwt' };
+
+  it('setSession writes both cookies httpOnly', async () => {
+    await session.setSession(tokens);
+
+    expect(jarSet).toHaveBeenCalledWith(
+      'th_at',
+      'access.jwt',
+      expect.objectContaining({ httpOnly: true }),
+    );
+    expect(jarSet).toHaveBeenCalledWith(
+      'th_rt',
+      'refresh.jwt',
+      expect.objectContaining({ httpOnly: true }),
+    );
+  });
+
+  // signIn is setSession's first caller; the refactor must not have changed what it writes.
+  it('signIn writes the pair the gateway returns', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(tokens), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+
+    await session.signIn('login', { email: 'promoter@example.com', password: 'hunter2hunter2' });
+
+    expect(jarSet).toHaveBeenCalledWith('th_at', 'access.jwt', expect.any(Object));
+    expect(jarSet).toHaveBeenCalledWith('th_rt', 'refresh.jwt', expect.any(Object));
+  });
+});
 
 describe('gatewayRoute response headers', () => {
   // Without this the browser falls back to the URL's last segment, and every ticket downloads

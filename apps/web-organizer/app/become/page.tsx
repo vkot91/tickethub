@@ -1,22 +1,29 @@
 import { type Metadata } from 'next';
 
-import { Card } from '@tickethub/ui';
+import { Card, Eyebrow } from '@tickethub/ui';
+
+import { BecomeForm } from '@/features/organizer/become-form';
+import { getCurrentUser } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Become an organizer' };
 
-// ponytail: static copy, no form — `POST /auth/become-organizer` does not exist yet
-// (docs/10-organizer-console.md §Part 2). Swap in the form when that endpoint lands.
-export default function BecomePage() {
+export default async function BecomePage() {
+  const user = await getCurrentUser();
+
   return (
     <Card radius="panel" padding="lg" className="mx-auto max-w-130">
-      <h1 className="mb-2 font-display text-[28px] font-semibold tracking-[-0.02em]">
-        This is the organizer console
+      <Eyebrow>Organizer</Eyebrow>
+
+      <h1 className="mt-2 mb-3 font-display text-[28px] font-semibold tracking-[-0.02em]">
+        Start selling tickets
       </h1>
-      <p className="text-sm text-fg-muted">
-        Your account can buy tickets but does not publish shows yet. Organizer signup is not open —
-        once your account is upgraded, sign in again here and your shows, sales and check-in scanner
-        appear.
+
+      <p className="mb-6 max-w-[56ch] text-sm text-fg-muted">
+        Put your own shows on sale, price each section of the hall, watch the money come in, and
+        check guests in at the gate with the scanner.
       </p>
+
+      <BecomeForm email={user?.email ?? ''} />
     </Card>
   );
 }

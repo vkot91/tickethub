@@ -16,8 +16,8 @@ export const middleware = createAuthMiddleware({
   },
 });
 
-/** The whole console is private. Only the sign-in page, the BFF routes (which do their own
- *  auth) and Next's static assets are exempt. */
+/** The whole console is private. Only the sign-in and signup pages, the BFF routes (which do
+ *  their own auth) and Next's static assets are exempt. */
 export const config = {
-  matcher: ['/((?!login|api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!login|register|api|_next/static|_next/image|favicon.ico).*)'],
 };

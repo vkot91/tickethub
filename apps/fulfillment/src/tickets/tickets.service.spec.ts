@@ -568,7 +568,7 @@ const storedTicket = (overrides: Partial<TicketRow> = {}): TicketRow => ({
   userId: USER_ID,
   showId: SHOW_ID,
   seatId: KNOWN_SEAT_ID,
-  seatLabel: 'A 1-3',
+  seatLabel: 'Loge A3',
   tier: 'Loge',
   qrToken: QR_TOKEN_KNOWN_SEAT,
   s3Key: `${ORDER_ID}.pdf`,
@@ -607,7 +607,7 @@ describe('TicketsService.listForUser', () => {
         orderId: ORDER_ID,
         showTitle: 'Radiohead Live',
         showStartsAt: show.startsAt,
-        seatLabel: 'A 1-3',
+        seatLabel: 'Loge A3',
         tier: 'Loge',
         qrToken: QR_TOKEN_KNOWN_SEAT,
         status: 'active',
@@ -631,7 +631,7 @@ describe('TicketsService.listForUser', () => {
     const fakes = makeFakes({
       existingTickets: [
         storedTicket(),
-        storedTicket({ id: TICKET_ID_UNKNOWN_SEAT, seatId: UNKNOWN_SEAT_ID, seatLabel: 'A 1-4' }),
+        storedTicket({ id: TICKET_ID_UNKNOWN_SEAT, seatId: UNKNOWN_SEAT_ID, seatLabel: 'Loge A4' }),
       ],
     });
 
