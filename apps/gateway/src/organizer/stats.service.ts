@@ -7,34 +7,14 @@ import {
   ORGANIZER_MESSAGE_PATTERNS,
   SHOWS_MESSAGE_PATTERNS,
   TICKETS_MESSAGE_PATTERNS,
-  type OrderStatus,
+  type OrderStats,
   type RecentOrders,
   type SeatTier,
-  type ShowDetail,
   type ShowStats,
   type ShowStatsQuery,
 } from '@tickethub/contracts';
 import { OrganizerShowsService } from './shows.service';
 import { ShowContextService } from '../shared/show-context.service';
-
-/** What `apps/orders` alone can answer — capacity, tier names and check-ins come from elsewhere. */
-interface OrdersStats {
-  soldCount: number;
-  revenueCents: number;
-  refundedCents: number;
-  byDay: ShowStats['byDay'];
-  byTier: { ticketTypeId: string; soldCount: number }[];
-}
-
-interface RecentOrderRow {
-  id: string;
-  showId: string;
-  userId: string;
-  seatIds: string[];
-  totalCents: number;
-  status: OrderStatus;
-  createdAt: string;
-}
 
 const ZERO_STATS: ShowStats = {
   soldCount: 0,
@@ -75,17 +55,13 @@ export class OrganizerStatsService {
     const showIds = query.showId ? [query.showId] : owned;
 
     const [orders, capacities, checkedInCount] = await Promise.all([
-      rpcRequest<OrdersStats>(this.amqp, ORDERS_MESSAGE_PATTERNS.STATS, {
+      rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.STATS, {
         showIds,
         from: query.from,
         to: query.to,
       }),
-      rpcRequest<{ showId: string; capacity: number }[]>(
-        this.amqp,
-        ORGANIZER_MESSAGE_PATTERNS.CAPACITY,
-        { showIds },
-      ),
-      rpcRequest<number>(this.amqp, TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
+      rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.CAPACITY, { showIds }),
+      rpcRequest(this.amqp, TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
     ]);
 
     return {
@@ -104,7 +80,7 @@ export class OrganizerStatsService {
 
     if (showIds.length === 0) return { items: [] };
 
-    const rows = await rpcRequest<RecentOrderRow[]>(this.amqp, ORDERS_MESSAGE_PATTERNS.RECENT, {
+    const rows = await rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.RECENT, {
       showIds,
       limit,
     });
@@ -114,13 +90,9 @@ export class OrganizerStatsService {
     // One call for the page, not one per row — the same reason the show context is resolved per
     // distinct show rather than per order.
     const [buyers, withShow] = await Promise.all([
-      rpcRequest<{ id: string; email: string }[]>(
-        this.amqp,
-        AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS,
-        {
-          ids: [...new Set(rows.map((row) => row.userId))],
-        },
-      ),
+      rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
+        ids: [...new Set(rows.map((row) => row.userId))],
+      }),
       this.showContext.withShowContext(
         rows.map((row) => ({ ...row, seats: row.seatIds.map((seatId) => ({ seatId })) })),
       ),
@@ -150,7 +122,7 @@ export class OrganizerStatsService {
    */
   private async namedTiers(
     showId: string | undefined,
-    byTier: OrdersStats['byTier'],
+    byTier: OrderStats['byTier'],
   ): Promise<ShowStats['byTier']> {
     if (byTier.length === 0) return [];
 
@@ -158,7 +130,7 @@ export class OrganizerStatsService {
 
     if (showId) {
       try {
-        const detail = await rpcRequest<ShowDetail>(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
+        const detail = await rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
           id: showId,
         });
 

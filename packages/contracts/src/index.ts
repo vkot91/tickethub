@@ -6,3 +6,4 @@ export * from './dto/venue';
 export * from './events';
 export * from './orders';
 export * from './payments';
+export * from './rpc';

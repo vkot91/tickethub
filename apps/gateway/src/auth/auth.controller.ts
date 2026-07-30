@@ -59,7 +59,7 @@ export class GatewayAuthController {
       name: dto.name,
     });
 
-    return rpcRequest<AuthTokens>(this.amqp, AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER, {
+    return rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER, {
       userId: req.user.id,
     });
   }

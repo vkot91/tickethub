@@ -11,9 +11,6 @@ import {
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
   type OrderPaidEvent,
-  type OrderResponse,
-  type SeatMap,
-  type ShowDetail,
   type Ticket,
   type TicketList,
   type TicketPdfUrl,
@@ -51,16 +48,16 @@ export class TicketsService {
 
     if (alreadyCommitted) return;
 
-    const order = await rpcRequest<OrderResponse>(this.amqp, ORDERS_MESSAGE_PATTERNS.GET, {
+    const order = await rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.GET, {
       userId: event.userId,
       orderId: event.orderId,
     });
 
-    const show = await rpcRequest<ShowDetail>(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
+    const show = await rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
       id: event.showId,
     });
 
-    const seatMap = await rpcRequest<SeatMap>(this.amqp, SHOWS_MESSAGE_PATTERNS.SEAT_MAP, {
+    const seatMap = await rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.SEAT_MAP, {
       id: event.showId,
     });
 
@@ -163,7 +160,7 @@ export class TicketsService {
     const shows = await Promise.all(
       showIds.map(async (showId) => {
         try {
-          return await rpcRequest<ShowDetail>(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
+          return await rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
             id: showId,
           });
         } catch {

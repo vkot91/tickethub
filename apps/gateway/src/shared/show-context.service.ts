@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
-import { SHOWS_MESSAGE_PATTERNS, type SeatMap, type ShowDetail } from '@tickethub/contracts';
+import { SHOWS_MESSAGE_PATTERNS } from '@tickethub/contracts';
 
 /** Row 1 seat 2 → "A2", matching what the seat map screen renders. */
 const seatLabel = (rowNumber: number, seatNumber: number): string =>
@@ -59,8 +59,8 @@ export class ShowContextService {
   private async showContext(showId: string): Promise<ShowContext> {
     try {
       const [detail, seatMap] = await Promise.all([
-        rpcRequest<ShowDetail>(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, { id: showId }),
-        rpcRequest<SeatMap>(this.amqp, SHOWS_MESSAGE_PATTERNS.SEAT_MAP, { id: showId }),
+        rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, { id: showId }),
+        rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.SEAT_MAP, { id: showId }),
       ]);
 
       const labels = new Map<string, string>();

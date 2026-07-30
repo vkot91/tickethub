@@ -13,7 +13,7 @@ export class OrganizerShowsService {
   constructor(private readonly amqp: AmqpConnection) {}
 
   showIds(userId: string): Promise<string[]> {
-    return rpcRequest<string[]>(this.amqp, ORGANIZER_MESSAGE_PATTERNS.SHOW_IDS, { userId });
+    return rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.SHOW_IDS, { userId });
   }
 
   /**

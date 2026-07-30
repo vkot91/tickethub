@@ -16,19 +16,23 @@ export const showStatsQuerySchema = z.object({
 });
 export type ShowStatsQuery = z.infer<typeof showStatsQuerySchema>;
 
+// Shared by the dashboard's merged view and by what Orders alone answers, so it lives once.
+export const statsByDaySchema = z.array(
+  z.object({
+    date: z.string(),
+    revenueCents: z.number().int(),
+    count: z.number().int(),
+  }),
+);
+export type StatsByDay = z.infer<typeof statsByDaySchema>;
+
 export const showStatsSchema = z.object({
   soldCount: z.number().int(),
   capacity: z.number().int(),
   revenueCents: z.number().int(),
   refundedCents: z.number().int(),
   checkedInCount: z.number().int(),
-  byDay: z.array(
-    z.object({
-      date: z.string(),
-      revenueCents: z.number().int(),
-      count: z.number().int(),
-    }),
-  ),
+  byDay: statsByDaySchema,
   byTier: z.array(
     z.object({
       ticketTypeId: z.string().uuid(),
@@ -39,6 +43,35 @@ export const showStatsSchema = z.object({
   ),
 });
 export type ShowStats = z.infer<typeof showStatsSchema>;
+
+// The half of the dashboard `apps/orders` can answer on its own: capacity, tier names and
+// check-ins are merged in by the gateway from Shows and Fulfillment.
+export const orderStatsSchema = z.object({
+  soldCount: z.number().int(),
+  revenueCents: z.number().int(),
+  refundedCents: z.number().int(),
+  byDay: statsByDaySchema,
+  byTier: z.array(
+    z.object({
+      ticketTypeId: z.string().uuid(),
+      soldCount: z.number().int(),
+    }),
+  ),
+});
+export type OrderStats = z.infer<typeof orderStatsSchema>;
+
+// A raw order row as Orders knows it — seat *ids*, not labels, and no buyer email. The gateway
+// resolves both before this becomes the `RecentOrder` the console renders.
+export const recentOrderRowSchema = z.object({
+  id: z.string().uuid(),
+  showId: z.string().uuid(),
+  userId: z.string().uuid(),
+  seatIds: z.array(z.string()),
+  totalCents: z.number().int(),
+  status: orderStatusSchema,
+  createdAt: z.string(),
+});
+export type RecentOrderRow = z.infer<typeof recentOrderRowSchema>;
 
 export const recentOrderSchema = z.object({
   id: z.string().uuid(),
