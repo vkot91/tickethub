@@ -1,9 +1,9 @@
-import { PAYMENT_ROUTING_KEYS } from '../events';
+import { PAYMENT_ROUTING_KEYS } from './wire';
 import {
   createPaymentIntentSchema,
   paymentIntentResponseSchema,
   paymentSucceededSchema,
-} from './index';
+} from './schema';
 
 describe('payment contracts', () => {
   it('accepts a create-intent payload', () => {

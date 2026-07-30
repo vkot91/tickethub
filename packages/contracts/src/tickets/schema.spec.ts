@@ -1,5 +1,5 @@
-import { TICKET_ROUTING_KEYS } from '../events';
-import { ticketPdfReadySchema } from './tickets';
+import { TICKET_ROUTING_KEYS } from './wire';
+import { ticketPdfReadySchema } from './schema';
 
 describe('ticket contracts', () => {
   it('routing key is stable', () => {

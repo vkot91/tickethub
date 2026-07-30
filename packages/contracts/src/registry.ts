@@ -1,10 +1,10 @@
-import type { AuthRpcContracts } from './auth';
-import type { OrdersRpcContracts } from './orders';
-import type { OrganizerRpcContracts } from './organizer';
-import type { PaymentsRpcContracts } from './payments';
-import type { ShowsRpcContracts } from './shows';
-import type { TicketsRpcContracts } from './tickets';
-import type { VenuesRpcContracts } from './venues';
+import type { AuthRpcContracts } from './auth/wire';
+import type { OrdersRpcContracts } from './orders/wire';
+import type { OrganizerRpcContracts } from './organizer/wire';
+import type { PaymentsRpcContracts } from './payments/wire';
+import type { ShowsRpcContracts } from './shows/wire';
+import type { TicketsRpcContracts } from './tickets/wire';
+import type { VenuesRpcContracts } from './venues/wire';
 
 /**
  * Every RPC in the system, keyed by its routing key — the single place where a caller's payload
@@ -15,16 +15,17 @@ import type { VenuesRpcContracts } from './venues';
  * caller passed `unknown` and asserted the result itself, which meant every gateway call was a
  * promise made to itself across a wire the compiler could not see.
  *
- * **Adding an RPC**: add the routing key to its `*_MESSAGE_PATTERNS` map, then add a line to the
- * matching file in this folder — one per pattern map, the same seam the maps themselves follow.
- * The keys are computed from those maps, so a typo in either place is a compile error, and the two
- * halves should mirror the `@RabbitRPC` handler's parameter and return type. That mirroring is by
- * hand: handler and caller live in different services, so nothing but this map can relate them.
+ * **Adding an RPC**: add the routing key to its `*_MESSAGE_PATTERNS` map and a line to the
+ * `*RpcContracts` interface directly below it — both live in that feature's `wire.ts`, so the
+ * key and its two halves are three lines apart. The keys are computed from the map, so a typo is
+ * a compile error, and the two halves should mirror the `@RabbitRPC` handler's parameter and
+ * return type. That mirroring is by hand: handler and caller live in different services, so
+ * nothing but this map can relate them.
  *
  * **Payload shapes**: request *envelopes* (`{ userId, dto }`) are structural types, not schemas —
  * they are assembled by the gateway from an already-validated DTO plus the caller's JWT, so a
  * schema would re-validate what the edge just proved. Anything that is itself a wire shape is a
- * Zod-inferred type from `../dto` — that stays the source of truth.
+ * Zod-inferred type from the feature's `schema.ts` — that stays the source of truth.
  *
  * Extension and not a union of the parts: routing keys are globally unique, so the flat result is
  * what `RpcKey` should be. It also catches the mistake that matters — the same key claimed by two

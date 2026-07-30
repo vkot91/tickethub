@@ -1,7 +1,26 @@
-import type { OrderStats, RecentOrderRow } from '../dto/organizer';
-import type { ORDERS_MESSAGE_PATTERNS } from '../events';
-import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } from '../orders';
-import type { Rpc } from './shape';
+import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } from './schema';
+import type { OrderStats, RecentOrderRow } from '../organizer/schema';
+import type { Rpc } from '../shape';
+
+export const ORDERS_MESSAGE_PATTERNS = {
+  CREATE: 'orders.create',
+  GET: 'orders.get',
+  LIST: 'orders.list',
+  REQUEST_REFUND: 'orders.requestRefund',
+  // Organizer dashboard. Both take a resolved `showIds[]` — Orders never learns who owns what.
+  STATS: 'orders.stats',
+  RECENT: 'orders.recent',
+} as const;
+
+export const ORDER_ROUTING_KEYS = {
+  ORDER_AWAITING_PAYMENT: 'order.awaiting_payment',
+  ORDER_PAID: 'order.paid',
+  ORDER_EXPIRED: 'order.expired',
+  ORDER_CANCELLED: 'order.cancelled',
+  SEAT_HELD: 'seat.held',
+  SEAT_RELEASED: 'seat.released',
+  REFUND_REQUESTED: 'refund.requested',
+} as const;
 
 export interface OrdersRpcContracts {
   [ORDERS_MESSAGE_PATTERNS.CREATE]: Rpc<{

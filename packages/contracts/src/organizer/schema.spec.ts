@@ -5,9 +5,17 @@ import {
   recentOrdersSchema,
   showStatsQuerySchema,
   showStatsSchema,
-} from './organizer';
+} from './schema';
+import { ORGANIZER_MESSAGE_PATTERNS } from './wire';
 
 const UUID = '11111111-1111-1111-1111-111111111111';
+
+describe('organizer wire names', () => {
+  it('mirrors each key onto its wire value', () => {
+    expect(ORGANIZER_MESSAGE_PATTERNS.CREATE).toBe('organizer.create');
+    expect(ORGANIZER_MESSAGE_PATTERNS.CAPACITY).toBe('organizer.capacity');
+  });
+});
 
 describe('organizer contracts', () => {
   it('requires a non-empty organizer name', () => {

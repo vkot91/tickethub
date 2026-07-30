@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { orderStatusSchema } from '../orders';
-import { seatTierSchema } from './shows';
+import { orderStatusSchema } from '../orders/schema';
+import { seatTierSchema } from '../shows/schema';
 
 // Screen A. The name is what buyers see on the organizer's show pages; the role flip itself
 // needs nothing but the caller's JWT.

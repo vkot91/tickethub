@@ -1,5 +1,5 @@
-import { createOrderSchema, orderAwaitingPaymentSchema } from './index';
-import { ORDER_ROUTING_KEYS, ORDERS_MESSAGE_PATTERNS } from '../events';
+import { createOrderSchema, orderAwaitingPaymentSchema } from './schema';
+import { ORDER_ROUTING_KEYS, ORDERS_MESSAGE_PATTERNS } from './wire';
 
 describe('order contracts', () => {
   it('accepts a valid create-order payload', () => {

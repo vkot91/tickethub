@@ -7,11 +7,35 @@ import type {
   PublishChecklist,
   PutPricingDto,
   UpdateShowDto,
-} from '../dto/shows';
-import type { ORGANIZER_MESSAGE_PATTERNS } from '../events';
-import type { Rpc } from './shape';
+} from '../shows/schema';
+import type { Rpc } from '../shape';
 
-/** The console's surface onto `apps/shows` — authoring, ownership and the dashboard's capacity. */
+/**
+ * The console's surface onto `apps/shows` — authoring, ownership and the dashboard's capacity.
+ * A separate map from `SHOWS_MESSAGE_PATTERNS` because it is a separate audience with a separate
+ * controller: the import line then says which surface a file talks to.
+ *
+ * The show *schemas* it carries stay in `../shows/schema` — one show resource, one file — and
+ * only the console-specific shapes (stats, recent orders, the role flip) live in `./schema`.
+ */
+export const ORGANIZER_MESSAGE_PATTERNS = {
+  CREATE: 'organizer.create',
+  SHOW_IDS: 'organizer.showIds',
+  MY_SHOWS: 'organizer.myShows',
+  GET_SHOW: 'organizer.getShow',
+  CREATE_SHOW: 'organizer.createShow',
+  UPDATE_SHOW: 'organizer.updateShow',
+  // Not DELETE_DRAFT: the service branches on the show's own status (draft → delete,
+  // published → cancel in slice 4). The gateway cannot branch without reading a stale status.
+  DELETE_SHOW: 'organizer.deleteShow',
+  PUT_PRICING: 'organizer.putPricing',
+  PUBLISH_CHECKLIST: 'organizer.publishChecklist',
+  PUBLISH_SHOW: 'organizer.publishShow',
+  POSTER_UPLOAD_URL: 'organizer.posterUploadUrl',
+  // Seats on sale per show, batched. Organizer-only today — the buyer catalog never asks.
+  CAPACITY: 'organizer.capacity',
+} as const;
+
 export interface OrganizerRpcContracts {
   [ORGANIZER_MESSAGE_PATTERNS.CREATE]: Rpc<{
     payload: { userId: string; name: string };
