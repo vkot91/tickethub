@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
+import { seatLabel } from '@tickethub/common';
 import { StorageClient } from '@tickethub/storage';
 import { tickets, fulfillmentProcessedMessages, type Db } from '@tickethub/db';
 import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
@@ -65,7 +66,7 @@ export class TicketsService {
       seatMap.sections.flatMap((section) =>
         section.rows.flatMap((row) =>
           row.seats.map(
-            (seat) => [seat.id, `${section.name} ${row.number}-${seat.number}`] as const,
+            (seat) => [seat.id, seatLabel(section.name, row.number, seat.number)] as const,
           ),
         ),
       ),

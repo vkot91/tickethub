@@ -1,4 +1,5 @@
 export * from './pipes/zod-validation.pipe';
+export * from './seat-label';
 export * from './decorators/roles.decorator';
 export * from './filters/rpc-exception.filter';
 export * from './logging/logger.module';

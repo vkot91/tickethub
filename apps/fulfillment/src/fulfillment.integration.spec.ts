@@ -65,7 +65,7 @@ const show: ShowDetail = {
   ],
 };
 
-// The seat the order carries lives in this map, so the rendered pdf gets a human label ("A 1-3")
+// The seat the order carries lives in this map, so the rendered pdf gets a human label ("A A3")
 // rather than the raw seat id fallback.
 const seatMap: SeatMap = {
   showId: SHOW_ID,
@@ -325,7 +325,7 @@ describe('Fulfillment order.paid idempotency (integration: real Postgres + real 
       expect.objectContaining({
         orderId: ORDER_ID,
         showTitle: 'Radiohead Live',
-        seatLabel: 'A 1-3',
+        seatLabel: 'A A3',
         tier: 'Loge',
         status: 'active',
       }),

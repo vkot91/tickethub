@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
 import { SHOWS_MESSAGE_PATTERNS } from '@tickethub/contracts';
-
-/** Row 1 seat 2 → "A2", matching what the seat map screen renders. */
-const seatLabel = (rowNumber: number, seatNumber: number): string =>
-  `${String.fromCharCode(64 + rowNumber)}${seatNumber}`;
+import { seatLabel } from '@tickethub/common';
 
 interface ShowContext {
   title: string;
@@ -67,7 +64,8 @@ export class ShowContextService {
 
       for (const section of seatMap.sections) {
         for (const row of section.rows) {
-          for (const seat of row.seats) labels.set(seat.id, seatLabel(row.number, seat.number));
+          for (const seat of row.seats)
+            labels.set(seat.id, seatLabel(section.name, row.number, seat.number));
         }
       }
 

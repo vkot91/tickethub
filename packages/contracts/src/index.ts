@@ -44,6 +44,7 @@ export * from './orders/organizer/wire';
 export * from './tickets/events';
 export * from './tickets/user/schema';
 export * from './tickets/user/wire';
+export * from './tickets/organizer/schema';
 export * from './tickets/organizer/wire';
 
 export * from './organizer/schema';

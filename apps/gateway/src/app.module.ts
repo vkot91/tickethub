@@ -23,6 +23,8 @@ import { GatewayOrganizerVenuesController } from './organizer/venues.controller'
 import { GatewayOrganizerShowsController } from './organizer/shows.controller';
 import { GatewayOrganizerStatsController } from './organizer/stats.controller';
 import { OrganizerStatsService } from './organizer/stats.service';
+import { GatewayOrganizerCheckInController } from './organizer/check-in.controller';
+import { OrganizerCheckInService } from './organizer/check-in.service';
 
 // The delayed-release queue owned by the orders service (apps/orders); we attach read/monitor
 // access here so bull-board can inspect it.
@@ -65,6 +67,7 @@ const queueDashboardImports =
     GatewayOrganizerVenuesController,
     GatewayOrganizerShowsController,
     GatewayOrganizerStatsController,
+    GatewayOrganizerCheckInController,
     HealthController,
   ],
   // No UserModule/OrganizerModule: Nest cannot scope a guard to a module (only APP_GUARD, which
@@ -74,6 +77,7 @@ const queueDashboardImports =
     ShowContextService,
     OrganizerShowsService,
     OrganizerStatsService,
+    OrganizerCheckInService,
   ],
 })
 export class AppModule implements NestModule {

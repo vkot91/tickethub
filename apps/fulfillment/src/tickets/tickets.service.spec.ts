@@ -340,7 +340,8 @@ describe('TicketsService.handleOrderPaid', () => {
         startsAt: show.startsAt,
         orderId: ORDER_ID,
         seats: [
-          expect.objectContaining({ seatLabel: 'A 1-3', tier: 'Loge' }),
+          // Section "A", row 1, seat 3 — the one system-wide format, shared with the gateway.
+          expect.objectContaining({ seatLabel: 'A A3', tier: 'Loge' }),
           // A seat missing from the map still gets a ticket — falling back to its raw id beats
           // failing the whole order.
           expect.objectContaining({ seatLabel: UNKNOWN_SEAT_ID, tier: 'Loge' }),
