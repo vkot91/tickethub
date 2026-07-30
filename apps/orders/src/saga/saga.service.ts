@@ -3,9 +3,9 @@ import { and, eq } from 'drizzle-orm';
 import { orders, type Db } from '@tickethub/db';
 import {
   ORDER_ROUTING_KEYS,
-  type PaymentSucceededEvent,
-  type PaymentFailedEvent,
-  type RefundSucceededEvent,
+  PAYMENT_ROUTING_KEYS,
+  SHOW_ROUTING_KEYS,
+  type EventEnvelope,
 } from '@tickethub/contracts';
 import { canTransition, type OrderStatus } from '../orders.state';
 import { OrderRepository } from '../orders.repository';
@@ -42,7 +42,9 @@ export class OrderSagaService {
 
   // payment.succeeded → confirm the order. If it can no longer become paid (expire-then-pay
   // race), auto-refund instead of resurrecting it.
-  async markPaid(event: PaymentSucceededEvent): Promise<void> {
+  async markPaid(
+    event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED>,
+  ): Promise<void> {
     await this.db.transaction(async (tx) => {
       if (await this.orderRepository.alreadyProcessed(tx, event.messageId)) return;
 
@@ -71,7 +73,9 @@ export class OrderSagaService {
   }
 
   // payment.failed → cancel the order, release its seats and locks.
-  async markFailed(event: PaymentFailedEvent): Promise<void> {
+  async markFailed(
+    event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.PAYMENT_FAILED>,
+  ): Promise<void> {
     await this.close(
       event.messageId,
       event.orderId,
@@ -81,13 +85,17 @@ export class OrderSagaService {
   }
 
   // refund.succeeded → close out a paid order as refunded, release its seats and locks.
-  async markRefunded(event: RefundSucceededEvent): Promise<void> {
+  async markRefunded(
+    event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED>,
+  ): Promise<void> {
     await this.close(event.messageId, event.orderId, 'refunded');
   }
 
   // show.cancelled → refund every paid order for that show (each downstream refund reuses
   // the same refund.requested → Payments → charge.refunded → markRefunded path).
-  async refundAllPaidForShow(event: { messageId: string; showId: string }): Promise<void> {
+  async refundAllPaidForShow(
+    event: EventEnvelope<typeof SHOW_ROUTING_KEYS.SHOW_CANCELLED>,
+  ): Promise<void> {
     await this.db.transaction(async (tx) => {
       if (await this.orderRepository.alreadyProcessed(tx, event.messageId)) return;
 
@@ -110,7 +118,7 @@ export class OrderSagaService {
     messageId: string,
     orderId: string,
     to: Extract<OrderStatus, 'cancelled' | 'refunded'>,
-    routingKey?: string,
+    routingKey?: typeof ORDER_ROUTING_KEYS.ORDER_CANCELLED,
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
       const order = await this.orderRepository.claim(tx, messageId, orderId, to);

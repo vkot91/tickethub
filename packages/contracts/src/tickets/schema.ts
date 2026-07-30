@@ -2,8 +2,9 @@ import { z } from 'zod';
 
 const uuid = z.string().uuid();
 
+// Event payloads carry domain fields only — `messageId` is stamped by the transport and reaches
+// consumers as `EventEnvelope<K>`. See `../registry`.
 export const ticketPdfReadySchema = z.object({
-  messageId: uuid,
   orderId: uuid,
   userId: uuid,
 });

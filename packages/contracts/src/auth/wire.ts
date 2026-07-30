@@ -19,10 +19,10 @@ export const AUTH_MESSAGE_PATTERNS = {
   BECOME_ORGANIZER: 'auth.becomeOrganizer',
 } as const;
 
-export const USER_ROUTING_KEYS = {
-  USER_REGISTERED: 'user.registered',
-} as const;
-
+// Auth publishes no domain events: it has no outbox table, and the only way onto the broker is
+// through one. `user.registered` used to go out fire-and-forget past the outbox, with no consumer
+// on the other end — it is gone rather than half-wired. Reinstate it here, with an outbox and a
+// poller, when something actually needs to hear about a registration.
 export interface AuthRpcContracts {
   [AUTH_MESSAGE_PATTERNS.REGISTER]: Rpc<{ payload: RegisterDto; result: AuthTokens }>;
   [AUTH_MESSAGE_PATTERNS.LOGIN]: Rpc<{ payload: LoginDto; result: AuthTokens }>;

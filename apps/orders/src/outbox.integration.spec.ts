@@ -3,7 +3,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { isNotNull, sql } from 'drizzle-orm';
 import { createDb, ordersOutbox, type Db } from '@tickethub/db';
 import { OutboxPoller, OutboxRepository } from '@tickethub/outbox';
-import { rmqConfig, publishEvent } from '@tickethub/rmq';
+import { rmqConfig, publishStored } from '@tickethub/rmq';
 import { ORDER_ROUTING_KEYS } from '@tickethub/contracts';
 import { v4 as uuid } from 'uuid';
 
@@ -38,7 +38,7 @@ describe('OutboxPoller (integration: real Postgres + RabbitMQ)', () => {
   it('publishes unpublished rows and stamps published_at', async () => {
     await db.insert(ordersOutbox).values(row());
 
-    const poller = new OutboxPoller(outbox, (rk, p) => publishEvent(amqp, rk, p));
+    const poller = new OutboxPoller(outbox, (rk, p) => publishStored(amqp, rk, p));
     await poller.drain();
 
     const published = await db

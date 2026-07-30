@@ -16,9 +16,8 @@ beforeEach(async () => {
 // redis + AMQP connection stay simple mocks — only the db is a real emulated Postgres.
 function makeService(opts: { storedRefresh?: string | null } = {}) {
   const redis = { set: jest.fn(), get: jest.fn().mockResolvedValue(opts.storedRefresh ?? null) };
-  const amqp = { publish: jest.fn().mockResolvedValue(true) };
-  const svc = new AuthService(db, redis as never, jwt, amqp as never);
-  return { svc, redis, amqp };
+  const svc = new AuthService(db, redis as never, jwt);
+  return { svc, redis };
 }
 
 const hash = (pw: string) => bcrypt.hash(pw, 10);
@@ -28,19 +27,12 @@ async function refreshTokenFor(id: string) {
 }
 
 describe('AuthService.register', () => {
-  it('creates the user, publishes userRegistered, and returns tokens', async () => {
-    const { svc, amqp } = makeService();
+  it('creates the user and returns tokens', async () => {
+    const { svc } = makeService();
 
     const tokens = await svc.register({ email: 'a@b.com', password: 'password123' });
 
     expect(tokens.accessToken).toBeTruthy();
-    // publishEvent(amqp, routingKey, payload, opts) → publish(exchange, routingKey, payload, opts)
-    expect(amqp.publish).toHaveBeenCalledWith(
-      'tickethub.events',
-      'user.registered',
-      expect.objectContaining({ userId: expect.any(String), email: 'a@b.com' }),
-      expect.any(Object),
-    );
   });
 
   it('rejects a duplicate email', async () => {

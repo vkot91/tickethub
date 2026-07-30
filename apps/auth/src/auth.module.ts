@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type Redis from 'ioredis';
 import type { Db } from '@tickethub/db';
 import { DbModule } from '@tickethub/db/nest';
@@ -35,9 +34,8 @@ type Cfg = ConfigService<Config, true>;
     },
     {
       provide: AuthService,
-      inject: ['DB', REDIS_CLIENT, JwtService, AmqpConnection],
-      useFactory: (db: Db, redis: Redis, jwt: JwtService, amqp: AmqpConnection) =>
-        new AuthService(db, redis, jwt, amqp),
+      inject: ['DB', REDIS_CLIENT, JwtService],
+      useFactory: (db: Db, redis: Redis, jwt: JwtService) => new AuthService(db, redis, jwt),
     },
   ],
 })

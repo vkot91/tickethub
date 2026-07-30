@@ -1,9 +1,9 @@
 import type { AuthRpcContracts } from './auth/wire';
-import type { OrdersRpcContracts } from './orders/wire';
+import type { OrdersEventContracts, OrdersRpcContracts } from './orders/wire';
 import type { OrganizerRpcContracts } from './organizer/wire';
-import type { PaymentsRpcContracts } from './payments/wire';
-import type { ShowsRpcContracts } from './shows/wire';
-import type { TicketsRpcContracts } from './tickets/wire';
+import type { PaymentsEventContracts, PaymentsRpcContracts } from './payments/wire';
+import type { ShowsEventContracts, ShowsRpcContracts } from './shows/wire';
+import type { TicketsEventContracts, TicketsRpcContracts } from './tickets/wire';
 import type { VenuesRpcContracts } from './venues/wire';
 
 /**
@@ -46,3 +46,44 @@ export type RpcKey = keyof RpcContracts;
 
 export type RpcPayload<K extends RpcKey> = RpcContracts[K]['payload'];
 export type RpcResult<K extends RpcKey> = RpcContracts[K]['result'];
+
+/**
+ * Every domain event in the system, keyed by its routing key. The RPC half of this file relates a
+ * payload to a result; an event has no result, so an entry is just the payload type.
+ *
+ * `OutboxRepository.enqueue` reads this map, so a publish site names a routing key and the payload
+ * is checked against it. Before this existed the outbox took
+ * `Record<string, unknown> & { messageId: string }`, which accepted any object with a uuid in it —
+ * a stray key, a missing field or a payload filed under the wrong routing key were all silent, and
+ * only turned up as an undefined property inside a consumer in another service.
+ *
+ * **Adding an event**: add the routing key to its `*_ROUTING_KEYS` map, the payload schema to that
+ * feature's `schema.ts`, and one line to its `*EventContracts` interface. All three are in the same
+ * folder. Writing the key without the contract line is a compile error at the first publish site.
+ */
+export interface EventContracts
+  extends
+    ShowsEventContracts,
+    OrdersEventContracts,
+    PaymentsEventContracts,
+    TicketsEventContracts {}
+
+/** Every routing key that is a domain event — anything else cannot be published. */
+export type EventKey = keyof EventContracts;
+
+/**
+ * What a *publisher* authors: domain fields only. `messageId` is deliberately absent — see
+ * `EventEnvelope`.
+ */
+export type EventPayload<K extends EventKey> = EventContracts[K];
+
+/**
+ * What a *consumer* receives: the payload plus the id the transport stamped on it.
+ *
+ * `messageId` is an envelope concern, not a domain one. Every publisher used to mint it by hand —
+ * three different uuid generators across five call sites — and every one of them could have
+ * forgotten, because the field was just another key in the payload. Now `enqueue` stamps it, so a
+ * publisher cannot omit it and a consumer can always dedupe on it. The bytes on the wire are
+ * unchanged; only who is responsible for the field moved.
+ */
+export type EventEnvelope<K extends EventKey> = EventPayload<K> & { messageId: string };

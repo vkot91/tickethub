@@ -3,7 +3,7 @@ import { RabbitSubscribe, Nack } from '@golevelup/nestjs-rabbitmq';
 import type { Queue } from 'bullmq';
 import type { Db } from '@tickethub/db';
 import { InboxRepository } from '@tickethub/outbox';
-import { EVENTS_QUEUES, TICKET_ROUTING_KEYS, type TicketPdfReadyEvent } from '@tickethub/contracts';
+import { EVENTS_QUEUES, TICKET_ROUTING_KEYS, type EventEnvelope } from '@tickethub/contracts';
 import { eventSub } from '@tickethub/rmq';
 
 @Controller()
@@ -23,7 +23,7 @@ export class NotifyController {
   @RabbitSubscribe(
     eventSub(TICKET_ROUTING_KEYS.TICKET_PDF_READY, EVENTS_QUEUES.FULFILLMENT_TICKET_PDF_READY),
   )
-  async onPdfReady(event: TicketPdfReadyEvent) {
+  async onPdfReady(event: EventEnvelope<typeof TICKET_ROUTING_KEYS.TICKET_PDF_READY>) {
     // The claim and the enqueue live in the same transaction, deliberately unlike the read-only
     // pre-check + separate write elsewhere in this app: there is no domain row here for the claim
     // to commit alongside, only the enqueue itself. If `queue.add` throws, the transaction rolls

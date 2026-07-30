@@ -61,27 +61,30 @@ export const orderListSchema = z.object({
 });
 export type OrderList = z.infer<typeof orderListSchema>;
 
-const base = z.object({ messageId: uuid });
-export const orderAwaitingPaymentSchema = base.extend({
+// Event payloads carry domain fields only — `messageId` is stamped by the transport and reaches
+// consumers as `EventEnvelope<K>`. See `../registry`.
+export const orderAwaitingPaymentSchema = z.object({
   orderId: uuid,
   userId: uuid,
   showId: uuid,
   totalCents: z.number().int(),
 });
-export const orderPaidSchema = base.extend({ orderId: uuid, userId: uuid, showId: uuid });
-export const orderExpiredSchema = base.extend({ orderId: uuid, showId: uuid });
-export const seatHeldSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
-export const seatReleasedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
+export const orderPaidSchema = z.object({ orderId: uuid, userId: uuid, showId: uuid });
+export const orderExpiredSchema = z.object({ orderId: uuid, showId: uuid });
+export const orderCancelledSchema = z.object({ orderId: uuid, showId: uuid });
+export const seatHeldSchema = z.object({ orderId: uuid, showId: uuid, seatId: uuid });
+export const seatReleasedSchema = z.object({ orderId: uuid, showId: uuid, seatId: uuid });
 
 export type OrderAwaitingPaymentEvent = z.infer<typeof orderAwaitingPaymentSchema>;
 export type OrderPaidEvent = z.infer<typeof orderPaidSchema>;
 export type OrderExpiredEvent = z.infer<typeof orderExpiredSchema>;
+export type OrderCancelledEvent = z.infer<typeof orderCancelledSchema>;
 export type SeatHeldEvent = z.infer<typeof seatHeldSchema>;
 export type SeatReleasedEvent = z.infer<typeof seatReleasedSchema>;
 
 // paymentIntentId optional: REST-driven refunds omit it (Payments resolves it from its own row);
 // the expire-then-pay race carries it straight from the payment.succeeded event.
-export const refundRequestedSchema = base.extend({
+export const refundRequestedSchema = z.object({
   orderId: uuid,
   paymentIntentId: z.string().optional(),
 });

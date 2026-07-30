@@ -4,9 +4,7 @@ import {
   EVENTS_QUEUES,
   PAYMENT_ROUTING_KEYS,
   SHOW_ROUTING_KEYS,
-  type PaymentFailedEvent,
-  type PaymentSucceededEvent,
-  type RefundSucceededEvent,
+  type EventEnvelope,
 } from '@tickethub/contracts';
 import { eventSub, nackOnError } from '@tickethub/rmq';
 import { OrderSagaService } from './saga.service';
@@ -20,26 +18,26 @@ export class OrderSagaController {
   @RabbitSubscribe(
     eventSub(PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED, EVENTS_QUEUES.ORDERS_PAYMENT_SUCCEEDED),
   )
-  onPaymentSucceeded(event: PaymentSucceededEvent) {
+  onPaymentSucceeded(event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED>) {
     return nackOnError(() => this.sagaService.markPaid(event));
   }
 
   @RabbitSubscribe(
     eventSub(PAYMENT_ROUTING_KEYS.PAYMENT_FAILED, EVENTS_QUEUES.ORDERS_PAYMENT_FAILED),
   )
-  onPaymentFailed(event: PaymentFailedEvent) {
+  onPaymentFailed(event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.PAYMENT_FAILED>) {
     return nackOnError(() => this.sagaService.markFailed(event));
   }
 
   @RabbitSubscribe(
     eventSub(PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED, EVENTS_QUEUES.ORDERS_REFUND_SUCCEEDED),
   )
-  onRefundSucceeded(event: RefundSucceededEvent) {
+  onRefundSucceeded(event: EventEnvelope<typeof PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED>) {
     return nackOnError(() => this.sagaService.markRefunded(event));
   }
 
   @RabbitSubscribe(eventSub(SHOW_ROUTING_KEYS.SHOW_CANCELLED, EVENTS_QUEUES.ORDERS_SHOW_CANCELLED))
-  onShowCancelled(event: { messageId: string; showId: string }) {
+  onShowCancelled(event: EventEnvelope<typeof SHOW_ROUTING_KEYS.SHOW_CANCELLED>) {
     return nackOnError(() => this.sagaService.refundAllPaidForShow(event));
   }
 }

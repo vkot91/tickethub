@@ -11,9 +11,10 @@ import {
 import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
 import {
   ORDERS_MESSAGE_PATTERNS,
+  ORDER_ROUTING_KEYS,
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
-  type OrderPaidEvent,
+  type EventEnvelope,
   type OrderResponse,
   type SeatMap,
   type ShowDetail,
@@ -35,7 +36,7 @@ const SECOND_SEAT_ID = '66666666-6666-4666-8666-6666660000bb';
 const OTHER_USER_ID = '99999999-9999-4999-8999-9999990000ff';
 const TICKET_TYPE_ID = '77777777-7777-4777-8777-7777770000aa';
 
-const orderPaid: OrderPaidEvent = {
+const orderPaid: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID> = {
   messageId: MESSAGE_ID,
   orderId: ORDER_ID,
   userId: USER_ID,

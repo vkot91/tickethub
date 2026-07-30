@@ -1,4 +1,16 @@
-import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } from './schema';
+import type {
+  CreateOrderDto,
+  OrderAwaitingPaymentEvent,
+  OrderCancelledEvent,
+  OrderExpiredEvent,
+  OrderListQuery,
+  OrderPaidEvent,
+  OrderResponse,
+  OrderSummaryPage,
+  RefundRequestedEvent,
+  SeatHeldEvent,
+  SeatReleasedEvent,
+} from './schema';
 import type { OrderStats, RecentOrderRow } from '../organizer/schema';
 import type { Rpc } from '../shape';
 
@@ -21,6 +33,16 @@ export const ORDER_ROUTING_KEYS = {
   SEAT_RELEASED: 'seat.released',
   REFUND_REQUESTED: 'refund.requested',
 } as const;
+
+export interface OrdersEventContracts {
+  [ORDER_ROUTING_KEYS.ORDER_AWAITING_PAYMENT]: OrderAwaitingPaymentEvent;
+  [ORDER_ROUTING_KEYS.ORDER_PAID]: OrderPaidEvent;
+  [ORDER_ROUTING_KEYS.ORDER_EXPIRED]: OrderExpiredEvent;
+  [ORDER_ROUTING_KEYS.ORDER_CANCELLED]: OrderCancelledEvent;
+  [ORDER_ROUTING_KEYS.SEAT_HELD]: SeatHeldEvent;
+  [ORDER_ROUTING_KEYS.SEAT_RELEASED]: SeatReleasedEvent;
+  [ORDER_ROUTING_KEYS.REFUND_REQUESTED]: RefundRequestedEvent;
+}
 
 export interface OrdersRpcContracts {
   [ORDERS_MESSAGE_PATTERNS.CREATE]: Rpc<{

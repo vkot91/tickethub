@@ -1,4 +1,10 @@
-import type { CreatePaymentIntentDto, PaymentIntentResponse } from './schema';
+import type {
+  CreatePaymentIntentDto,
+  PaymentFailedEvent,
+  PaymentIntentResponse,
+  PaymentSucceededEvent,
+  RefundSucceededEvent,
+} from './schema';
 import type { Rpc } from '../shape';
 
 export const PAYMENTS_MESSAGE_PATTERNS = {
@@ -11,6 +17,12 @@ export const PAYMENT_ROUTING_KEYS = {
   PAYMENT_FAILED: 'payment.failed',
   REFUND_SUCCEEDED: 'refund.succeeded',
 } as const;
+
+export interface PaymentsEventContracts {
+  [PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED]: PaymentSucceededEvent;
+  [PAYMENT_ROUTING_KEYS.PAYMENT_FAILED]: PaymentFailedEvent;
+  [PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED]: RefundSucceededEvent;
+}
 
 export interface PaymentsRpcContracts {
   [PAYMENTS_MESSAGE_PATTERNS.CREATE_INTENT]: Rpc<{

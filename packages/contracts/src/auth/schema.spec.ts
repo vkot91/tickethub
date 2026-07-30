@@ -1,10 +1,5 @@
-import {
-  getUserRequestSchema,
-  getUserResponseSchema,
-  registerSchema,
-  userRegisteredSchema,
-} from './schema';
-import { AUTH_MESSAGE_PATTERNS, USER_ROUTING_KEYS } from './wire';
+import { getUserRequestSchema, getUserResponseSchema, registerSchema } from './schema';
+import { AUTH_MESSAGE_PATTERNS } from './wire';
 
 describe('registerSchema', () => {
   it('accepts a valid registration', () => {
@@ -35,19 +30,7 @@ describe('getUserRequestSchema', () => {
 describe('auth wire names', () => {
   it('mirrors each key onto its wire value', () => {
     expect(AUTH_MESSAGE_PATTERNS.LOGIN).toBe('auth.login');
-    expect(USER_ROUTING_KEYS.USER_REGISTERED).toBe('user.registered');
-  });
-});
-
-describe('userRegisteredSchema', () => {
-  it('validates a user.registered payload', () => {
-    const event = {
-      messageId: crypto.randomUUID(),
-      userId: crypto.randomUUID(),
-      email: 'a@b.com',
-    };
-
-    expect(userRegisteredSchema.parse(event)).toEqual(event);
+    expect(AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS).toBe('auth.getUsersByIds');
   });
 });
 

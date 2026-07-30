@@ -1,4 +1,4 @@
-import type { TicketList, TicketPdfUrl } from './schema';
+import type { TicketList, TicketPdfReadyEvent, TicketPdfUrl } from './schema';
 import type { Rpc } from '../shape';
 
 export const TICKETS_MESSAGE_PATTERNS = {
@@ -10,6 +10,10 @@ export const TICKETS_MESSAGE_PATTERNS = {
 export const TICKET_ROUTING_KEYS = {
   TICKET_PDF_READY: 'ticket.pdf_ready',
 } as const;
+
+export interface TicketsEventContracts {
+  [TICKET_ROUTING_KEYS.TICKET_PDF_READY]: TicketPdfReadyEvent;
+}
 
 export interface TicketsRpcContracts {
   [TICKETS_MESSAGE_PATTERNS.LIST]: Rpc<{ payload: { userId: string }; result: TicketList }>;

@@ -2,9 +2,9 @@ import 'reflect-metadata';
 import { of } from 'rxjs';
 import { RABBIT_HANDLER } from '@golevelup/nestjs-rabbitmq';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { EVENTS_EXCHANGE } from '@tickethub/contracts';
+import { EVENTS_EXCHANGE, PAYMENT_ROUTING_KEYS } from '@tickethub/contracts';
 import { RequestIdMiddleware } from './request-id.middleware';
-import { publishEvent } from './rmq.config';
+import { publishStored } from './rmq.config';
 import { RequestIdInterceptor } from './request-id.interceptor';
 
 const middleware = new RequestIdMiddleware();
@@ -17,17 +17,30 @@ function res() {
   return { setHeader: (k: string, v: string) => (set[k] = v), _headers: set };
 }
 
-// Capture what publishEvent puts on the wire.
+// A row as the poller reads it back: the outbox already stamped the messageId.
+const paymentSucceeded = {
+  messageId: '44444444-4444-4444-8444-444444444444',
+  orderId: 'o1',
+  paymentIntentId: 'pi_1',
+  amountCents: 1000,
+};
+
+// Capture what publishStored puts on the wire.
 function amqpSpy() {
-  const calls: { exchange: string; routingKey: string; headers: Record<string, unknown> }[] = [];
+  const calls: {
+    exchange: string;
+    routingKey: string;
+    msg: unknown;
+    headers: Record<string, unknown>;
+  }[] = [];
   const amqp = {
     publish: (
       exchange: string,
       routingKey: string,
-      _msg: unknown,
+      msg: unknown,
       opts: { headers: Record<string, unknown> },
     ) => {
-      calls.push({ exchange, routingKey, headers: opts.headers });
+      calls.push({ exchange, routingKey, msg, headers: opts.headers });
       return Promise.resolve(true);
     },
   } as unknown as AmqpConnection;
@@ -44,7 +57,7 @@ function rabbitCtx(headers: Record<string, unknown>) {
   } as never;
 }
 
-// The full edge→wire→consumer chain: middleware seeds ALS, publishEvent stamps the header
+// The full edge→wire→consumer chain: middleware seeds ALS, publishStored stamps the header
 // from ALS, interceptor restores it — the same id must survive end to end.
 describe('request id propagation', () => {
   it('carries the inbound x-request-id from middleware onto the published event', async () => {
@@ -53,7 +66,9 @@ describe('request id propagation', () => {
 
     await new Promise<void>((resolve) => {
       middleware.use(req({ 'x-request-id': 'req-abc' }), r, () => {
-        void publishEvent(amqp, 'payment.succeeded', { foo: 1 }).then(resolve);
+        void publishStored(amqp, PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED, paymentSucceeded).then(
+          resolve,
+        );
       });
     });
 
@@ -61,6 +76,9 @@ describe('request id propagation', () => {
     expect(calls[0].routingKey).toBe('payment.succeeded');
     expect(calls[0].headers['x-request-id']).toBe('req-abc');
     expect(r._headers['x-request-id']).toBe('req-abc');
+
+    // Relayed byte for byte — the poller adds nothing to a row it read back.
+    expect(calls[0].msg).toEqual(paymentSucceeded);
   });
 
   it('mints an id when none is inbound, and the consumer reads it back', async () => {
@@ -68,7 +86,9 @@ describe('request id propagation', () => {
 
     await new Promise<void>((resolve) => {
       middleware.use(req(), res(), () => {
-        void publishEvent(amqp, 'payment.succeeded', { foo: 1 }).then(resolve);
+        void publishStored(amqp, PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED, paymentSucceeded).then(
+          resolve,
+        );
       });
     });
 

@@ -5,7 +5,7 @@ import {
   ORDER_ROUTING_KEYS,
   RPC_EXCHANGE,
   TICKETS_MESSAGE_PATTERNS,
-  type OrderPaidEvent,
+  type EventEnvelope,
 } from '@tickethub/contracts';
 import { eventSub } from '@tickethub/rmq';
 import { TicketsService } from './tickets.service';
@@ -19,7 +19,7 @@ export class TicketsController {
   // Orders → order.paid. Its own queue + DLX so a redelivery that keeps failing dead-letters
   // instead of requeuing forever.
   @RabbitSubscribe(eventSub(ORDER_ROUTING_KEYS.ORDER_PAID, EVENTS_QUEUES.FULFILLMENT_ORDER_PAID))
-  async onOrderPaid(event: OrderPaidEvent) {
+  async onOrderPaid(event: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID>) {
     try {
       await this.ticketsService.handleOrderPaid(event);
     } catch (error) {

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { Nack } from '@golevelup/nestjs-rabbitmq';
-import type { OrderPaidEvent } from '@tickethub/contracts';
+import { ORDER_ROUTING_KEYS, type EventEnvelope } from '@tickethub/contracts';
 import { TicketsController } from './tickets.controller';
 
 describe('TicketsController', () => {
@@ -11,7 +11,11 @@ describe('TicketsController', () => {
   it('order.paid delegates to handleOrderPaid with the exact event', async () => {
     const service = { handleOrderPaid: jest.fn().mockResolvedValue(undefined) };
     const controller = new TicketsController(service as never);
-    const event: OrderPaidEvent = { messageId: 'm1', orderId: 'ord1', showId: 'ev1' } as never;
+    const event: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID> = {
+      messageId: 'm1',
+      orderId: 'ord1',
+      showId: 'ev1',
+    } as never;
 
     await controller.onOrderPaid(event);
 
@@ -23,7 +27,11 @@ describe('TicketsController', () => {
       handleOrderPaid: jest.fn().mockRejectedValue(new Error('render failed')),
     };
     const controller = new TicketsController(service as never);
-    const event: OrderPaidEvent = { messageId: 'm1', orderId: 'ord1', showId: 'ev1' } as never;
+    const event: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID> = {
+      messageId: 'm1',
+      orderId: 'ord1',
+      showId: 'ev1',
+    } as never;
 
     const result = await controller.onOrderPaid(event);
 
@@ -36,7 +44,11 @@ describe('TicketsController', () => {
     const renderError = new Error('render failed');
     const service = { handleOrderPaid: jest.fn().mockRejectedValue(renderError) };
     const controller = new TicketsController(service as never);
-    const event: OrderPaidEvent = { messageId: 'm1', orderId: 'ord1', showId: 'ev1' } as never;
+    const event: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID> = {
+      messageId: 'm1',
+      orderId: 'ord1',
+      showId: 'ev1',
+    } as never;
 
     await controller.onOrderPaid(event);
 

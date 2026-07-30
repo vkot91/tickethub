@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { v4 as uuid } from 'uuid';
+import { ORDER_ROUTING_KEYS, type EventKey, type EventPayload } from '@tickethub/contracts';
 import { orders, seatReservations } from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
 import { OutboxRepository, InboxRepository, type Tx } from '@tickethub/outbox';
@@ -74,11 +74,20 @@ export class OrderRepository {
     return held.map((h) => h.seatId);
   }
 
-  emit(tx: Tx, routingKey: string, payload: Record<string, unknown>): Promise<void> {
-    return this.outbox.enqueue(tx, { routingKey, payload: { messageId: uuid(), ...payload } });
+  // A pass-through onto the outbox, so the services above never hold an OutboxRepository of their
+  // own. `K` is inferred from `routingKey`, so `payload` is checked against that event's contract.
+  emit<K extends EventKey>(tx: Tx, routingKey: K, payload: EventPayload<K>): Promise<void> {
+    return this.outbox.enqueue(tx, { routingKey, payload });
   }
 
-  async emitPerSeat(tx: Tx, routingKey: string, order: Order, seatIds: string[]): Promise<void> {
+  // The two per-seat events, and only those: both carry exactly `{ orderId, showId, seatId }`, so
+  // widening the key to EventKey would let a caller ask for a fan-out of the wrong event.
+  async emitPerSeat(
+    tx: Tx,
+    routingKey: typeof ORDER_ROUTING_KEYS.SEAT_HELD | typeof ORDER_ROUTING_KEYS.SEAT_RELEASED,
+    order: Order,
+    seatIds: string[],
+  ): Promise<void> {
     for (const seatId of seatIds) {
       await this.emit(tx, routingKey, { orderId: order.id, showId: order.showId, seatId });
     }

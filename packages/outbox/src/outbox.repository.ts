@@ -1,12 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { isNull, eq } from 'drizzle-orm';
 import type { Db, OutboxTable } from '@tickethub/db';
+import type { EventKey, EventPayload } from '@tickethub/contracts';
 
 // A Drizzle transaction handle — same query surface as Db, derived from its callback.
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
-export interface OutboxMessage {
-  routingKey: string;
-  payload: Record<string, unknown> & { messageId: string };
+/**
+ * One event to publish, named by its routing key. `K` is inferred from `routingKey`, so `payload`
+ * is checked against exactly that event's contract: a stray key, a missing field, or the right
+ * payload under the wrong routing key are all compile errors here.
+ *
+ * `messageId` is not part of it — `enqueue` stamps it. See `EventEnvelope` in @tickethub/contracts.
+ */
+export interface OutboxMessage<K extends EventKey> {
+  routingKey: K;
+  payload: EventPayload<K>;
 }
 
 export type OutboxRow = OutboxTable['$inferSelect'];
@@ -34,8 +43,12 @@ export class OutboxRepository {
   ) {}
 
   // Called inside the same tx as the state change — that's the whole point of the outbox.
-  async enqueue(tx: Tx, msg: OutboxMessage): Promise<void> {
-    await tx.insert(this.table).values({ routingKey: msg.routingKey, payload: msg.payload });
+  // The messageId is minted here and nowhere else: it identifies this *delivery* for consumer
+  // dedupe, which is the transport's business, not the publisher's.
+  async enqueue<K extends EventKey>(tx: Tx, msg: OutboxMessage<K>): Promise<void> {
+    await tx
+      .insert(this.table)
+      .values({ routingKey: msg.routingKey, payload: { messageId: randomUUID(), ...msg.payload } });
   }
 
   // Claims a batch for this poller run; the row locks are held until the tx commits.

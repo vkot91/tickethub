@@ -162,11 +162,15 @@ export const posterUploadUrlSchema = z.object({
 });
 export type PosterUploadUrl = z.infer<typeof posterUploadUrlSchema>;
 
-export const showPublishedSchema = z.object({
-  messageId: z.string().uuid(),
-  showId: z.string().uuid(),
-});
+// Event payloads carry domain fields only — `messageId` is stamped by the transport and reaches
+// consumers as `EventEnvelope<K>`. See `../registry`.
+export const showPublishedSchema = z.object({ showId: z.string().uuid() });
 export type ShowPublishedEvent = z.infer<typeof showPublishedSchema>;
+
+// Same shape as published today, declared separately on purpose: they are two different events
+// and an alias would couple two things that have no reason to change together.
+export const showCancelledSchema = z.object({ showId: z.string().uuid() });
+export type ShowCancelledEvent = z.infer<typeof showCancelledSchema>;
 
 export const catalogPageSchema = z.object({
   items: z.array(showSummarySchema),

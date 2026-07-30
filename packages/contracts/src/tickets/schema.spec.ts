@@ -7,8 +7,8 @@ describe('ticket contracts', () => {
   });
 
   it('parses a ticket.pdf_ready event', () => {
+    // No messageId: the transport stamps it, so the schema is domain fields only.
     const event = {
-      messageId: '11111111-1111-1111-1111-111111111111',
       orderId: '22222222-2222-2222-2222-222222222222',
       userId: '33333333-3333-3333-3333-333333333333',
     };
@@ -16,8 +16,6 @@ describe('ticket contracts', () => {
   });
 
   it('rejects a non-uuid orderId', () => {
-    expect(() =>
-      ticketPdfReadySchema.parse({ messageId: 'x', orderId: 'x', userId: 'x' }),
-    ).toThrow();
+    expect(() => ticketPdfReadySchema.parse({ orderId: 'x', userId: 'x' })).toThrow();
   });
 });

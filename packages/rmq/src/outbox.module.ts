@@ -2,10 +2,10 @@ import { DynamicModule, Module } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { OutboxRepository, InboxRepository, OutboxPoller } from '@tickethub/outbox';
 import type { Db, OutboxTable, ProcessedMessagesTable } from '@tickethub/db';
-import { publishEvent } from './rmq.config';
+import { publishStored } from './rmq.config';
 
 // The outbox integration lives here, in the transport package, because wiring the poller
-// couples it to AmqpConnection + publishEvent. @tickethub/outbox itself stays transport-agnostic
+// couples it to AmqpConnection + publishStored. @tickethub/outbox itself stays transport-agnostic
 // (its poller takes a plain PublishFn). Needs a global 'DB' provider — see DbModule.forRoot().
 @Module({})
 export class OutboxModule {
@@ -30,7 +30,7 @@ export class OutboxModule {
           inject: [OutboxRepository, AmqpConnection],
           useFactory: (outbox: OutboxRepository, amqp: AmqpConnection) =>
             new OutboxPoller(outbox, (routingKey, payload) =>
-              publishEvent(amqp, routingKey, payload),
+              publishStored(amqp, routingKey, payload),
             ),
         },
       ],

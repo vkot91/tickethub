@@ -18,9 +18,7 @@ describe('shows wire names', () => {
 
 describe('showPublishedSchema', () => {
   it('rejects a show.published payload with a bad showId', () => {
-    expect(() =>
-      showPublishedSchema.parse({ messageId: crypto.randomUUID(), showId: 'x' }),
-    ).toThrow();
+    expect(() => showPublishedSchema.parse({ showId: 'x' })).toThrow();
   });
 });
 

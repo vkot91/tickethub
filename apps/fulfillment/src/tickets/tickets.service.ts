@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
@@ -8,9 +7,10 @@ import { tickets, fulfillmentProcessedMessages, type Db } from '@tickethub/db';
 import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
 import {
   ORDERS_MESSAGE_PATTERNS,
+  ORDER_ROUTING_KEYS,
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
-  type OrderPaidEvent,
+  type EventEnvelope,
   type Ticket,
   type TicketList,
   type TicketPdfUrl,
@@ -36,7 +36,7 @@ export class TicketsService {
     private readonly qrSecret: string,
   ) {}
 
-  async handleOrderPaid(event: OrderPaidEvent): Promise<void> {
+  async handleOrderPaid(event: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID>): Promise<void> {
     // Read-only pre-check — an optimisation only, never the authoritative claim. It skips the
     // expensive render for a redelivery of a message that already committed; the real claim
     // happens inside the write transaction below, so a failure mid-flight leaves nothing claimed.
@@ -140,7 +140,7 @@ export class TicketsService {
 
       await this.outbox.enqueue(tx, {
         routingKey: TICKET_ROUTING_KEYS.TICKET_PDF_READY,
-        payload: { messageId: randomUUID(), orderId: event.orderId, userId: event.userId },
+        payload: { orderId: event.orderId, userId: event.userId },
       });
     });
   }

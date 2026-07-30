@@ -158,7 +158,7 @@ export class OrganizerPublishingService {
     showId: string,
     from: 'draft' | 'published',
     to: 'published' | 'cancelled',
-    routingKey: string,
+    routingKey: typeof SHOW_ROUTING_KEYS.SHOW_PUBLISHED | typeof SHOW_ROUTING_KEYS.SHOW_CANCELLED,
     userId: string,
   ): Promise<void> {
     await this.db.transaction(async (tx) => {
@@ -176,10 +176,7 @@ export class OrganizerPublishingService {
         );
       }
 
-      await this.outbox.enqueue(tx, {
-        routingKey,
-        payload: { messageId: crypto.randomUUID(), showId },
-      });
+      await this.outbox.enqueue(tx, { routingKey, payload: { showId } });
     });
   }
 

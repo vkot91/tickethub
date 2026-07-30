@@ -15,7 +15,7 @@ describe('PaymentsSagaService.refund', () => {
   it('refunds using the paymentIntentId carried on the event', async () => {
     const d = deps();
 
-    await d.service.refund({ messageId: 'm1', orderId: 'ord1', paymentIntentId: 'pi_1' });
+    await d.service.refund({ orderId: 'ord1', paymentIntentId: 'pi_1' });
 
     expect(d.stripe.createRefund).toHaveBeenCalledWith('ord1', 'pi_1');
   });
@@ -23,7 +23,7 @@ describe('PaymentsSagaService.refund', () => {
   it('resolves the intent from the payments row when the event omits it', async () => {
     const d = deps({ id: 'pi_looked_up' });
 
-    await d.service.refund({ messageId: 'm1', orderId: 'ord1' });
+    await d.service.refund({ orderId: 'ord1' });
 
     expect(d.stripe.createRefund).toHaveBeenCalledWith('ord1', 'pi_looked_up');
   });
@@ -31,7 +31,7 @@ describe('PaymentsSagaService.refund', () => {
   it('is a no-op when the event omits the intent and no payments row exists', async () => {
     const d = deps(); // no intentRow
 
-    await d.service.refund({ messageId: 'm1', orderId: 'ord1' });
+    await d.service.refund({ orderId: 'ord1' });
 
     expect(d.stripe.createRefund).not.toHaveBeenCalled();
   });
@@ -41,7 +41,7 @@ describe('PaymentsSagaService.refund', () => {
   // the retry of a refund that failed.
   it('retries reach Stripe under the same idempotency key', async () => {
     const d = deps();
-    const event = { messageId: 'm1', orderId: 'ord1', paymentIntentId: 'pi_1' };
+    const event = { orderId: 'ord1', paymentIntentId: 'pi_1' };
 
     await d.service.refund(event);
     await d.service.refund(event);
@@ -74,7 +74,7 @@ describe('PaymentsSagaService.cancelExpired', () => {
     return { service: new PaymentsSagaService(db as never, stripe as never), stripe, updates };
   }
 
-  const event = { messageId: 'm1', orderId: 'ord1', showId: 'ev1' };
+  const event = { orderId: 'ord1', showId: 'ev1' };
 
   it('cancels the open intent and marks the payment canceled', async () => {
     const d = deps({ id: 'pi_1', status: 'requires_payment' });

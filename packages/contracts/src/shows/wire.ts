@@ -1,4 +1,11 @@
-import type { CatalogPage, CatalogQuery, SeatMap, ShowDetail } from './schema';
+import type {
+  CatalogPage,
+  CatalogQuery,
+  SeatMap,
+  ShowCancelledEvent,
+  ShowDetail,
+  ShowPublishedEvent,
+} from './schema';
 import type { Rpc } from '../shape';
 
 /** The buyer-facing catalog surface. The console's own reads live in `../organizer/wire`. */
@@ -12,6 +19,11 @@ export const SHOW_ROUTING_KEYS = {
   SHOW_PUBLISHED: 'show.published',
   SHOW_CANCELLED: 'show.cancelled',
 } as const;
+
+export interface ShowsEventContracts {
+  [SHOW_ROUTING_KEYS.SHOW_PUBLISHED]: ShowPublishedEvent;
+  [SHOW_ROUTING_KEYS.SHOW_CANCELLED]: ShowCancelledEvent;
+}
 
 export interface ShowsRpcContracts {
   [SHOWS_MESSAGE_PATTERNS.CATALOG]: Rpc<{ payload: CatalogQuery; result: CatalogPage }>;
