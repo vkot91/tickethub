@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { ORGANIZER_MESSAGE_PATTERNS, RPC_EXCHANGE } from '@tickethub/contracts';
+import { ORGANIZER_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import { rpcSub } from '@tickethub/rmq';
 import { OrganizerService } from './organizer.service';
 
 // The organizer profile. Organizer-only RPCs never share a file with the buyer-facing catalog —
@@ -9,11 +10,7 @@ import { OrganizerService } from './organizer.service';
 export class OrganizerController {
   constructor(private readonly organizerService: OrganizerService) {}
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: ORGANIZER_MESSAGE_PATTERNS.CREATE,
-    queue: ORGANIZER_MESSAGE_PATTERNS.CREATE,
-  })
+  @RabbitRPC(rpcSub(ORGANIZER_MESSAGE_PATTERNS.CREATE))
   create(params: { userId: string; name: string }) {
     return this.organizerService.create(params.userId, params.name);
   }

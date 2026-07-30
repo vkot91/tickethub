@@ -1,35 +1,24 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { RPC_EXCHANGE, SHOWS_MESSAGE_PATTERNS, type CatalogQuery } from '@tickethub/contracts';
+import { SHOWS_MESSAGE_PATTERNS, type CatalogQuery } from '@tickethub/contracts';
+import { rpcSub } from '@tickethub/rmq';
 import { UserShowsService } from './shows.service';
 
 @Controller()
 export class UserShowsController {
   constructor(private readonly showsService: UserShowsService) {}
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: SHOWS_MESSAGE_PATTERNS.CATALOG,
-    queue: SHOWS_MESSAGE_PATTERNS.CATALOG,
-  })
+  @RabbitRPC(rpcSub(SHOWS_MESSAGE_PATTERNS.CATALOG))
   catalog(query: CatalogQuery) {
     return this.showsService.catalog(query);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: SHOWS_MESSAGE_PATTERNS.DETAIL,
-    queue: SHOWS_MESSAGE_PATTERNS.DETAIL,
-  })
+  @RabbitRPC(rpcSub(SHOWS_MESSAGE_PATTERNS.DETAIL))
   detail(params: { id: string }) {
     return this.showsService.detail(params.id);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: SHOWS_MESSAGE_PATTERNS.SEAT_MAP,
-    queue: SHOWS_MESSAGE_PATTERNS.SEAT_MAP,
-  })
+  @RabbitRPC(rpcSub(SHOWS_MESSAGE_PATTERNS.SEAT_MAP))
   seatMap(params: { id: string }) {
     return this.showsService.seatMap(params.id);
   }
