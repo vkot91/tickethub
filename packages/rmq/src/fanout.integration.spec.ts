@@ -3,7 +3,7 @@ import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import * as amqplib from 'amqplib';
 import { v4 as uuid } from 'uuid';
 import { EVENTS_EXCHANGE } from '@tickethub/contracts';
-import { rmqConfig, publishEvent } from './rmq.config';
+import { rmqConfig, publishStored } from './rmq.config';
 import { runWithRequestId } from './request-context';
 
 jest.setTimeout(120_000);
@@ -63,7 +63,7 @@ describe('events fan-out (integration: real RabbitMQ)', () => {
       amountCents: 5000,
     };
     await runWithRequestId('req-fanout', () =>
-      publishEvent(publisher, 'payment.succeeded', payload),
+      publishStored(publisher, 'payment.succeeded', payload),
     );
 
     const [orders, notifications] = await Promise.all([ordersMsg, notificationsMsg]);

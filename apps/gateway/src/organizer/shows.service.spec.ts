@@ -12,7 +12,10 @@ describe('OrganizerShowsService', () => {
 
     await expect(svc.showIds('u1')).resolves.toEqual(['s1', 's2']);
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'organizer.showIds', payload: { userId: 'u1' } }),
+      expect.objectContaining({
+        routingKey: 'organizer.profile.showIds',
+        payload: { userId: 'u1' },
+      }),
     );
   });
 

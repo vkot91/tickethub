@@ -2,76 +2,48 @@ import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import {
   AUTH_MESSAGE_PATTERNS,
-  RPC_EXCHANGE,
   type LoginDto,
   type RefreshDto,
   type RegisterDto,
 } from '@tickethub/contracts';
+import { rpcSub } from '@tickethub/rmq';
 import { AuthService } from './auth.service';
 
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.REGISTER,
-    queue: AUTH_MESSAGE_PATTERNS.REGISTER,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.REGISTER))
   register(dto: RegisterDto) {
     return this.authService.register(dto);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.LOGIN,
-    queue: AUTH_MESSAGE_PATTERNS.LOGIN,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.LOGIN))
   login(dto: LoginDto) {
     return this.authService.login(dto);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.REFRESH,
-    queue: AUTH_MESSAGE_PATTERNS.REFRESH,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.REFRESH))
   refresh(dto: RefreshDto) {
     return this.authService.refresh(dto);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.VALIDATE,
-    queue: AUTH_MESSAGE_PATTERNS.VALIDATE,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.VALIDATE))
   validate(p: { accessToken: string }) {
     return this.authService.validate(p.accessToken);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.GET_USER,
-    queue: AUTH_MESSAGE_PATTERNS.GET_USER,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.GET_USER))
   getUser(params: { userId: string }) {
     return this.authService.getUser(params.userId);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS,
-    queue: AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS))
   getUsersByIds(params: { ids: string[] }) {
     return this.authService.getUsersByIds(params.ids);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
-    queue: AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER,
-  })
+  @RabbitRPC(rpcSub(AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER))
   becomeOrganizer(params: { userId: string }) {
     return this.authService.becomeOrganizer(params.userId);
   }

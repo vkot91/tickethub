@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { orderStatusSchema } from '../schema';
+
+// A buyer's own orders. Every shape here is scoped to one `userId` at the call site — which is why
+// the console's cross-buyer rows live in `../organizer/schema` and cannot be reached from here.
 
 const uuid = z.string().uuid();
 
@@ -10,15 +14,6 @@ export const createOrderSchema = z.object({
     .max(10),
 });
 export type CreateOrderDto = z.infer<typeof createOrderSchema>;
-
-export const orderStatusSchema = z.enum([
-  'awaiting_payment',
-  'paid',
-  'expired',
-  'cancelled',
-  'refunded',
-]);
-export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
 export const orderResponseSchema = z.object({
   id: uuid,
@@ -60,29 +55,3 @@ export const orderListSchema = z.object({
   nextCursor: uuid.nullable(),
 });
 export type OrderList = z.infer<typeof orderListSchema>;
-
-const base = z.object({ messageId: uuid });
-export const orderAwaitingPaymentSchema = base.extend({
-  orderId: uuid,
-  userId: uuid,
-  showId: uuid,
-  totalCents: z.number().int(),
-});
-export const orderPaidSchema = base.extend({ orderId: uuid, userId: uuid, showId: uuid });
-export const orderExpiredSchema = base.extend({ orderId: uuid, showId: uuid });
-export const seatHeldSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
-export const seatReleasedSchema = base.extend({ orderId: uuid, showId: uuid, seatId: uuid });
-
-export type OrderAwaitingPaymentEvent = z.infer<typeof orderAwaitingPaymentSchema>;
-export type OrderPaidEvent = z.infer<typeof orderPaidSchema>;
-export type OrderExpiredEvent = z.infer<typeof orderExpiredSchema>;
-export type SeatHeldEvent = z.infer<typeof seatHeldSchema>;
-export type SeatReleasedEvent = z.infer<typeof seatReleasedSchema>;
-
-// paymentIntentId optional: REST-driven refunds omit it (Payments resolves it from its own row);
-// the expire-then-pay race carries it straight from the payment.succeeded event.
-export const refundRequestedSchema = base.extend({
-  orderId: uuid,
-  paymentIntentId: z.string().optional(),
-});
-export type RefundRequestedEvent = z.infer<typeof refundRequestedSchema>;

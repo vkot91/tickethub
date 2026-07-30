@@ -1,6 +1,6 @@
 import { HttpException } from '@nestjs/common';
 import type { AmqpConnection, MessageErrorHandler } from '@golevelup/nestjs-rabbitmq';
-import { RPC_EXCHANGE } from '@tickethub/contracts';
+import { RPC_EXCHANGE, type RpcKey, type RpcPayload, type RpcResult } from '@tickethub/contracts';
 import { getRequestId } from './request-context';
 
 // golevelup does NOT reply when an RPC handler throws — it runs the error handler and, by
@@ -31,12 +31,15 @@ export const rpcErrorReplyHandler: MessageErrorHandler = (channel, msg, error) =
 
 // Gateway-side RPC call: request over the RPC exchange, propagate the request id, and rethrow
 // a server error envelope as the matching HttpException so the gateway maps it to a status.
-export async function rpcRequest<T>(
+//
+// The routing key drives both other types: `RpcContracts` in @tickethub/contracts states each
+// key's payload and result, so a call site names a key and passes no type argument at all.
+export async function rpcRequest<K extends RpcKey>(
   amqp: AmqpConnection,
-  routingKey: string,
-  payload: unknown,
-): Promise<T> {
-  const response = await amqp.request<T | RpcErrorEnvelope>({
+  routingKey: K,
+  payload: RpcPayload<K>,
+): Promise<RpcResult<K>> {
+  const response = await amqp.request<RpcResult<K> | RpcErrorEnvelope>({
     exchange: RPC_EXCHANGE,
     routingKey,
     payload,

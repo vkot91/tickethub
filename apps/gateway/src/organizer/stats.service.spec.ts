@@ -18,10 +18,10 @@ const ORDERS_STATS = {
 /** One fake AmqpConnection, dispatching on routing key like the real broker would. */
 function makeService(overrides: Record<string, unknown> = {}, showIds = [SHOW_A]) {
   const replies: Record<string, unknown> = {
-    'orders.stats': ORDERS_STATS,
-    'orders.recent': [],
-    'organizer.capacity': [{ showId: SHOW_A, capacity: 10 }],
-    'tickets.checkedInCount': 4,
+    'organizer.orders.stats': ORDERS_STATS,
+    'organizer.orders.recent': [],
+    'organizer.shows.capacity': [{ showId: SHOW_A, capacity: 10 }],
+    'organizer.tickets.checkedInCount': 4,
     'auth.getUsersByIds': [{ id: BUYER, email: 'buyer@x.com' }],
     'shows.detail': {
       title: 'Neon Nights',
@@ -87,7 +87,7 @@ describe('OrganizerStatsService.stats', () => {
   it('sums capacity across every show when no showId is given', async () => {
     const { svc } = makeService(
       {
-        'organizer.capacity': [
+        'organizer.shows.capacity': [
           { showId: SHOW_A, capacity: 10 },
           { showId: SHOW_B, capacity: 5 },
         ],
@@ -144,7 +144,7 @@ describe('OrganizerStatsService.recentOrders', () => {
 
   it('resolves buyer emails in exactly one call for the whole page', async () => {
     const { svc, amqp } = makeService({
-      'orders.recent': [recentRow, { ...recentRow, id: 'o2' }],
+      'organizer.orders.recent': [recentRow, { ...recentRow, id: 'o2' }],
     });
 
     const page = await svc.recentOrders('u1', 10);
@@ -169,7 +169,7 @@ describe('OrganizerStatsService.recentOrders', () => {
 
   it('degrades a missing buyer to null rather than dropping the order', async () => {
     const { svc } = makeService({
-      'orders.recent': [recentRow],
+      'organizer.orders.recent': [recentRow],
       'auth.getUsersByIds': [],
     });
 
@@ -179,7 +179,7 @@ describe('OrganizerStatsService.recentOrders', () => {
   });
 
   it('keeps the "Unavailable show" fallback from the shared show context', async () => {
-    const { svc, showContext } = makeService({ 'orders.recent': [recentRow] });
+    const { svc, showContext } = makeService({ 'organizer.orders.recent': [recentRow] });
     showContext.withShowContext.mockResolvedValueOnce([
       { ...recentRow, seats: [], showTitle: 'Unavailable show', seatLabels: [] },
     ]);

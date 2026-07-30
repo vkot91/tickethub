@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { rpcRequest } from '@tickethub/rmq';
-import { TICKETS_MESSAGE_PATTERNS, type TicketList, type TicketPdfUrl } from '@tickethub/contracts';
+import { TICKETS_MESSAGE_PATTERNS, type TicketList } from '@tickethub/contracts';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 
 // ponytail: the two methods we call, rather than pulling @types/express in for one route.
@@ -17,7 +17,7 @@ export class GatewayUserTicketsController {
 
   @Get()
   list(@Req() req: { user: { id: string } }): Promise<TicketList> {
-    return rpcRequest<TicketList>(this.amqp, TICKETS_MESSAGE_PATTERNS.LIST, {
+    return rpcRequest(this.amqp, TICKETS_MESSAGE_PATTERNS.LIST, {
       userId: req.user.id,
     });
   }
@@ -37,7 +37,7 @@ export class GatewayUserTicketsController {
     @Param('id') id: string,
     @Res() res: RedirectResponse,
   ): Promise<void> {
-    const { url } = await rpcRequest<TicketPdfUrl>(this.amqp, TICKETS_MESSAGE_PATTERNS.PDF_URL, {
+    const { url } = await rpcRequest(this.amqp, TICKETS_MESSAGE_PATTERNS.PDF_URL, {
       userId: req.user.id,
       ticketId: id,
     });

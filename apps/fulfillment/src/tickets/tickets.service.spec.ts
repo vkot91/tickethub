@@ -2,9 +2,11 @@ import { eq, Param, type SQL } from 'drizzle-orm';
 import { fulfillmentProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
 import {
   ORDERS_MESSAGE_PATTERNS,
+  ORDER_ROUTING_KEYS,
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
-  type OrderPaidEvent,
+  type EventEnvelope,
+  type EventKey,
   type OrderResponse,
   type SeatMap,
   type ShowDetail,
@@ -41,7 +43,7 @@ const TICKET_ID_SECOND_ORDER = 'd3d678e1-b696-513f-ac64-da5a23d3363f';
 const QR_TOKEN_KNOWN_SEAT =
   '9cedc9ba-1f6b-567d-a4e6-86fd401f17eb.V6dV4Ystq4QrEklteepEdrZok7QDmLmY4sQ2tX_nq60';
 
-const orderPaid: OrderPaidEvent = {
+const orderPaid: EventEnvelope<typeof ORDER_ROUTING_KEYS.ORDER_PAID> = {
   messageId: MESSAGE_ID,
   orderId: ORDER_ID,
   userId: USER_ID,
@@ -155,7 +157,7 @@ function makeFakes({
   const conflictHandled: boolean[] = [];
   const selectedTables: unknown[] = [];
   const selectedConditions: SQL[] = [];
-  const enqueued: OutboxMessage[] = [];
+  const enqueued: OutboxMessage<EventKey>[] = [];
 
   const tx = {
     insert: () => ({
@@ -228,7 +230,7 @@ function makeFakes({
   };
 
   const outbox = {
-    enqueue: jest.fn(async (_tx: unknown, message: OutboxMessage) => {
+    enqueue: jest.fn(async (_tx: unknown, message: OutboxMessage<EventKey>) => {
       enqueued.push(message);
     }),
   };
@@ -421,12 +423,12 @@ describe('TicketsService.handleOrderPaid', () => {
 
     const [message] = fakes.enqueued;
     expect(message.routingKey).toBe(TICKET_ROUTING_KEYS.TICKET_PDF_READY);
-    expect(message.payload).toEqual({
-      messageId: expect.stringMatching(/^[0-9a-f-]{36}$/),
-      orderId: ORDER_ID,
-      userId: USER_ID,
-    });
-    expect(message.payload.messageId).not.toBe(MESSAGE_ID);
+
+    // Domain fields only. The outgoing messageId is minted by the outbox, so this service cannot
+    // forward the inbound one — which would make a redelivery look like a fresh message to every
+    // consumer downstream. That used to be a hand-written `randomUUID()` one typo away from
+    // `event.messageId`; it is now structural. The stamp itself is OutboxRepository's own spec.
+    expect(message.payload).toEqual({ orderId: ORDER_ID, userId: USER_ID });
   });
 
   it('claims the message inside the write transaction, alongside the ticket rows', async () => {

@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
-import { ORDERS_MESSAGE_PATTERNS, RPC_EXCHANGE } from '@tickethub/contracts';
+import { ORGANIZER_ORDERS_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import { rpcSub } from '@tickethub/rmq';
 import { OrganizerStatsService } from './stats.service';
 
 // The console's read surface on Orders. `showIds` arrives already resolved by the gateway —
@@ -9,20 +10,12 @@ import { OrganizerStatsService } from './stats.service';
 export class OrganizerStatsController {
   constructor(private readonly statsService: OrganizerStatsService) {}
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: ORDERS_MESSAGE_PATTERNS.STATS,
-    queue: ORDERS_MESSAGE_PATTERNS.STATS,
-  })
+  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS))
   stats(params: { showIds: string[]; from?: string; to?: string }) {
     return this.statsService.stats(params);
   }
 
-  @RabbitRPC({
-    exchange: RPC_EXCHANGE,
-    routingKey: ORDERS_MESSAGE_PATTERNS.RECENT,
-    queue: ORDERS_MESSAGE_PATTERNS.RECENT,
-  })
+  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT))
   recent(params: { showIds: string[]; limit?: number }) {
     return this.statsService.recent(params);
   }

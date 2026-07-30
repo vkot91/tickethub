@@ -4,7 +4,7 @@ import { ZodValidationPipe } from '@tickethub/common';
 import { rpcRequest } from '@tickethub/rmq';
 import {
   AUTH_MESSAGE_PATTERNS,
-  ORGANIZER_MESSAGE_PATTERNS,
+  ORGANIZER_PROFILE_MESSAGE_PATTERNS,
   becomeOrganizerSchema,
   type AuthTokens,
   type BecomeOrganizerDto,
@@ -54,12 +54,12 @@ export class GatewayAuthController {
     @Req() req: { user: { id: string } },
     @Body() dto: BecomeOrganizerDto,
   ): Promise<AuthTokens> {
-    await rpcRequest(this.amqp, ORGANIZER_MESSAGE_PATTERNS.CREATE, {
+    await rpcRequest(this.amqp, ORGANIZER_PROFILE_MESSAGE_PATTERNS.CREATE, {
       userId: req.user.id,
       name: dto.name,
     });
 
-    return rpcRequest<AuthTokens>(this.amqp, AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER, {
+    return rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.BECOME_ORGANIZER, {
       userId: req.user.id,
     });
   }

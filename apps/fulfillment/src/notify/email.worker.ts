@@ -4,7 +4,7 @@ import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import type { StorageClient } from '@tickethub/storage';
 import type { Mailer } from '@tickethub/mailer';
 import { rpcRequest } from '@tickethub/rmq';
-import { AUTH_MESSAGE_PATTERNS, type GetUserResponse } from '@tickethub/contracts';
+import { AUTH_MESSAGE_PATTERNS } from '@tickethub/contracts';
 import { renderTicketEmail } from './email.template';
 
 export interface EmailDeps {
@@ -22,7 +22,7 @@ export interface SendTicketEmailJob {
 // (RPC, S3, SMTP) propagate deliberately — no try/catch — so BullMQ's retry/backoff kicks in
 // instead of the customer's ticket silently vanishing.
 export async function sendTicketEmail(deps: EmailDeps, data: SendTicketEmailJob): Promise<void> {
-  const user = await rpcRequest<GetUserResponse>(deps.amqp, AUTH_MESSAGE_PATTERNS.GET_USER, {
+  const user = await rpcRequest(deps.amqp, AUTH_MESSAGE_PATTERNS.GET_USER, {
     userId: data.userId,
   });
 

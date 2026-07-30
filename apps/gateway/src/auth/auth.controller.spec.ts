@@ -28,12 +28,12 @@ describe('GatewayAuthController', () => {
     ).resolves.toBe('tokens');
 
     expect(amqp.request.mock.calls.map(([opts]) => opts.routingKey)).toEqual([
-      'organizer.create',
+      'organizer.profile.create',
       'auth.becomeOrganizer',
     ]);
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.create',
+        routingKey: 'organizer.profile.create',
         payload: { userId: 'u1', name: 'Anna' },
       }),
     );

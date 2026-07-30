@@ -1,4 +1,5 @@
-import { getUserRequestSchema, getUserResponseSchema, registerSchema } from './auth';
+import { getUserRequestSchema, getUserResponseSchema, registerSchema } from './schema';
+import { AUTH_MESSAGE_PATTERNS } from './wire';
 
 describe('registerSchema', () => {
   it('accepts a valid registration', () => {
@@ -23,6 +24,13 @@ describe('getUserRequestSchema', () => {
 
   it('rejects a non-uuid userId', () => {
     expect(() => getUserRequestSchema.parse({ userId: 'not-a-uuid' })).toThrow();
+  });
+});
+
+describe('auth wire names', () => {
+  it('mirrors each key onto its wire value', () => {
+    expect(AUTH_MESSAGE_PATTERNS.LOGIN).toBe('auth.login');
+    expect(AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS).toBe('auth.getUsersByIds');
   });
 });
 

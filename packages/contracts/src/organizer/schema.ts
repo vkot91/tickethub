@@ -1,14 +1,22 @@
 import { z } from 'zod';
-import { orderStatusSchema } from '../orders';
-import { seatTierSchema } from './shows';
+import { statsByDaySchema } from '../orders/organizer/schema';
+import { orderStatusSchema } from '../orders/schema';
+import { seatTierSchema } from '../shows/schema';
+
+// The organizer *resource* itself — the account, and the dashboard views no single service can
+// answer. `ShowStats` and `RecentOrder` are stitched by the gateway out of Orders' numbers, Shows'
+// capacity and tier names, and Fulfillment's check-ins, so they belong to none of those folders.
+//
+// Everything one service answers alone lives under that service's own `organizer/` folder:
+// `../orders/organizer/schema` for the raw numbers, `../shows/organizer/schema` for authoring.
 
 // Screen A. The name is what buyers see on the organizer's show pages; the role flip itself
 // needs nothing but the caller's JWT.
 export const becomeOrganizerSchema = z.object({ name: z.string().min(1) });
 export type BecomeOrganizerDto = z.infer<typeof becomeOrganizerSchema>;
 
-// The dashboard's numbers. `showId` omitted means every show the caller owns — ownership is
-// resolved in the gateway, never sent by the client.
+// `showId` omitted means every show the caller owns — ownership is resolved in the gateway, never
+// sent by the client.
 export const showStatsQuerySchema = z.object({
   showId: z.string().uuid().optional(),
   from: z.string().datetime().optional(),
@@ -22,13 +30,7 @@ export const showStatsSchema = z.object({
   revenueCents: z.number().int(),
   refundedCents: z.number().int(),
   checkedInCount: z.number().int(),
-  byDay: z.array(
-    z.object({
-      date: z.string(),
-      revenueCents: z.number().int(),
-      count: z.number().int(),
-    }),
-  ),
+  byDay: statsByDaySchema,
   byTier: z.array(
     z.object({
       ticketTypeId: z.string().uuid(),

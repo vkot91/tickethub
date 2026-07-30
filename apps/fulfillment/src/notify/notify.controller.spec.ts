@@ -1,13 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { Nack } from '@golevelup/nestjs-rabbitmq';
-import type { TicketPdfReadyEvent } from '@tickethub/contracts';
+import { TICKET_ROUTING_KEYS, type EventEnvelope } from '@tickethub/contracts';
 import { NotifyController } from './notify.controller';
 
 const ORDER_ID = '11111111-1111-4111-8111-111111111111';
 const USER_ID = '22222222-2222-4222-8222-222222222222';
 const MESSAGE_ID = '44444444-4444-4444-8444-444444444444';
 
-const pdfReady: TicketPdfReadyEvent = {
+const pdfReady: EventEnvelope<typeof TICKET_ROUTING_KEYS.TICKET_PDF_READY> = {
   messageId: MESSAGE_ID,
   orderId: ORDER_ID,
   userId: USER_ID,

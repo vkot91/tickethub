@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { ORGANIZER_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import { ORGANIZER_PROFILE_MESSAGE_PATTERNS } from '@tickethub/contracts';
 import { rpcRequest } from '@tickethub/rmq';
 
 /**
@@ -13,7 +13,7 @@ export class OrganizerShowsService {
   constructor(private readonly amqp: AmqpConnection) {}
 
   showIds(userId: string): Promise<string[]> {
-    return rpcRequest<string[]>(this.amqp, ORGANIZER_MESSAGE_PATTERNS.SHOW_IDS, { userId });
+    return rpcRequest(this.amqp, ORGANIZER_PROFILE_MESSAGE_PATTERNS.SHOW_IDS, { userId });
   }
 
   /**

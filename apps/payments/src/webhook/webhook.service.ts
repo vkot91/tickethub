@@ -1,36 +1,59 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { v4 as uuid } from 'uuid';
 import { payments, stripeEvents, type Db } from '@tickethub/db';
-import { PAYMENT_ROUTING_KEYS } from '@tickethub/contracts';
+import { PAYMENT_ROUTING_KEYS, type EventKey, type EventPayload } from '@tickethub/contracts';
 import { OutboxRepository } from '@tickethub/outbox';
 import { StripeClient } from '../stripe.client';
 
 type StripeObject = { id: string; amount?: number; metadata?: { orderId?: string } };
 type PaymentStatus = (typeof payments.$inferInsert)['status'];
 
+/** One event onto the outbox, bound to the caller's transaction. */
+type Emit = <K extends EventKey>(routingKey: K, payload: EventPayload<K>) => Promise<void>;
+
+/**
+ * What one Stripe event type does: the payments row status it implies, and the domain event it
+ * publishes.
+ *
+ * `publish` is a closure rather than a `{ routingKey, payload }` pair because a pair cannot say
+ * that *this* payload belongs to *that* key — the two fields were independent, so a payload could
+ * be filed under the wrong routing key and nothing would notice until a consumer read an undefined
+ * field. Handing the effect an `Emit` puts both through one generic call, which relates them.
+ */
 type WebhookEffect = {
   status: PaymentStatus;
-  routingKey: string;
-  payload: (object: StripeObject) => Record<string, unknown>;
+  publish: (emit: Emit, orderId: string, object: StripeObject) => Promise<void>;
 };
 
 // The only Stripe event types Payments reacts to. Anything else is acknowledged and ignored.
+// Keyed by Stripe's own event type — genuinely an open set of strings, unlike our routing keys.
 const WEBHOOK_EFFECTS: Record<string, WebhookEffect> = {
   'payment_intent.succeeded': {
     status: 'succeeded',
-    routingKey: PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED,
-    payload: (object) => ({ paymentIntentId: object.id, amountCents: object.amount ?? 0 }),
+    publish: (emit, orderId, object) =>
+      emit(PAYMENT_ROUTING_KEYS.PAYMENT_SUCCEEDED, {
+        orderId,
+        paymentIntentId: object.id,
+        amountCents: object.amount ?? 0,
+      }),
   },
   'payment_intent.payment_failed': {
     status: 'failed',
-    routingKey: PAYMENT_ROUTING_KEYS.PAYMENT_FAILED,
-    payload: (object) => ({ paymentIntentId: object.id, reason: 'payment_failed' }),
+    publish: (emit, orderId, object) =>
+      emit(PAYMENT_ROUTING_KEYS.PAYMENT_FAILED, {
+        orderId,
+        paymentIntentId: object.id,
+        reason: 'payment_failed',
+      }),
   },
   'charge.refunded': {
     status: 'refunded',
-    routingKey: PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED,
-    payload: (object) => ({ paymentIntentId: object.id, amountCents: object.amount ?? 0 }),
+    publish: (emit, orderId, object) =>
+      emit(PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED, {
+        orderId,
+        paymentIntentId: object.id,
+        amountCents: object.amount ?? 0,
+      }),
   },
 };
 
@@ -67,10 +90,11 @@ export class WebhookService {
         .set({ status: effect.status, updatedAt: new Date() })
         .where(eq(payments.orderId, orderId));
 
-      await this.outbox.enqueue(tx, {
-        routingKey: effect.routingKey,
-        payload: { messageId: uuid(), orderId, ...effect.payload(object) },
-      });
+      await effect.publish(
+        (routingKey, payload) => this.outbox.enqueue(tx, { routingKey, payload }),
+        orderId,
+        object,
+      );
     });
   }
 }

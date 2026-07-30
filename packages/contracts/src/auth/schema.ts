@@ -37,10 +37,3 @@ export const getUserResponseSchema = z.object({
   email: z.string().email(),
 });
 export type GetUserResponse = z.infer<typeof getUserResponseSchema>;
-
-export const userRegisteredSchema = z.object({
-  messageId: z.string().uuid(),
-  userId: z.string().uuid(),
-  email: z.string().email(),
-});
-export type UserRegisteredEvent = z.infer<typeof userRegisteredSchema>;

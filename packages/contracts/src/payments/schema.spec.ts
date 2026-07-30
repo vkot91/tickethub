@@ -1,9 +1,13 @@
-import { PAYMENT_ROUTING_KEYS } from '../events';
-import {
-  createPaymentIntentSchema,
-  paymentIntentResponseSchema,
-  paymentSucceededSchema,
-} from './index';
+import { PAYMENT_ROUTING_KEYS, paymentSucceededSchema } from './events';
+import { createPaymentIntentSchema, paymentIntentResponseSchema } from './schema';
+import { PAYMENTS_MESSAGE_PATTERNS } from './wire';
+
+describe('payments wire names', () => {
+  it('mirrors each key onto its wire value', () => {
+    expect(PAYMENTS_MESSAGE_PATTERNS.CREATE_INTENT).toBe('payments.createIntent');
+    expect(PAYMENTS_MESSAGE_PATTERNS.WEBHOOK).toBe('payments.webhook');
+  });
+});
 
 describe('payment contracts', () => {
   it('accepts a create-intent payload', () => {

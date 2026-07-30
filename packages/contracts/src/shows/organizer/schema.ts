@@ -1,66 +1,9 @@
 import { z } from 'zod';
+import { seatTierSchema, showSummarySchema } from '../schema';
 
-export const showSummarySchema = z.object({
-  id: z.string().uuid(),
-  title: z.string(),
-  startsAt: z.string(),
-  posterUrl: z.string().nullable(),
-  status: z.enum(['draft', 'published', 'cancelled', 'finished']),
-});
-export type ShowSummary = z.infer<typeof showSummarySchema>;
-
-// The three price bands a ticket type can belong to. Purely how a tier is presented — its
-// colour on the seat map and the dot on the show page. The money is always `priceCents`.
-export const SEAT_TIERS = ['vip', 'standard', 'economy'] as const;
-export const seatTierSchema = z.enum(SEAT_TIERS);
-export type SeatTier = z.infer<typeof seatTierSchema>;
-
-// One row of the show page's price list. `name` is the organizer's own wording ("Loge",
-// "Early Bird"); `tier` is only which of the three bands to paint it in.
-export const priceTierSchema = z.object({
-  id: z.string().uuid(),
-  tier: seatTierSchema,
-  name: z.string(),
-  priceCents: z.number().int(),
-  currency: z.string(),
-});
-export type PriceTier = z.infer<typeof priceTierSchema>;
-
-// `ticketTypeId` is what `createOrderSchema` needs per seat to price the order, and
-// `priceCents` is what orders will actually charge for it — the UI must never invent its own
-// number. All three null when no ticket type covers the seat: it still renders, but nothing
-// about it can be bought.
-export const seatSchema = z.object({
-  id: z.string().uuid(),
-  number: z.number().int(),
-  ticketTypeId: z.string().uuid().nullable(),
-  priceCents: z.number().int().nullable(),
-  tier: seatTierSchema.nullable(),
-});
-export const rowSchema = z.object({
-  id: z.string().uuid(),
-  number: z.number().int(),
-  seats: z.array(seatSchema),
-});
-export const sectionSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  rows: z.array(rowSchema),
-});
-export const seatMapSchema = z.object({
-  showId: z.string().uuid(),
-  sections: z.array(sectionSchema),
-});
-export type SeatMap = z.infer<typeof seatMapSchema>;
-
-export const showDetailSchema = showSummarySchema.extend({
-  description: z.string(),
-  venueId: z.string().uuid(),
-  // Dearest first, so the show page reads top-down like the design. Empty for a show with no
-  // ticket types — such a show has nothing on sale.
-  priceTiers: z.array(priceTierSchema),
-});
-export type ShowDetail = z.infer<typeof showDetailSchema>;
+// The console's side of a show: authoring DTOs and the shapes only an owner ever sees. A buyer
+// route that reached for `UpdateShowDto` would have to import across the audience boundary, which
+// is the point — that import is the thing a reviewer notices.
 
 export const createShowSchema = z.object({
   title: z.string().min(1),
@@ -81,7 +24,7 @@ export type UpdateShowDto = z.infer<typeof updateShowSchema>;
 /**
  * One row of the organizer's own show list. `soldCount`/`capacity`/`revenueCents` live in
  * `apps/orders` and come back zero from `apps/shows` — zero rather than omitted, so the shape is
- * the same before and after slice 6 merges the real numbers in.
+ * the same before and after the gateway merges the real numbers in.
  */
 export const organizerShowSchema = showSummarySchema.extend({
   venueId: z.string().uuid(),
@@ -100,16 +43,10 @@ export const organizerShowsQuerySchema = z.object({
 });
 export type OrganizerShowsQuery = z.infer<typeof organizerShowsQuerySchema>;
 
-export const catalogQuerySchema = z.object({
-  cursor: z.string().uuid().optional(),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-export type CatalogQuery = z.infer<typeof catalogQuerySchema>;
-
 /**
  * What still stands between a draft and going on sale. The popover renders it; it is never the
- * gate — `publishShow` re-evaluates the same three booleans server-side, because the client's
- * copy is stale the moment anything else changes the show.
+ * gate — `publish` re-evaluates the same three booleans server-side, because the client's copy is
+ * stale the moment anything else changes the show.
  */
 export const publishChecklistSchema = z.object({
   hasTicketTypes: z.boolean(),
@@ -161,15 +98,3 @@ export const posterUploadUrlSchema = z.object({
   posterUrl: z.string().url(),
 });
 export type PosterUploadUrl = z.infer<typeof posterUploadUrlSchema>;
-
-export const showPublishedSchema = z.object({
-  messageId: z.string().uuid(),
-  showId: z.string().uuid(),
-});
-export type ShowPublishedEvent = z.infer<typeof showPublishedSchema>;
-
-export const catalogPageSchema = z.object({
-  items: z.array(showSummarySchema),
-  nextCursor: z.string().uuid().nullable(),
-});
-export type CatalogPage = z.infer<typeof catalogPageSchema>;

@@ -19,7 +19,6 @@ import {
   orderListQuerySchema,
   type CreateOrderDto,
   type OrderList,
-  type OrderSummaryPage,
 } from '@tickethub/contracts';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { ShowContextService } from '../shared/show-context.service';
@@ -49,7 +48,7 @@ export class GatewayUserOrdersController {
 
   @Get()
   async list(@Req() req: { user: { id: string } }, @Query() query: unknown): Promise<OrderList> {
-    const page = await rpcRequest<OrderSummaryPage>(this.amqp, ORDERS_MESSAGE_PATTERNS.LIST, {
+    const page = await rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.LIST, {
       userId: req.user.id,
       query: orderListQuerySchema.parse(query),
     });

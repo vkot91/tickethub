@@ -1,28 +1,13 @@
-import {
-  catalogPageSchema,
-  catalogQuerySchema,
-  createShowSchema,
-  priceTierSchema,
-  showDetailSchema,
-  updateShowSchema,
-} from './shows';
+import { catalogPageSchema, catalogQuerySchema, showDetailSchema } from './schema';
+import { SHOWS_MESSAGE_PATTERNS } from './wire';
 
-describe('updateShowSchema', () => {
-  it('lets an update carry only the fields being changed', () => {
-    expect(updateShowSchema.parse({ title: 'New title' })).toEqual({ title: 'New title' });
-  });
-
-  it('still rejects a bad value on a partial update', () => {
-    expect(() => updateShowSchema.parse({ venueId: 'not-a-uuid' })).toThrow();
-  });
-
-  // Null clears the column; absent leaves it alone. Both have to survive the parse, or the
-  // organizer can never take a poster back down.
-  it('accepts null for the clearable fields', () => {
-    expect(updateShowSchema.parse({ posterUrl: null, saleStartsAt: null })).toEqual({
-      posterUrl: null,
-      saleStartsAt: null,
-    });
+describe('buyer catalog wire names', () => {
+  // Unprefixed: the buyer is the default audience. If one of these ever grows an `organizer.`
+  // prefix it has moved surface, and that is a different queue.
+  it('mirrors each key onto its wire value', () => {
+    expect(SHOWS_MESSAGE_PATTERNS.CATALOG).toBe('shows.catalog');
+    expect(SHOWS_MESSAGE_PATTERNS.DETAIL).toBe('shows.detail');
+    expect(SHOWS_MESSAGE_PATTERNS.SEAT_MAP).toBe('shows.seatMap');
   });
 });
 
@@ -38,19 +23,6 @@ describe('catalogQuerySchema', () => {
 
   it('rejects a non-uuid cursor', () => {
     expect(() => catalogQuerySchema.parse({ cursor: 'nope' })).toThrow();
-  });
-});
-
-describe('createShowSchema', () => {
-  it('requires a non-empty title and datetime startsAt', () => {
-    expect(() =>
-      createShowSchema.parse({
-        title: '',
-        description: 'd',
-        venueId: crypto.randomUUID(),
-        startsAt: '2026-01-01T00:00:00Z',
-      }),
-    ).toThrow();
   });
 });
 
@@ -77,20 +49,6 @@ describe('showDetailSchema', () => {
 
     expect(parsed.description).toBe('A show');
     expect(parsed.priceTiers[0]).toMatchObject({ tier: 'vip', name: 'Loge', priceCents: 8500 });
-  });
-
-  // The band is a fixed vocabulary shared with the seat map and the db enum; a free-form
-  // string here would let a typo through and silently render an uncoloured dot.
-  it('rejects a tier outside the three bands', () => {
-    expect(() =>
-      priceTierSchema.parse({
-        id: crypto.randomUUID(),
-        tier: 'platinum',
-        name: 'Platinum',
-        priceCents: 100,
-        currency: 'usd',
-      }),
-    ).toThrow();
   });
 });
 

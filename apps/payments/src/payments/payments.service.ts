@@ -10,8 +10,6 @@ import {
 } from '@tickethub/contracts';
 import { StripeClient } from '../stripe.client';
 
-type OrderView = { id: string; status: string; totalCents: number; currency: string };
-
 // The buyer-driven half of Payments: turn an order into a payable Stripe intent. What Stripe
 // says back arrives on the webhook (WebhookService); what Orders asks for arrives on the
 // events exchange (PaymentsSagaService).
@@ -24,7 +22,7 @@ export class PaymentsService {
   ) {}
 
   async createIntent(userId: string, dto: CreatePaymentIntentDto): Promise<PaymentIntentResponse> {
-    const order = await rpcRequest<OrderView>(this.amqp, ORDERS_MESSAGE_PATTERNS.GET, {
+    const order = await rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.GET, {
       userId,
       orderId: dto.orderId,
     });

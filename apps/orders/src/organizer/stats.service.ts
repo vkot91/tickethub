@@ -1,26 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { orders, seatReservations, type Db } from '@tickethub/db';
-import type { OrderStatus } from '@tickethub/contracts';
-
-/** What Orders alone can answer. Capacity, tier names and check-ins are merged in the gateway. */
-export interface OrdersStats {
-  soldCount: number;
-  revenueCents: number;
-  refundedCents: number;
-  byDay: { date: string; revenueCents: number; count: number }[];
-  byTier: { ticketTypeId: string; soldCount: number }[];
-}
-
-export interface RecentOrderRow {
-  id: string;
-  showId: string;
-  userId: string;
-  seatIds: string[];
-  totalCents: number;
-  status: OrderStatus;
-  createdAt: string;
-}
+import type { OrderStats, RecentOrderRow } from '@tickethub/contracts';
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RECENT_LIMIT = 10;
@@ -38,7 +19,7 @@ const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 2
 export class OrganizerStatsService {
   constructor(@Inject('DB') private readonly db: Db) {}
 
-  async stats(params: { showIds: string[]; from?: string; to?: string }): Promise<OrdersStats> {
+  async stats(params: { showIds: string[]; from?: string; to?: string }): Promise<OrderStats> {
     if (params.showIds.length === 0) {
       return { soldCount: 0, revenueCents: 0, refundedCents: 0, byDay: [], byTier: [] };
     }
@@ -148,9 +129,9 @@ function zeroFill(
   days: { date: string; revenueCents: number; count: number }[],
   from: Date,
   to: Date,
-): OrdersStats['byDay'] {
+): OrderStats['byDay'] {
   const found = new Map(days.map((day) => [day.date, day]));
-  const filled: OrdersStats['byDay'] = [];
+  const filled: OrderStats['byDay'] = [];
 
   for (let cursor = new Date(dayKey(from)); cursor <= to; cursor = addDays(cursor, 1)) {
     const date = dayKey(cursor);
