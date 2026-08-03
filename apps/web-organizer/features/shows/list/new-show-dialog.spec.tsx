@@ -1,10 +1,9 @@
+import { renderWithQuery } from '@/test/render';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { renderWithQuery } from '@/test/render';
-
-import { mockGateway, VENUE_ID } from '../test-gateway';
+import { mockGateway, VENUE_ID } from '../../test-gateway';
 import { NewShowDialog } from './new-show-dialog';
 
 const push = vi.fn();

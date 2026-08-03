@@ -1,14 +1,18 @@
+import { z } from 'zod';
+
 import {
   createShowSchema,
   organizerShowSchema,
+  posterUploadRequestSchema,
+  posterUploadUrlSchema,
   showSummarySchema,
   updateShowSchema,
   venueSummarySchema,
   type OrganizerShow,
+  type PosterUploadUrl,
   type VenueSummary,
 } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
-import { z } from 'zod';
 
 export const showKeys = {
   all: ['shows'] as const,
@@ -36,6 +40,16 @@ export function organizerShowsPath(status?: string): string {
   return `/organizer/shows${status ? `?status=${status}` : ''}`;
 }
 
+/** The editor's own path builder, shared with `app/shows/[id]/edit/page.tsx`'s prefetch for the
+ *  same reason as the list's: the seed and the client refetch must not drift. */
+export function organizerShowPath(showId: string): string {
+  return `/organizer/shows/${showId}`;
+}
+
+export function fetchOrganizerShow(showId: string): Promise<OrganizerShow> {
+  return clientApi(organizerShowPath(showId), {}, organizerShowSchema);
+}
+
 export function fetchOrganizerShows(status?: string): Promise<OrganizerShow[]> {
   return clientApi(organizerShowsPath(status), {}, organizerShowsSchema);
 }
@@ -57,6 +71,19 @@ export function updateShow(showId: string, input: unknown) {
     `/organizer/shows/${showId}`,
     { method: 'PATCH', body: updateShowSchema.parse(input) },
     showSummarySchema,
+  );
+}
+
+/** Step one of three. The file itself never comes through here — the browser PUTs it straight to
+ *  MinIO with the URL this returns, then PATCHes the `posterUrl` that comes back with it. */
+export function createPosterUploadUrl(
+  showId: string,
+  contentType: string,
+): Promise<PosterUploadUrl> {
+  return clientApi(
+    `/organizer/shows/${showId}/poster-upload-url`,
+    { method: 'POST', body: posterUploadRequestSchema.parse({ contentType }) },
+    posterUploadUrlSchema,
   );
 }
 

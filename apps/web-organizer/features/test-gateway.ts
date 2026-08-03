@@ -1,5 +1,6 @@
-import { type OrganizerShow, type VenueSummary } from '@tickethub/contracts';
 import { vi } from 'vitest';
+
+import { type OrganizerShow, type VenueSummary } from '@tickethub/contracts';
 
 /** Fixtures and the gateway stub shared by the organizer screens — dashboard and shows both
  *  read the same `/organizer/shows` list, so the mock lives at the feature root rather than in
@@ -44,8 +45,12 @@ export const draftShow: OrganizerShow = {
 
 export const organizerShows: OrganizerShow[] = [publishedShow, draftShow];
 
+export const OTHER_VENUE_ID = '44444444-4444-4444-8444-444444444444';
+
 export const venues: VenueSummary[] = [
   { id: VENUE_ID, name: 'Grand Hall', address: '1 Main St', city: 'Berlin', seatCount: 480 },
+  // A second hall, so "change the venue" is something a spec can actually do.
+  { id: OTHER_VENUE_ID, name: 'Side Room', address: '2 Back St', city: 'Berlin', seatCount: 90 },
 ];
 
 export const stats = {
