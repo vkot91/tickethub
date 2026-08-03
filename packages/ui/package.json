@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "catalog:",
+    "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-label": "catalog:",
+    "@radix-ui/react-progress": "catalog:",
     "@radix-ui/react-select": "catalog:",
     "@radix-ui/react-slot": "catalog:",
     "@radix-ui/react-toast": "catalog:",

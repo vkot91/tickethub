@@ -2,7 +2,7 @@ import { AlertTriangle, Check, X } from 'lucide-react';
 
 import { Card } from '@tickethub/ui';
 
-import { type CheckInResult } from '../api';
+import { type CheckInResult } from './api';
 
 const outcomes = {
   valid: {

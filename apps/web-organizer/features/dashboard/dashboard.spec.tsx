@@ -42,7 +42,7 @@ describe('Dashboard', () => {
   });
 
   it('asks a new organizer to create a show first', async () => {
-    mockGateway({ '/shows': { status: 200, body: { items: [], nextCursor: null } } });
+    mockGateway({ '/organizer/shows': { status: 200, body: [] } });
     renderWithQuery(<Dashboard />);
 
     expect(

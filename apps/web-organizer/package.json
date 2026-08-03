@@ -10,7 +10,6 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@radix-ui/react-progress": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tickethub/contracts": "workspace:*",
     "@tickethub/env": "workspace:*",

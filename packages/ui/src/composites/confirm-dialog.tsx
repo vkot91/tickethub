@@ -7,9 +7,14 @@ import { buttonVariants } from '../primitives/button';
 import { cn } from '../lib/cn';
 
 interface ConfirmDialogProps {
-  trigger: ReactNode;
+  /** Omit when the caller drives `open` itself — a row action whose button lives elsewhere. */
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title: string;
   body: string;
+  /** A muted line under the body, for the consequence the organizer cannot undo. */
+  note?: string;
   confirmLabel: string;
   cancelLabel?: string;
   isPending?: boolean;
@@ -20,16 +25,19 @@ interface ConfirmDialogProps {
  *  Used for anything that spends or refunds money. */
 export function ConfirmDialog({
   trigger,
+  open,
+  onOpenChange,
   title,
   body,
+  note,
   confirmLabel,
   cancelLabel = 'Keep it',
   isPending = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
-    <AlertDialog.Root>
-      <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>
+    <AlertDialog.Root open={open} onOpenChange={onOpenChange}>
+      {trigger ? <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger> : null}
 
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-90 bg-page/70 backdrop-blur-sm" />
@@ -39,9 +47,11 @@ export function ConfirmDialog({
             {title}
           </AlertDialog.Title>
 
-          <AlertDialog.Description className="mb-6 text-sm text-fg-muted">
+          <AlertDialog.Description className={cn('text-sm text-fg-muted', note ? 'mb-2' : 'mb-6')}>
             {body}
           </AlertDialog.Description>
+
+          {note ? <p className="mb-6 text-[13px] text-fg-faint">{note}</p> : null}
 
           <div className="flex justify-end gap-3">
             <AlertDialog.Cancel
