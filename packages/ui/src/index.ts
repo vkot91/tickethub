@@ -26,6 +26,9 @@ export { Field } from './composites/field';
 export { NavTabs, type NavTab } from './composites/nav-tabs';
 export { Poster } from './composites/poster';
 
+export { Form } from './form/form';
+export { FormError } from './form/form-error';
+
 export { LogoutButton } from './domain/logout-button';
 export { OrderStatusPill } from './domain/order-status';
 export { ShowStatusPill } from './domain/show-status';
