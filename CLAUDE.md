@@ -44,6 +44,26 @@ transactions (saga + outbox), concurrency.
   `Slot` for `asChild` composition, `Label`, `Dialog`, `Toast`, `Progress`, `Select`, `Tabs`.
   Radix owns behavior and accessibility (focus, keyboard, ARIA); we own only the `cva` variants
   that map design tokens onto it. Do not hand-roll a control Radix already ships.
+  The one documented exception is text input: Radix ships no `TextField` and no `Textarea`, and its
+  own Form docs say so — `Input` and `Textarea` are styled native elements, which is the prescribed
+  shape, not a gap.
+- **Forms are react-hook-form + a Zod resolver, through `packages/ui`'s form layer.** `Form`,
+  `FormField`, `FormSelect`, `FormError` — never a raw `<form>` with `useState` per input, and never
+  `useActionState`. A form that posts to a server action still uses RHF and calls the action from its
+  submit handler; the action takes a typed DTO, never a `FormData`. Every control Radix ships a
+  primitive for (`Select`, `Checkbox`, `RadioGroup`, `Switch`, `Slider`, `Toggle`) is bound with
+  RHF's `Controller` inside a `Form*` component in `packages/ui/src/form/`, so no call site writes a
+  `Controller` and no control is hand-rolled — Radix owns focus, keyboard and ARIA. `packages/ui`
+  holds react-hook-form as a **peer** dependency: `FormProvider` context crosses the package
+  boundary, and a second copy in the tree makes `useFormContext` return `null`.
+  `@radix-ui/react-form` is deliberately unused — it validates through the native constraint-
+  validation API that `noValidate` + `zodResolver` replace, and it cannot compose with Radix
+  `Select`.
+- **Form schemas come from `packages/contracts` when the input shape already matches the wire
+  shape** (`loginSchema` drops straight into `zodResolver`). When it does not — `datetime-local`
+  against `z.string().datetime()`, or an untouched Select reported as "Invalid uuid" — the form gets
+  a local schema in its feature folder that models what the _inputs_ produce and `.transform()`s to
+  the contract DTO. The wire schema is never relaxed to suit a widget.
 - **Audience folders in every app that serves more than one.** `src/user/` is buyer-facing
   (`apps/web-user`), `src/organizer/` is the console (`apps/web-organizer`), `src/shared/` holds only
   what both genuinely use — and is not created until something does. **Folder is the audience, file is
