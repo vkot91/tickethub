@@ -1,40 +1,41 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginDto } from '@tickethub/contracts';
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import Link from 'next/link';
-import { useActionState } from 'react';
-
-import { Button, Field, Input } from '@tickethub/ui';
+import { useForm } from 'react-hook-form';
 
 import { signInAction } from './actions';
 
 /** This app's cookies are its own, so being signed in on the buyer site does not sign you in
  *  here — and `/register` mints an organizer account without a detour through it. */
 export function LoginForm({ next }: { next: string }) {
-  const [error, submit, isPending] = useActionState(signInAction.bind(null, next), null);
+  const form = useForm<LoginDto>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
+    defaultValues: { email: '', password: '' },
+  });
+
+  async function submit(credentials: LoginDto) {
+    const failure = await signInAction(next, credentials);
+
+    if (failure) form.setError('root', { message: failure });
+  }
 
   return (
-    <form action={submit} className="flex flex-col gap-4">
+    <Form form={form} onSubmit={(values) => submit(values)} className="flex flex-col gap-4">
       <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
         Organizer sign in
       </h1>
 
-      <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="email" required />
-      </Field>
+      <FormField name="email" label="Email" type="email" autoComplete="email" />
+      <FormField name="password" label="Password" type="password" autoComplete="current-password" />
 
-      <Field label="Password" htmlFor="password" error={error ?? undefined}>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          autoComplete="current-password"
-          required
-        />
-      </Field>
+      <FormError />
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Please wait…' : 'Sign in'}
+      <Button type="submit" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? 'Please wait…' : 'Sign in'}
       </Button>
 
       <p className="text-[13px] text-fg-muted">
@@ -43,6 +44,6 @@ export function LoginForm({ next }: { next: string }) {
           Create an organizer account
         </Link>
       </p>
-    </form>
+    </Form>
   );
 }
