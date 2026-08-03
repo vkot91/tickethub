@@ -44,7 +44,7 @@ export async function registerOrganizerAction({
   }
 
   try {
-    await becomeOrganizerAction(name);
+    await becomeOrganizerAction(name.trim());
   } catch {
     return 'Your account is ready, but we could not set up the organizer profile. Open “Become an organizer” to finish.';
   }

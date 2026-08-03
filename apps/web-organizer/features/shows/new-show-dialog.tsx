@@ -107,7 +107,11 @@ export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
               </Button>
             </DialogClose>
 
-            <Button type="submit" size="sm" disabled={create.isPending}>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={form.formState.isSubmitting || create.isPending}
+            >
               {create.isPending ? 'Creating…' : 'Create draft'}
             </Button>
           </div>

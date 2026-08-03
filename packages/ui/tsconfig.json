@@ -3,6 +3,6 @@
   "compilerOptions": {
     "plugins": []
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": ["vitest.setup.ts", "src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules"]
 }

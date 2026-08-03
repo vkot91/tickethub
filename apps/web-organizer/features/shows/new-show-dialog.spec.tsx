@@ -20,23 +20,19 @@ async function openDialog() {
   await userEvent.click(screen.getByRole('button', { name: 'New show' }));
 }
 
-async function fillForm() {
-  await userEvent.type(screen.getByLabelText('Title'), 'Neon Nights');
-  await userEvent.type(screen.getByLabelText('Starts at'), '2026-09-12T20:00');
+// The venue fixture (`../test-gateway`) seeds a single hall named "Grand Hall", not "Hall A".
+async function fillForm(
+  user: ReturnType<typeof userEvent.setup>,
+  overrides: { title?: string; startsAt?: string } = {},
+) {
+  const { title = 'Neon Nights', startsAt = '2026-09-12T20:00' } = overrides;
+
+  await user.type(screen.getByLabelText('Title'), title);
+  await user.type(screen.getByLabelText('Starts at'), startsAt);
 
   // Radix Select is a listbox, not a native <select>.
-  await userEvent.click(await screen.findByRole('combobox', { name: 'Venue' }));
-  await userEvent.click(await screen.findByRole('option', { name: /Grand Hall/ }));
-}
-
-// The venue fixture (`../test-gateway`) seeds a single hall named "Grand Hall", not "Hall A".
-async function fillValidDraft(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Title'), 'Neon Night');
-
-  await user.click(screen.getByLabelText('Venue'));
+  await user.click(await screen.findByRole('combobox', { name: 'Venue' }));
   await user.click(await screen.findByRole('option', { name: /Grand Hall/ }));
-
-  await user.type(screen.getByLabelText('Starts at'), '2026-09-01T19:30');
 }
 
 describe('NewShowDialog', () => {
@@ -65,7 +61,7 @@ describe('NewShowDialog', () => {
     renderWithQuery(<NewShowDialog trigger={<button>New show</button>} />);
 
     await user.click(screen.getByRole('button', { name: 'New show' }));
-    await fillValidDraft(user);
+    await fillForm(user, { startsAt: '2026-09-01T19:30' });
     await user.click(screen.getByRole('button', { name: 'Create draft' }));
 
     await waitFor(() =>
@@ -98,11 +94,13 @@ describe('NewShowDialog', () => {
 
   it('creates the draft and lands in its editor', async () => {
     const fetchMock = mockGateway();
+    const user = userEvent.setup();
+
     renderWithQuery(<NewShowDialog trigger={<button>New show</button>} />);
 
     await openDialog();
-    await fillForm();
-    await userEvent.click(screen.getByRole('button', { name: 'Create draft' }));
+    await fillForm(user);
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -126,11 +124,13 @@ describe('NewShowDialog', () => {
         body: { message: 'A show with that title already exists' },
       },
     });
+    const user = userEvent.setup();
+
     renderWithQuery(<NewShowDialog trigger={<button>New show</button>} />);
 
     await openDialog();
-    await fillForm();
-    await userEvent.click(screen.getByRole('button', { name: 'Create draft' }));
+    await fillForm(user);
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
 
     expect(await screen.findByText('You already have a show with this title.')).toBeInTheDocument();
     // The form stays open with the typed title, because that is where the fix is.

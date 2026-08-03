@@ -13,9 +13,11 @@ import { serverApi, setSession } from '@/lib/session';
  * `redirect()` throws before it can.
  */
 export async function becomeOrganizerAction(name: string): Promise<void> {
+  const trimmedName = name.trim();
+
   const tokens = await serverApi(
     '/auth/become-organizer',
-    { method: 'POST', body: becomeOrganizerSchema.parse({ name }) },
+    { method: 'POST', body: becomeOrganizerSchema.parse({ name: trimmedName }) },
     authTokensSchema,
   );
 

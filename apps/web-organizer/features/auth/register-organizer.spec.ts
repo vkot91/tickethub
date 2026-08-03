@@ -53,4 +53,12 @@ describe('registerOrganizerAction', () => {
 
     expect(redirect).not.toHaveBeenCalled();
   });
+
+  // The client schema trims before validating, but a server action is a public RPC endpoint —
+  // a hand-crafted call bypasses the client entirely, so the server must not depend on it.
+  it('trims surrounding whitespace before flipping the role', async () => {
+    await registerOrganizerAction(signup('  Neon Promotions  '));
+
+    expect(becomeOrganizerAction).toHaveBeenCalledWith('Neon Promotions');
+  });
 });
