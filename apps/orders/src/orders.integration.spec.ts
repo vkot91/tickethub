@@ -1,23 +1,25 @@
-import { loadEnv, requireEnv } from '@tickethub/env';
 import { BadRequestException } from '@nestjs/common';
 import { asc, eq, sql } from 'drizzle-orm';
 import Redis from 'ioredis';
+
 import {
   createDb,
   orders,
+  ordersOutbox,
+  ordersProcessedMessages,
   seatReservations,
   seats,
   ticketTypes,
-  ordersOutbox,
-  ordersProcessedMessages,
   type Db,
 } from '@tickethub/db';
 import { seed } from '@tickethub/db/seed';
+import { loadEnv, requireEnv } from '@tickethub/env';
+import { InboxRepository, OutboxRepository } from '@tickethub/outbox';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
+
 import { OrderRepository } from './orders.repository';
-import { OrderSagaService } from './saga/saga.service';
 import { OrdersService } from './orders.service';
+import { OrderSagaService } from './saga/saga.service';
 
 jest.setTimeout(30_000);
 

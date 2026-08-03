@@ -1,6 +1,7 @@
-import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
 import { loadEnv, requireEnv, useTestDatabase } from './index';
 
 describe('requireEnv', () => {

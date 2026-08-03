@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
-import { loadEnv, requireEnv } from '@tickethub/env';
+
 import { createDb, tickets, type Db } from '@tickethub/db';
+import { loadEnv, requireEnv } from '@tickethub/env';
+
 import { signTicketToken } from '../tickets/qr';
 import { OrganizerCheckInService } from './check-in.service';
 

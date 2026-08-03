@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
-import { GatewayUserOrdersController } from './orders.controller';
+
 import { ShowContextService } from '../shared/show-context.service';
+import { GatewayUserOrdersController } from './orders.controller';
 
 // The merge moved into ShowContextService in the audience reshuffle; the controller now
 // composes it. Same amqp double, same assertions — only the wiring changed.

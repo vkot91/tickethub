@@ -1,7 +1,8 @@
-import { renderWithQuery } from '@/test/render';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { renderWithQuery } from '@/test/render';
 
 import { mockGateway } from '../../test-gateway';
 import { ShowsScreen } from './shows-screen';

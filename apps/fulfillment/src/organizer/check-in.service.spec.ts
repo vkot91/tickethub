@@ -1,5 +1,6 @@
 import { tickets } from '@tickethub/db';
 import { getTestDb, type TestDb } from '@tickethub/db/testing';
+
 import { signTicketToken } from '../tickets/qr';
 import { OrganizerCheckInService } from './check-in.service';
 

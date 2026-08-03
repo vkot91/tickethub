@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { isNull, eq } from 'drizzle-orm';
-import type { Db, OutboxTable } from '@tickethub/db';
+
+import { eq, isNull } from 'drizzle-orm';
+
 import type { EventKey, EventPayload } from '@tickethub/contracts';
+import type { Db, OutboxTable } from '@tickethub/db';
 
 // A Drizzle transaction handle — same query surface as Db, derived from its callback.
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];

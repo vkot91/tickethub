@@ -1,3 +1,4 @@
+import type { Rpc } from '../../shape';
 import type {
   CreateShowDto,
   OrganizerShow,
@@ -8,7 +9,6 @@ import type {
   PutPricingDto,
   UpdateShowDto,
 } from './schema';
-import type { Rpc } from '../../shape';
 
 /**
  * The console's surface onto `apps/shows`. Keyed `organizer.shows.*`: the audience is first

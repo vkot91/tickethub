@@ -1,4 +1,5 @@
 import { TICKETS_MESSAGE_PATTERNS } from '@tickethub/contracts';
+
 import { GatewayUserTicketsController } from './tickets.controller';
 
 type RpcCall = { routingKey: string; payload: unknown };

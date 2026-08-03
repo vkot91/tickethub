@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { priceTierSchema, seatTierSchema, showSummarySchema } from '../schema';
 
 // The buyer-facing catalog: browse, one show, its seats. Nothing here is authored — every shape is

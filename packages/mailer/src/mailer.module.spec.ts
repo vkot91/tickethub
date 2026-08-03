@@ -1,17 +1,19 @@
 import 'reflect-metadata';
+
 import type { FactoryProvider } from '@nestjs/common';
-import { ConfigService } from '@tickethub/config';
 import type { Transporter, TransportOptions } from 'nodemailer';
+
+import { ConfigService } from '@tickethub/config';
+
+// Imported through the package entry, not the modules directly: this is the surface consumers
+// actually get, so a barrel that stops re-exporting something fails here.
+import { Mailer, mailerEnvSchema, MailerModule, type MailerEnv } from './index';
 
 const createTransportMock = jest.fn();
 
 jest.mock('nodemailer', () => ({
   createTransport: (options: TransportOptions) => createTransportMock(options) as Transporter,
 }));
-
-// Imported through the package entry, not the modules directly: this is the surface consumers
-// actually get, so a barrel that stops re-exporting something fails here.
-import { MailerModule, mailerEnvSchema, Mailer, type MailerEnv } from './index';
 
 const providers = Reflect.getMetadata('providers', MailerModule) as FactoryProvider[];
 const provider = providers.find((candidate) => candidate.provide === Mailer)!;

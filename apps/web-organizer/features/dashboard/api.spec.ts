@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { dashboardKeys } from './api';
 import { SHOW_ID } from '../test-gateway';
+import { dashboardKeys } from './api';
 
 describe('dashboard api keys', () => {
   it('namespaces stats per show', () => {

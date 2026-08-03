@@ -1,8 +1,9 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { loadEnv } from '@tickethub/env';
 import { type NextConfig } from 'next';
+
+import { loadEnv } from '@tickethub/env';
 
 // The monorepo keeps a single root .env, but Next only reads apps/web/.env. Bridge it into
 // process.env here — before compilation (so client `NEXT_PUBLIC_*` vars get inlined) and

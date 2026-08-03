@@ -1,4 +1,5 @@
 import postgres from 'postgres';
+
 import { requireDatabaseUrl } from './env';
 
 // ponytail: drops every non-system schema (app schemas + drizzle migration bookkeeping),

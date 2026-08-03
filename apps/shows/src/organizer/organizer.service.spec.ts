@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
+
 import { organizers } from '@tickethub/db';
 import { getTestDb, seedUser, type TestDb } from '@tickethub/db/testing';
+
 import { OrganizerService } from './organizer.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.

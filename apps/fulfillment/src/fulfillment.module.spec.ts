@@ -1,11 +1,13 @@
-import { Test } from '@nestjs/testing';
 import { AmqpConnection, AmqpConnectionManager } from '@golevelup/nestjs-rabbitmq';
-import { OutboxPoller, OutboxRepository, InboxRepository } from '@tickethub/outbox';
-import { TicketsService } from './tickets/tickets.service';
-import { TicketsController } from './tickets/tickets.controller';
-import { NotifyController } from './notify/notify.controller';
-import { StorageClient } from '@tickethub/storage';
+import { Test } from '@nestjs/testing';
+
 import { Mailer } from '@tickethub/mailer';
+import { InboxRepository, OutboxPoller, OutboxRepository } from '@tickethub/outbox';
+import { StorageClient } from '@tickethub/storage';
+
+import { NotifyController } from './notify/notify.controller';
+import { TicketsController } from './tickets/tickets.controller';
+import { TicketsService } from './tickets/tickets.service';
 
 // The schema demands at least 32 chars; this is an obvious placeholder, not a real key.
 const QR_SECRET = 'test-qr-secret-not-a-real-key-0123456789';

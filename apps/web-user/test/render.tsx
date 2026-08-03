@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react';
-import { Toaster } from '@tickethub/ui';
 import { type ReactNode } from 'react';
+
+import { Toaster } from '@tickethub/ui';
 
 /** A fresh client per test — no retries, so a mocked failure surfaces on the first tick. */
 export function renderWithQuery(ui: ReactNode) {

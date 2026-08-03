@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { BecomeForm } from './become-form';
 import { becomeOrganizerAction } from './actions';
+import { BecomeForm } from './become-form';
 
 vi.mock('./actions', () => ({ becomeOrganizerAction: vi.fn().mockResolvedValue(undefined) }));
 

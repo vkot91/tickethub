@@ -1,9 +1,10 @@
 import { getTableConfig } from 'drizzle-orm/pg-core';
+
 import {
-  fulfillmentSchema,
-  tickets,
   fulfillmentOutbox,
   fulfillmentProcessedMessages,
+  fulfillmentSchema,
+  tickets,
 } from './fulfillment';
 
 describe('fulfillment schema', () => {

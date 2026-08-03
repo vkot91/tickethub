@@ -1,3 +1,4 @@
+import type { Rpc } from '../shape';
 import type {
   AuthTokens,
   GetUserResponse,
@@ -6,7 +7,6 @@ import type {
   RegisterDto,
   UserPayload,
 } from './schema';
-import type { Rpc } from '../shape';
 
 export const AUTH_MESSAGE_PATTERNS = {
   REGISTER: 'auth.register',

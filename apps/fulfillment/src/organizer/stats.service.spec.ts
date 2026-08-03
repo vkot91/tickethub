@@ -1,5 +1,6 @@
 import { tickets } from '@tickethub/db';
 import { getTestDb, type TestDb } from '@tickethub/db/testing';
+
 import { OrganizerStatsService } from './stats.service';
 
 let db: TestDb;

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
-import { LogoutButton, type NavTab, NavTabs } from '@tickethub/ui';
+import { LogoutButton, NavTabs, type NavTab } from '@tickethub/ui';
+
 import { getCurrentUser } from '@/lib/session';
 
 const TABS: NavTab[] = [

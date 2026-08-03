@@ -1,8 +1,9 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { becomeOrganizerAction } from './actions';
 import { serverApi, setSession } from '@/lib/session';
+
+import { becomeOrganizerAction } from './actions';
 
 vi.mock('@/lib/session', () => ({ serverApi: vi.fn(), setSession: vi.fn() }));
 

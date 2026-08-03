@@ -1,4 +1,4 @@
-import { payments, stripeEvents, paymentsOutbox } from './payments';
+import { payments, paymentsOutbox, stripeEvents } from './payments';
 
 describe('payments schema', () => {
   it('payments table exposes order + intent + status columns', () => {

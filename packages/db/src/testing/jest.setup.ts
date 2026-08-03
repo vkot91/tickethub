@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { resetCurrentDb, closeCurrentDb } from './context';
+import { closeCurrentDb, resetCurrentDb } from './context';
 
 // Wire via a jest preset's setupFilesAfterEnv (see @tickethub/jest-config/nest-db).
 // The db is booted lazily on first getTestDb() — files/tests that never touch it pay

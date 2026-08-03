@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+
 import { OrganizerCheckInService } from './check-in.service';
 
 const SHOW_ID = '11111111-1111-4111-8111-111111111111';

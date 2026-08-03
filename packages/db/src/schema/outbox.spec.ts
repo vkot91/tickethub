@@ -1,4 +1,5 @@
 import { pgSchema } from 'drizzle-orm/pg-core';
+
 import { createOutboxTable, createProcessedMessagesTable } from './outbox';
 
 describe('outbox factories', () => {

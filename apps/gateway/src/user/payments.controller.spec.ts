@@ -1,5 +1,6 @@
-import { GatewayUserPaymentsController } from './payments.controller';
 import { PAYMENTS_MESSAGE_PATTERNS } from '@tickethub/contracts';
+
+import { GatewayUserPaymentsController } from './payments.controller';
 
 describe('GatewayUserPaymentsController', () => {
   it('forwards intent creation with the authed user id', async () => {

@@ -1,7 +1,7 @@
 /* Imported by each app's globals.css, after its own `@import 'tailwindcss'`. Tailwind resolves
    `@source` relative to this file, so the package's own components are scanned for utilities
    no matter which app pulls it in — node_modules is not crawled by default. */
-@source "./";
+@source './';
 
 /* Design tokens — the single source of truth for colour, type, radius and motion.
    Values come from design/README.md "Design Tokens". Components use the semantic

@@ -1,5 +1,5 @@
-import { OutboxPoller } from './poller';
 import type { OutboxRepository } from './outbox.repository';
+import { OutboxPoller } from './poller';
 
 // The poller owns no SQL any more — it orchestrates the repository, so that is what we stub.
 function fakeOutbox(rows: Array<{ id: string; routingKey: string; payload: unknown }>) {

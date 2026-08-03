@@ -1,4 +1,5 @@
 import type { ProcessedMessagesTable } from '@tickethub/db';
+
 import type { Tx } from './outbox.repository';
 
 // The consumer half of the messaging pattern: outbox delivery is at-least-once, so every

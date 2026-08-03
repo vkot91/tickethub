@@ -1,6 +1,8 @@
 import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+
 import { getTestDb, seedUser, type TestDb } from '@tickethub/db/testing';
+
 import { AuthService } from './auth.service';
 import { JwtService } from './jwt.service';
 

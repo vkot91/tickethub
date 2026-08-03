@@ -1,11 +1,19 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { organizers, shows, showSectionPricing, ticketTypes, venues } from '@tickethub/db';
+
+import {
+  organizers,
+  shows,
+  showSectionPricing,
+  showsOutbox,
+  ticketTypes,
+  venues,
+} from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
 import { OutboxRepository } from '@tickethub/outbox';
-import { showsOutbox } from '@tickethub/db';
-import { OrganizerShowsService } from './shows.service';
+
 import { OrganizerPublishingService } from './publishing.service';
+import { OrganizerShowsService } from './shows.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.
 let db: TestDb;

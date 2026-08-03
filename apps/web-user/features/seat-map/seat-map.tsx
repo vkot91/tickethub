@@ -7,8 +7,8 @@ import { useState } from 'react';
 import { formatPrice, Skeleton, StatusPill, toast } from '@tickethub/ui';
 import { ApiError } from '@tickethub/web-kit';
 
-import { createOrder, fetchSeatMap, type OrderSeat, SEAT_MAP_POLL_MS, seatMapKeys } from './api';
-import { findSeats, MAX_SEATS, type SeatView, toSeatMapView } from './model';
+import { createOrder, fetchSeatMap, SEAT_MAP_POLL_MS, seatMapKeys, type OrderSeat } from './api';
+import { findSeats, MAX_SEATS, toSeatMapView, type SeatView } from './model';
 import { Seat } from './seat';
 import { SeatLegend } from './seat-legend';
 import { SelectionSummary } from './selection-summary';
@@ -79,7 +79,7 @@ export function SeatMap({ showId }: { showId: string }) {
     <>
       {heldCount > 0 ? (
         <StatusPill tone="warn" className="mb-6 gap-2 px-3 py-2 text-[11px]">
-          <span aria-hidden className="size-1.5 rounded-pill bg-warn animate-live" />
+          <span aria-hidden className="size-1.5 animate-live rounded-pill bg-warn" />
           {heldCount} {heldCount === 1 ? 'seat' : 'seats'} being chosen right now
         </StatusPill>
       ) : null}

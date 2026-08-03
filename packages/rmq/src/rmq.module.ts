@@ -1,6 +1,8 @@
-import { DynamicModule } from '@nestjs/common';
 import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
+import { DynamicModule } from '@nestjs/common';
+
 import { ConfigService } from '@tickethub/config';
+
 import { rmqConfig } from './rmq.config';
 
 // The RabbitMQ registration every service repeated. Marked `global: true` so AmqpConnection is

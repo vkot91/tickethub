@@ -1,5 +1,5 @@
-import type { VenueDetail, VenueSummary } from './schema';
 import type { Rpc } from '../shape';
+import type { VenueDetail, VenueSummary } from './schema';
 
 /**
  * The shared venue catalogue. Its own surface because it is nobody's property: an organizer reads

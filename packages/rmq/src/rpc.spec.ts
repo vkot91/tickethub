@@ -1,6 +1,8 @@
-import { ConflictException, HttpException } from '@nestjs/common';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { ConflictException, HttpException } from '@nestjs/common';
+
 import { ORGANIZER_SHOWS_MESSAGE_PATTERNS, RPC_EXCHANGE } from '@tickethub/contracts';
+
 import { rpcErrorReplyHandler, rpcRequest } from './rpc';
 
 function channelSpy() {

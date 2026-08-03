@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { RequestIdInterceptor } from '@tickethub/rmq';
 import { Logger } from 'nestjs-pino';
+
+import { RequestIdInterceptor } from '@tickethub/rmq';
+
 import { ShowsModule } from './shows.module';
 
 async function bootstrap() {

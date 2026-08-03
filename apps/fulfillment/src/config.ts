@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { storageEnvSchema } from '@tickethub/storage';
+
 import { mailerEnvSchema } from '@tickethub/mailer';
+import { storageEnvSchema } from '@tickethub/storage';
 
 export const schema = z.object({
   // The packages own the env contract for what they read, so a new consumer spreads one shape

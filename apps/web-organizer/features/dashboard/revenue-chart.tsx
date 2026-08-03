@@ -1,6 +1,5 @@
-import { Card, formatPrice } from '@tickethub/ui';
-
 import { type ShowStats } from '@tickethub/contracts';
+import { Card, formatPrice } from '@tickethub/ui';
 
 const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
 

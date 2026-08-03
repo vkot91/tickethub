@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithQuery } from '@/test/render';
 
-import { fetchTickets, type Ticket, ticketKeys } from './api';
+import { fetchTickets, ticketKeys, type Ticket } from './api';
 import { TicketList } from './ticket-list';
 
 function makeTicket(overrides: Partial<Ticket> = {}): Ticket {

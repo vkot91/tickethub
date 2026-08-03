@@ -1,11 +1,12 @@
-import { organizerShowPath, showKeys } from '@/features/shows/api';
-import { ShowEditor } from '@/features/shows/editor/show-editor';
-import { serverApi } from '@/lib/session';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { type Metadata } from 'next';
 
 import { organizerShowSchema } from '@tickethub/contracts';
 import { getServerQueryClient } from '@tickethub/web-kit/server';
+
+import { organizerShowPath, showKeys } from '@/features/shows/api';
+import { ShowEditor } from '@/features/shows/editor/show-editor';
+import { serverApi } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Edit show' };
 

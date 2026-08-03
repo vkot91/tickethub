@@ -1,8 +1,8 @@
 import { type Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { type ShowDetail, showDetailSchema } from '@tickethub/contracts';
 
+import { showDetailSchema, type ShowDetail } from '@tickethub/contracts';
 import {
   Button,
   Eyebrow,
@@ -13,6 +13,7 @@ import {
   TIER_DOT,
 } from '@tickethub/ui';
 import { ApiError } from '@tickethub/web-kit';
+
 import { serverApi } from '@/lib/session';
 
 export const revalidate = 60;
@@ -43,7 +44,7 @@ export default async function ShowPage({ params }: { params: Promise<{ id: strin
   const show = await getShow(id);
 
   return (
-    <div className="mx-auto max-w-295 px-6 pt-7 pb-22.5 [animation:var(--animate-fade)]">
+    <div className="mx-auto max-w-295 [animation:var(--animate-fade)] px-6 pt-7 pb-22.5">
       <Link href="/" className="mb-5 inline-block text-[13px] text-fg-muted hover:text-fg">
         ← Back to catalog
       </Link>

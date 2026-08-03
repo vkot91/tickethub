@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
-import { Button, LogoutButton, type NavTab, NavTabs } from '@tickethub/ui';
+import { Button, LogoutButton, NavTabs, type NavTab } from '@tickethub/ui';
+
 import { getCurrentUser } from '@/lib/session';
 
 const PUBLIC_TABS: NavTab[] = [{ href: '/', label: 'Catalog' }];

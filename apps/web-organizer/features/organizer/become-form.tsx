@@ -1,13 +1,14 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
-import { becomeFormSchema, type BecomeForm as BecomeFormValues } from './become-form-schema';
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
+
 import { becomeOrganizerAction } from './actions';
+import { becomeFormSchema, type BecomeForm as BecomeFormValues } from './become-form-schema';
 
 /** The email is prefilled from the server component rather than fetched again on the client —
  *  the session is already decoded one hop earlier. */

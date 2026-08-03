@@ -1,11 +1,12 @@
-import { WelcomeToast } from '@/features/organizer/welcome-toast';
-import { organizerShowsPath, organizerShowsSchema, showKeys } from '@/features/shows/api';
-import { ShowsScreen } from '@/features/shows/list/shows-screen';
-import { serverApi } from '@/lib/session';
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { type Metadata } from 'next';
 
 import { getServerQueryClient } from '@tickethub/web-kit/server';
+
+import { WelcomeToast } from '@/features/organizer/welcome-toast';
+import { organizerShowsPath, organizerShowsSchema, showKeys } from '@/features/shows/api';
+import { ShowsScreen } from '@/features/shows/list/shows-screen';
+import { serverApi } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Shows' };
 

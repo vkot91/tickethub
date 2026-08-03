@@ -2,7 +2,7 @@ import { X } from 'lucide-react';
 
 import { Button, formatPrice, TIER_LABELS } from '@tickethub/ui';
 
-import { MAX_SEATS, type SeatView, totalCents } from './model';
+import { MAX_SEATS, totalCents, type SeatView } from './model';
 
 interface SelectionSummaryProps {
   seats: SeatView[];

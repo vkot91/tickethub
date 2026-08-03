@@ -1,8 +1,8 @@
 import { eq, Param, type SQL } from 'drizzle-orm';
-import { fulfillmentProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
+
 import {
-  ORDERS_MESSAGE_PATTERNS,
   ORDER_ROUTING_KEYS,
+  ORDERS_MESSAGE_PATTERNS,
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
   type EventEnvelope,
@@ -11,9 +11,11 @@ import {
   type SeatMap,
   type ShowDetail,
 } from '@tickethub/contracts';
+import { fulfillmentProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
 import type { OutboxMessage } from '@tickethub/outbox';
-import { renderTicketPdf } from './ticket-pdf';
+
 import { verifyTicketToken } from './qr';
+import { renderTicketPdf } from './ticket-pdf';
 import { TicketsService } from './tickets.service';
 
 jest.mock('./ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));

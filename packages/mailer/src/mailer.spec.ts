@@ -1,4 +1,5 @@
 import type { Transporter } from 'nodemailer';
+
 import { Mailer } from './mailer';
 
 describe('Mailer', () => {

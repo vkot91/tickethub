@@ -1,7 +1,7 @@
 import { createDb } from '../client';
 import { requireDatabaseUrl } from '../env';
-import { seed } from './index';
 import { shows, users } from '../schema';
+import { seed } from './index';
 
 describe('seed (integration, idempotent)', () => {
   const db = createDb(requireDatabaseUrl());

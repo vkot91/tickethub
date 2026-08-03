@@ -1,5 +1,5 @@
-import type { OrderStats, RecentOrderRow } from './schema';
 import type { Rpc } from '../../shape';
+import type { OrderStats, RecentOrderRow } from './schema';
 
 /**
  * The console's surface onto `apps/orders`. Both calls take a *resolved* `showIds[]` — ownership is

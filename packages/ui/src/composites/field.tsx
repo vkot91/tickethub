@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { Label } from '../primitives/label';
 import { cn } from '../lib/cn';
+import { Label } from '../primitives/label';
 
 interface FieldProps {
   label: string;

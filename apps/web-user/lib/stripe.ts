@@ -1,4 +1,4 @@
-import { type Appearance, loadStripe, type Stripe } from '@stripe/stripe-js';
+import { loadStripe, type Appearance, type Stripe } from '@stripe/stripe-js';
 
 import { clientEnv } from './env/client';
 

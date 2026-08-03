@@ -1,4 +1,4 @@
-import { PgSchema, uuid, text, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { jsonb, PgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // Reusable transactional-outbox tables. Each service owns its own copy inside its
 // pgSchema — no shared table, no cross-service coupling.

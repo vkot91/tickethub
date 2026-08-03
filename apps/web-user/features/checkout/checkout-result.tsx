@@ -1,7 +1,7 @@
 import { Check, Clock, RotateCcw, X } from 'lucide-react';
 import Link from 'next/link';
-import { type OrderResponse } from '@tickethub/contracts';
 
+import { type OrderResponse } from '@tickethub/contracts';
 import { Button, Card, formatPrice } from '@tickethub/ui';
 
 import { type SettledStatus } from '@/features/orders/api';

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { seatTierSchema, showSummarySchema } from '../schema';
 
 // The console's side of a show: authoring DTOs and the shapes only an owner ever sees. A buyer

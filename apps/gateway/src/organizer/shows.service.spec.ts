@@ -1,4 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
+
 import { OrganizerShowsService } from './shows.service';
 
 function makeService(showIds: string[]) {

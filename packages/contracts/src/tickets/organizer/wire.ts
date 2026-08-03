@@ -1,5 +1,5 @@
-import type { CheckInResult } from './schema';
 import type { Rpc } from '../../shape';
+import type { CheckInResult } from './schema';
 
 /**
  * The console's surface onto `apps/fulfillment` — the dashboard's check-in number, and the gate

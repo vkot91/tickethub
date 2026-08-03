@@ -1,5 +1,6 @@
 import { orders, seatReservations } from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
+
 import { OrganizerStatsService } from './stats.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.

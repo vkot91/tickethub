@@ -1,11 +1,12 @@
-import { loadEnv, requireEnv } from '@tickethub/env';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { isNotNull, sql } from 'drizzle-orm';
-import { createDb, ordersOutbox, type Db } from '@tickethub/db';
-import { OutboxPoller, OutboxRepository } from '@tickethub/outbox';
-import { rmqConfig, publishStored } from '@tickethub/rmq';
-import { ORDER_ROUTING_KEYS } from '@tickethub/contracts';
 import { v4 as uuid } from 'uuid';
+
+import { ORDER_ROUTING_KEYS } from '@tickethub/contracts';
+import { createDb, ordersOutbox, type Db } from '@tickethub/db';
+import { loadEnv, requireEnv } from '@tickethub/env';
+import { OutboxPoller, OutboxRepository } from '@tickethub/outbox';
+import { publishStored, rmqConfig } from '@tickethub/rmq';
 
 jest.setTimeout(30_000);
 

@@ -1,7 +1,9 @@
-import { FactoryProvider } from '@nestjs/common';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import { OutboxRepository, InboxRepository, OutboxPoller } from '@tickethub/outbox';
+import { FactoryProvider } from '@nestjs/common';
+
 import type { Db, OutboxTable, ProcessedMessagesTable } from '@tickethub/db';
+import { InboxRepository, OutboxPoller, OutboxRepository } from '@tickethub/outbox';
+
 import { OutboxModule } from './outbox.module';
 
 describe('OutboxModule.forFeature', () => {

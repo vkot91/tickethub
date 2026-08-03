@@ -1,10 +1,12 @@
-import { Worker } from 'bullmq';
-import { Logger } from '@nestjs/common';
 import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
-import type { StorageClient } from '@tickethub/storage';
+import { Logger } from '@nestjs/common';
+import { Worker } from 'bullmq';
+
+import { AUTH_MESSAGE_PATTERNS } from '@tickethub/contracts';
 import type { Mailer } from '@tickethub/mailer';
 import { rpcRequest } from '@tickethub/rmq';
-import { AUTH_MESSAGE_PATTERNS } from '@tickethub/contracts';
+import type { StorageClient } from '@tickethub/storage';
+
 import { renderTicketEmail } from './email.template';
 
 export interface EmailDeps {

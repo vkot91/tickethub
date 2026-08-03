@@ -1,6 +1,8 @@
 import 'reflect-metadata';
-import { of } from 'rxjs';
+
 import { RABBIT_HANDLER } from '@golevelup/nestjs-rabbitmq';
+import { of } from 'rxjs';
+
 import { getRequestId } from './request-context';
 import { RequestIdInterceptor } from './request-id.interceptor';
 

@@ -1,7 +1,8 @@
 import type { DynamicModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { loadEnv } from '@tickethub/env';
 import type { ZodType } from 'zod';
+
+import { loadEnv } from '@tickethub/env';
 
 //  : env access lives in the zero-dep @tickethub/env; ConfigService is re-exported
 // so apps depend only on @tickethub/config for everything config-related.

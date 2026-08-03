@@ -1,5 +1,5 @@
-import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } from './schema';
 import type { Rpc } from '../../shape';
+import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } from './schema';
 
 /** A buyer acting on their own orders. Every payload carries the `userId` the service scopes to. */
 export const ORDERS_MESSAGE_PATTERNS = {

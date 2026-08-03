@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  HOLD_WINDOW_MS,
-  URGENT_MS,
   formatCountdown,
+  HOLD_WINDOW_MS,
   isUrgent,
   msLeft,
   progressPercent,
+  URGENT_MS,
 } from './timer';
 
 const EXPIRES_AT = '2026-08-14T20:10:00.000Z';

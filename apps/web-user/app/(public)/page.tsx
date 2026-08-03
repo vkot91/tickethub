@@ -1,11 +1,12 @@
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
-import { catalogPageSchema } from '@tickethub/contracts';
 
+import { catalogPageSchema } from '@tickethub/contracts';
 import { Eyebrow } from '@tickethub/ui';
+import { getServerQueryClient } from '@tickethub/web-kit/server';
+
 import { catalogKeys, catalogPath } from '@/features/catalog/api';
 import { CatalogGrid } from '@/features/catalog/catalog-grid';
 import { FeaturedShow } from '@/features/catalog/featured-show';
-import { getServerQueryClient } from '@tickethub/web-kit/server';
 import { serverApi } from '@/lib/session';
 
 export const revalidate = 60;
@@ -25,7 +26,7 @@ export default async function CatalogPage() {
   const [featured] = firstPage.items;
 
   return (
-    <div className="mx-auto max-w-295 px-6 pt-9 pb-22.5 [animation:var(--animate-fade)]">
+    <div className="mx-auto max-w-295 [animation:var(--animate-fade)] px-6 pt-9 pb-22.5">
       <Eyebrow className="mb-3 block">Live shows</Eyebrow>
 
       <h1 className="mb-2 max-w-[16ch] font-display text-[40px] leading-[1.05] font-semibold tracking-[-0.02em]">

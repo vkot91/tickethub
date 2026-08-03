@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+
 import type { UserPayload } from '@tickethub/contracts';
 
 import { cookieOptions, type SessionConfig } from './config';

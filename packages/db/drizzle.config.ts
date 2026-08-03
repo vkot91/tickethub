@@ -1,4 +1,5 @@
 import { defineConfig } from 'drizzle-kit';
+
 import { requireDatabaseUrl } from './src/env';
 
 export default defineConfig({

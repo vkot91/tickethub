@@ -1,9 +1,10 @@
-import type {
-  S3ClientConfig,
-  PutObjectCommandInput,
-  GetObjectCommandInput,
+import {
+  GetObjectCommand,
+  PutObjectCommand,
+  type GetObjectCommandInput,
+  type PutObjectCommandInput,
+  type S3ClientConfig,
 } from '@aws-sdk/client-s3';
-import { PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 import { StorageClient } from './storage.client';
 

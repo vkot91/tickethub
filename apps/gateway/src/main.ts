@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+
 import { RpcToHttpExceptionFilter } from '@tickethub/common';
+
 import { AppModule } from './app.module';
 import { schema } from './config';
 

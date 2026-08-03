@@ -1,5 +1,7 @@
-import { loadEnv, requireEnv } from '@tickethub/env';
 import Redis from 'ioredis';
+
+import { loadEnv, requireEnv } from '@tickethub/env';
+
 import { RedisService } from './redis.service';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

@@ -1,19 +1,19 @@
 import { and, eq } from 'drizzle-orm';
-import type { Db } from '../client';
-import { createDb } from '../client';
+
+import { createDb, type Db } from '../client';
 import { requireDatabaseUrl } from '../env';
 import {
-  users,
-  organizers,
-  venues,
-  sections,
-  rows,
-  seats,
-  shows,
-  ticketTypes,
   orders,
+  organizers,
+  rows,
   seatReservations,
+  seats,
+  sections,
+  shows,
   showSectionPricing,
+  ticketTypes,
+  users,
+  venues,
 } from '../schema';
 
 // bcrypt hash of "password123" — regenerated with real bcrypt (Task 9 setup).

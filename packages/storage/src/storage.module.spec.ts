@@ -1,9 +1,12 @@
 import 'reflect-metadata';
+
 import type { FactoryProvider } from '@nestjs/common';
+
 import { ConfigService } from '@tickethub/config';
+
 // Imported through the package entry, not the modules directly: this is the surface consumers
 // actually get, so a barrel that stops re-exporting something fails here.
-import { StorageModule, storageEnvSchema, StorageClient } from './index';
+import { StorageClient, storageEnvSchema, StorageModule } from './index';
 
 const definition = StorageModule.forBucket('S3_BUCKET_TICKETS');
 const provider = (definition.providers as FactoryProvider[]).find(

@@ -1,4 +1,5 @@
-import { pgSchema, uuid, text, integer, timestamp, unique } from 'drizzle-orm/pg-core';
+import { integer, pgSchema, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
+
 import { createOutboxTable, createProcessedMessagesTable } from './outbox';
 
 export const paymentsSchema = pgSchema('payments');

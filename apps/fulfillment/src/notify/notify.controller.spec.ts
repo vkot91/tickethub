@@ -1,6 +1,8 @@
-import { Logger } from '@nestjs/common';
 import { Nack } from '@golevelup/nestjs-rabbitmq';
+import { Logger } from '@nestjs/common';
+
 import { TICKET_ROUTING_KEYS, type EventEnvelope } from '@tickethub/contracts';
+
 import { NotifyController } from './notify.controller';
 
 const ORDER_ID = '11111111-1111-4111-8111-111111111111';

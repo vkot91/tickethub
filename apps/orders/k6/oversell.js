@@ -1,5 +1,5 @@
+import { __ENV, __ITER, __VU, check } from 'k6';
 import http from 'k6/http';
-import { check, __ENV, __VU, __ITER } from 'k6';
 import { Counter } from 'k6/metrics';
 
 const success = new Counter('order_success');
