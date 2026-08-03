@@ -29,21 +29,61 @@ async function fillForm() {
   await userEvent.click(await screen.findByRole('option', { name: /Grand Hall/ }));
 }
 
+// The venue fixture (`../test-gateway`) seeds a single hall named "Grand Hall", not "Hall A".
+async function fillValidDraft(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Title'), 'Neon Night');
+
+  await user.click(screen.getByLabelText('Venue'));
+  await user.click(await screen.findByRole('option', { name: /Grand Hall/ }));
+
+  await user.type(screen.getByLabelText('Starts at'), '2026-09-01T19:30');
+}
+
 describe('NewShowDialog', () => {
-  it('keeps Create draft disabled until title, venue and start are all set', async () => {
-    mockGateway();
+  it('blocks submission and names the missing field when the form is empty', async () => {
+    const fetchMock = mockGateway();
+
+    const user = userEvent.setup();
+
     renderWithQuery(<NewShowDialog trigger={<button>New show</button>} />);
 
-    await openDialog();
+    await user.click(screen.getByRole('button', { name: 'New show' }));
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
 
-    expect(screen.getByRole('button', { name: 'Create draft' })).toBeDisabled();
+    expect(await screen.findByText('Give the show a title')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('/organizer/shows'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 
-    await userEvent.type(screen.getByLabelText('Title'), 'Neon Nights');
-    expect(screen.getByRole('button', { name: 'Create draft' })).toBeDisabled();
+  it('sends the datetime-local value to the API as an ISO timestamp', async () => {
+    const fetchMock = mockGateway();
 
-    await fillForm();
+    const user = userEvent.setup();
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Create draft' })).toBeEnabled());
+    renderWithQuery(<NewShowDialog trigger={<button>New show</button>} />);
+
+    await user.click(screen.getByRole('button', { name: 'New show' }));
+    await fillValidDraft(user);
+    await user.click(screen.getByRole('button', { name: 'Create draft' }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/gateway/organizer/shows',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+
+    const [, submitInit] = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith('/organizer/shows') &&
+        (init as RequestInit | undefined)?.method === 'POST',
+    ) as [string, RequestInit];
+
+    const submittedBody = JSON.parse(String(submitInit.body)) as { startsAt: string };
+
+    expect(submittedBody.startsAt).toBe(new Date('2026-09-01T19:30').toISOString());
   });
 
   it('offers the seeded venue catalogue', async () => {

@@ -1,7 +1,8 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError } from '@tickethub/web-kit';
+import type { CreateShowDto } from '@tickethub/contracts';
 import {
   Button,
   Dialog,
@@ -9,14 +10,19 @@ import {
   DialogContent,
   DialogTitle,
   DialogTrigger,
-  Field,
-  Input,
-  Select,
+  Form,
+  FormError,
+  FormField,
+  FormSelect,
 } from '@tickethub/ui';
+import { ApiError } from '@tickethub/web-kit';
 import { useRouter } from 'next/navigation';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type ReactNode, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
 
 import { createShow, fetchVenues, showKeys, venueKeys } from './api';
+import { newShowFormSchema } from './new-show-form-schema';
 
 interface NewShowDialogProps {
   trigger: ReactNode;
@@ -26,15 +32,17 @@ interface NewShowDialogProps {
 /** Deliberately small: this creates a *draft*. Everything else about a show is the editor's job. */
 export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  // '' rather than undefined so the Select is controlled from its first render; no venue has an
-  // empty id, so Radix still shows the placeholder.
-  const [venueId, setVenueId] = useState('');
-  const [startsAt, setStartsAt] = useState('');
-  const [description, setDescription] = useState('');
 
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Three generics because the schema transforms: the inputs hold a `datetime-local` string,
+  // `onSubmit` receives a `CreateShowDto`.
+  const form = useForm<z.input<typeof newShowFormSchema>, unknown, CreateShowDto>({
+    resolver: zodResolver(newShowFormSchema),
+    mode: 'onTouched',
+    defaultValues: { title: '', venueId: '', startsAt: '', description: '' },
+  });
 
   const { data: venues } = useQuery({
     queryKey: venueKeys.list(),
@@ -50,33 +58,19 @@ export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
       onCreated?.('Draft created');
       router.push(`/shows/${show.id}/edit`);
     },
+    // A duplicate title is a 409, and the fix is in that one field — not in a toast.
+    onError: (failure) =>
+      failure instanceof ApiError && failure.kind === 'conflict'
+        ? form.setError('title', { message: 'You already have a show with this title.' })
+        : form.setError('root', { message: failure.message }),
   });
-
-  const submit = (submitEvent: FormEvent<HTMLFormElement>) => {
-    submitEvent.preventDefault();
-
-    create.mutate({
-      title: title.trim(),
-      description,
-      venueId,
-      startsAt: new Date(startsAt).toISOString(),
-    });
-  };
-
-  // A duplicate title is a 409, and the fix is in that one field — not in a toast.
-  const isDuplicateTitle = create.error instanceof ApiError && create.error.kind === 'conflict';
-  const titleError = isDuplicateTitle ? 'You already have a show with this title.' : undefined;
-
-  const otherError = create.error && !isDuplicateTitle ? create.error.message : undefined;
-
-  const canSubmit = Boolean(title.trim() && venueId && startsAt);
 
   return (
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
-        if (!open) create.reset();
+        if (!open) form.reset();
       }}
     >
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -84,49 +78,27 @@ export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
       <DialogContent aria-describedby={undefined}>
         <DialogTitle className="mb-4.5">New show</DialogTitle>
 
-        <form onSubmit={submit} className="flex flex-col gap-3.5">
-          <Field label="Title" htmlFor="show-title" error={titleError}>
-            <Input
-              id="show-title"
-              value={title}
-              onChange={(changeEvent) => setTitle(changeEvent.target.value)}
-              required
-            />
-          </Field>
+        <Form
+          form={form}
+          onSubmit={(formValues) => create.mutate(formValues)}
+          className="flex flex-col gap-3.5"
+        >
+          <FormField name="title" label="Title" />
 
-          <Field label="Venue" htmlFor="show-venue">
-            <Select
-              value={venueId}
-              onValueChange={setVenueId}
-              ariaLabel="Venue"
-              placeholder="Pick a hall"
-              className="w-full justify-between rounded-control border-line bg-deep px-3.5 py-2.5 text-sm"
-              options={(venues ?? []).map((venue) => ({
-                value: venue.id,
-                label: `${venue.name} — ${venue.city ?? '—'} · ${venue.seatCount} seats`,
-              }))}
-            />
-          </Field>
+          <FormSelect
+            name="venueId"
+            label="Venue"
+            placeholder="Pick a hall"
+            options={(venues ?? []).map((venue) => ({
+              value: venue.id,
+              label: `${venue.name} — ${venue.city ?? '—'} · ${venue.seatCount} seats`,
+            }))}
+          />
 
-          <Field label="Starts at" htmlFor="show-starts-at">
-            <Input
-              id="show-starts-at"
-              type="datetime-local"
-              value={startsAt}
-              onChange={(changeEvent) => setStartsAt(changeEvent.target.value)}
-              required
-            />
-          </Field>
+          <FormField name="startsAt" label="Starts at" type="datetime-local" />
+          <FormField name="description" label="Description" as="textarea" rows={3} />
 
-          <Field label="Description" htmlFor="show-description" error={otherError}>
-            <textarea
-              id="show-description"
-              value={description}
-              onChange={(changeEvent) => setDescription(changeEvent.target.value)}
-              rows={3}
-              className="w-full rounded-control border border-line bg-deep px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-faint focus-visible:border-accent focus-visible:outline-none"
-            />
-          </Field>
+          <FormError />
 
           <div className="mt-2 flex justify-end gap-2.5">
             <DialogClose asChild>
@@ -135,11 +107,11 @@ export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
               </Button>
             </DialogClose>
 
-            <Button type="submit" size="sm" disabled={!canSubmit || create.isPending}>
+            <Button type="submit" size="sm" disabled={create.isPending}>
               {create.isPending ? 'Creating…' : 'Create draft'}
             </Button>
           </div>
-        </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
