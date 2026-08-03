@@ -14,6 +14,7 @@ const toastVariants = cva(
     variants: {
       tone: {
         neutral: 'border-line bg-surface/95 text-fg',
+        success: 'border-success/40 bg-surface/95 text-fg',
         warn: 'border-warn/40 bg-surface/95 text-fg',
         danger: 'border-danger/40 bg-surface/95 text-fg',
       },

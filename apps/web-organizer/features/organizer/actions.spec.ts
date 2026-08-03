@@ -33,6 +33,26 @@ describe('becomeOrganizerAction', () => {
     expect(serverApi).not.toHaveBeenCalled();
   });
 
+  // The client schema trims before validating, but a server action is a public RPC endpoint —
+  // a hand-crafted call bypasses the client entirely, so the server must not depend on it.
+  it('rejects a whitespace-only name without calling the gateway', async () => {
+    await expect(becomeOrganizerAction('   ')).rejects.toThrow();
+
+    expect(serverApi).not.toHaveBeenCalled();
+  });
+
+  it('trims surrounding whitespace before validating and posting the name', async () => {
+    vi.mocked(serverApi).mockResolvedValueOnce(tokens);
+
+    await becomeOrganizerAction('  Neon Promotions  ');
+
+    expect(serverApi).toHaveBeenCalledWith(
+      '/auth/become-organizer',
+      { method: 'POST', body: { name: 'Neon Promotions' } },
+      expect.anything(),
+    );
+  });
+
   // A failed call must not leave the old `role: 'user'` token replaced by nothing.
   it('does not touch the session when the gateway fails', async () => {
     vi.mocked(serverApi).mockRejectedValueOnce(new Error('gateway down'));

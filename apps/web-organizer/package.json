@@ -10,6 +10,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@hookform/resolvers": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@tickethub/contracts": "workspace:*",
     "@tickethub/env": "workspace:*",
@@ -19,6 +20,7 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
     "server-only": "catalog:",
     "zod": "catalog:"
   },

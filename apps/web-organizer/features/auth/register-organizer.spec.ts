@@ -10,14 +10,12 @@ vi.mock('@/lib/session', () => ({ signIn: vi.fn() }));
 vi.mock('@/features/organizer/actions', () => ({ becomeOrganizerAction: vi.fn() }));
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }));
 
-function signup(name = '  Neon Promotions  ') {
-  const formData = new FormData();
-
-  formData.set('email', 'promoter@example.com');
-  formData.set('password', 'hunter2hunter2');
-  formData.set('name', name);
-
-  return formData;
+function signup(name = 'Neon Promotions') {
+  return {
+    email: 'promoter@example.com',
+    password: 'hunter2hunter2',
+    name,
+  };
 }
 
 afterEach(() => {
@@ -26,7 +24,7 @@ afterEach(() => {
 
 describe('registerOrganizerAction', () => {
   it('registers, flips the role, and lands on the shows list', async () => {
-    await expect(registerOrganizerAction(null, signup())).resolves.toBeUndefined();
+    await expect(registerOrganizerAction(signup())).resolves.toBeUndefined();
 
     expect(signIn).toHaveBeenCalledWith('register', {
       email: 'promoter@example.com',
@@ -40,7 +38,7 @@ describe('registerOrganizerAction', () => {
   it('stops at the gateway message when the account cannot be created', async () => {
     vi.mocked(signIn).mockRejectedValueOnce(new Error('Email already registered'));
 
-    await expect(registerOrganizerAction(null, signup())).resolves.toBe('Email already registered');
+    await expect(registerOrganizerAction(signup())).resolves.toBe('Email already registered');
 
     expect(becomeOrganizerAction).not.toHaveBeenCalled();
     expect(redirect).not.toHaveBeenCalled();
@@ -51,8 +49,16 @@ describe('registerOrganizerAction', () => {
   it('points at /become when the account is made but the role flip fails', async () => {
     vi.mocked(becomeOrganizerAction).mockRejectedValueOnce(new Error('shows down'));
 
-    await expect(registerOrganizerAction(null, signup())).resolves.toMatch(/become an organizer/i);
+    await expect(registerOrganizerAction(signup())).resolves.toMatch(/become an organizer/i);
 
     expect(redirect).not.toHaveBeenCalled();
+  });
+
+  // The client schema trims before validating, but a server action is a public RPC endpoint —
+  // a hand-crafted call bypasses the client entirely, so the server must not depend on it.
+  it('trims surrounding whitespace before flipping the role', async () => {
+    await registerOrganizerAction(signup('  Neon Promotions  '));
+
+    expect(becomeOrganizerAction).toHaveBeenCalledWith('Neon Promotions');
   });
 });

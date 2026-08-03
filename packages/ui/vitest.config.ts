@@ -12,8 +12,15 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'lcov'],
       // The primitives are `cva` variant maps over a Radix component — Radix owns the
-      // behaviour and tests it. The gate applies to the logic this package actually owns.
-      include: ['src/lib/cn.ts', 'src/lib/format.ts', 'src/composites/nav-tabs.tsx'],
+      // behaviour and tests it. The gate applies to the logic this package actually owns,
+      // which now includes the form layer's error and aria wiring.
+      include: [
+        'src/lib/cn.ts',
+        'src/lib/format.ts',
+        'src/composites/nav-tabs.tsx',
+        'src/form/**/*.tsx',
+        'src/primitives/toaster.tsx',
+      ],
       thresholds: { statements: 80, lines: 80, functions: 70, branches: 70 },
     },
   },

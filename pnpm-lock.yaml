@@ -18,6 +18,9 @@ catalogs:
     '@golevelup/nestjs-rabbitmq':
       specifier: ^5.7.0
       version: 5.7.0
+    '@hookform/resolvers':
+      specifier: ^3.10.0
+      version: 3.10.0
     '@nestjs/cli':
       specifier: ^10.0.0
       version: 10.4.9
@@ -147,6 +150,9 @@ catalogs:
     react-dom:
       specifier: ^19.0.0
       version: 19.2.8
+    react-hook-form:
+      specifier: ^7.54.0
+      version: 7.84.0
     reflect-metadata:
       specifier: ^0.2.0
       version: 0.2.2
@@ -841,6 +847,9 @@ importers:
 
   apps/web-organizer:
     dependencies:
+      '@hookform/resolvers':
+        specifier: 'catalog:'
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.8))
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.101.4(react@19.2.8)
@@ -868,6 +877,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
+      react-hook-form:
+        specifier: 'catalog:'
+        version: 7.84.0(react@19.2.8)
       server-only:
         specifier: 'catalog:'
         version: 0.0.1
@@ -929,6 +941,9 @@ importers:
 
   apps/web-user:
     dependencies:
+      '@hookform/resolvers':
+        specifier: 'catalog:'
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.8))
       '@radix-ui/react-progress':
         specifier: 'catalog:'
         version: 1.1.13(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -971,6 +986,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
+      react-hook-form:
+        specifier: 'catalog:'
+        version: 7.84.0(react@19.2.8)
       server-only:
         specifier: 'catalog:'
         version: 0.0.1
@@ -1604,6 +1622,9 @@ importers:
         specifier: 'catalog:'
         version: 2.6.1
     devDependencies:
+      '@hookform/resolvers':
+        specifier: 'catalog:'
+        version: 3.10.0(react-hook-form@7.84.0(react@19.2.8))
       '@testing-library/jest-dom':
         specifier: 'catalog:'
         version: 6.10.0(@testing-library/dom@10.4.1)
@@ -1649,12 +1670,18 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.2.8(react@19.2.8)
+      react-hook-form:
+        specifier: 'catalog:'
+        version: 7.84.0(react@19.2.8)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 'catalog:'
         version: 2.1.9(@types/node@20.19.43)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.48.0)
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
 
   packages/web-kit:
     dependencies:
@@ -3291,6 +3318,14 @@ packages:
       }
     engines: { node: '>=6' }
     hasBin: true
+
+  '@hookform/resolvers@3.10.0':
+    resolution:
+      {
+        integrity: sha512-79Dv+3mDF7i+2ajj7SkypSKHhl1cbln1OGavqrsF7p6mbUv11xpqpacPsGDCTRvCSjEEIez2ef1NveSVL3b0Ag==,
+      }
+    peerDependencies:
+      react-hook-form: ^7.0.0
 
   '@humanwhocodes/config-array@0.13.0':
     resolution:
@@ -10956,6 +10991,15 @@ packages:
     peerDependencies:
       react: ^19.2.8
 
+  react-hook-form@7.84.0:
+    resolution:
+      {
+        integrity: sha512-+hWvQP6GLco56mDwrbU4XnHix8t1z90ltZsDIrREl+jnQFQxYLX8oAzqe/Xn8nHpmoXTY5M6oEXrAhbP1qevNQ==,
+      }
+    engines: { node: '>=18.0.0' }
+    peerDependencies:
+      react: ^16.8.0 || ^17 || ^18 || ^19
+
   react-is@16.13.1:
     resolution:
       {
@@ -13821,6 +13865,10 @@ snapshots:
       long: 5.3.2
       protobufjs: 7.6.5
       yargs: 17.7.3
+
+  '@hookform/resolvers@3.10.0(react-hook-form@7.84.0(react@19.2.8))':
+    dependencies:
+      react-hook-form: 7.84.0(react@19.2.8)
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
@@ -19151,6 +19199,10 @@ snapshots:
     dependencies:
       react: 19.2.8
       scheduler: 0.27.0
+
+  react-hook-form@7.84.0(react@19.2.8):
+    dependencies:
+      react: 19.2.8
 
   react-is@16.13.1: {}
 

@@ -1,45 +1,51 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import Link from 'next/link';
-import { useActionState } from 'react';
+import { useForm } from 'react-hook-form';
 
-import { Button, Field, Input } from '@tickethub/ui';
-
+import {
+  registerOrganizerFormSchema,
+  type RegisterOrganizerForm,
+} from './register-organizer-schema';
 import { registerOrganizerAction } from './actions';
 
 /** Signup and the role flip in one screen — an organizer never has to visit the buyer site to
  *  get an account. Existing buyers go through `/become` instead, which skips the credentials. */
 export function RegisterForm() {
-  const [error, submit, isPending] = useActionState(registerOrganizerAction, null);
+  const form = useForm<RegisterOrganizerForm>({
+    resolver: zodResolver(registerOrganizerFormSchema),
+    mode: 'onTouched',
+    defaultValues: { name: '', email: '', password: '' },
+  });
+
+  async function submit(details: RegisterOrganizerForm) {
+    const failure = await registerOrganizerAction(details);
+
+    if (failure) form.setError('root', { message: failure });
+  }
 
   return (
-    <form action={submit} className="flex flex-col gap-4">
+    <Form form={form} onSubmit={(values) => submit(values)} className="flex flex-col gap-4">
       <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">
         Start selling tickets
       </h1>
 
-      <Field label="Display name" htmlFor="name">
-        <Input id="name" name="name" autoComplete="organization" required />
-        <p className="text-[13px] text-fg-muted">Shown to buyers on your show pages</p>
-      </Field>
+      <FormField
+        name="name"
+        label="Display name"
+        hint="Shown to buyers on your show pages"
+        autoComplete="organization"
+      />
 
-      <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="email" required />
-      </Field>
+      <FormField name="email" label="Email" type="email" autoComplete="email" />
+      <FormField name="password" label="Password" type="password" autoComplete="new-password" />
 
-      <Field label="Password" htmlFor="password" error={error ?? undefined}>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          autoComplete="new-password"
-          required
-        />
-      </Field>
+      <FormError />
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Setting you up…' : 'Create organizer account'}
+      <Button type="submit" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? 'Setting you up…' : 'Create organizer account'}
       </Button>
 
       <p className="text-[13px] text-fg-muted">
@@ -48,6 +54,6 @@ export function RegisterForm() {
           Sign in
         </Link>
       </p>
-    </form>
+    </Form>
   );
 }

@@ -27,10 +27,10 @@ describe('LoginForm', () => {
 
     await submit('promoter@example.com', 'hunter2hunter2');
 
-    const [next, , formData] = vi.mocked(signInAction).mock.calls[0];
+    const [next, credentials] = vi.mocked(signInAction).mock.calls[0];
 
     expect(next).toBe('/shows');
-    expect({ email: formData.get('email'), password: formData.get('password') }).toEqual({
+    expect(credentials).toEqual({
       email: 'promoter@example.com',
       password: 'hunter2hunter2',
     });
@@ -43,5 +43,13 @@ describe('LoginForm', () => {
     await submit('promoter@example.com', 'wrongpassword');
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid credentials');
+  });
+
+  it('does not call the action when the password is too short', async () => {
+    render(<LoginForm next="/" />);
+
+    await submit('promoter@example.com', 'short');
+
+    expect(signInAction).not.toHaveBeenCalled();
   });
 });

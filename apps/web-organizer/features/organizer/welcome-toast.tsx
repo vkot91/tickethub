@@ -1,24 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { toast } from '@tickethub/ui';
+import { useEffect } from 'react';
 
-import { Toast, ToastProvider, ToastViewport } from '@tickethub/ui';
-
-/** The success toast for `/become`, which redirects away before it could show one of its own.
- *  ponytail: a `?welcome=1` search param, not a toast store — one screen hands off to one other. */
+/** The success toast for `/become`, which server-redirects away before it could show one of its
+ *  own. ponytail: a `?welcome=1` search param, because `redirect()` discards the client store. */
 export function WelcomeToast() {
-  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    const id = toast.add('success', {
+      title: "You're an organizer",
+      body: 'Start by creating a show.',
+      duration: 6000,
+    });
 
-  return (
-    <ToastProvider swipeDirection="right">
-      <Toast
-        open={open}
-        onOpenChange={setOpen}
-        duration={6000}
-        title="You're an organizer"
-        body="Start by creating a show."
-      />
-      <ToastViewport />
-    </ToastProvider>
-  );
+    // Also undoes StrictMode's double-mount in dev, which would otherwise queue two.
+    return () => toast.remove(id);
+  }, []);
+
+  return null;
 }
