@@ -28,6 +28,7 @@ export { Poster } from './composites/poster';
 
 export { Form } from './form/form';
 export { FormError } from './form/form-error';
+export { FormField } from './form/form-field';
 
 export { LogoutButton } from './domain/logout-button';
 export { OrderStatusPill } from './domain/order-status';
