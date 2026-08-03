@@ -7,6 +7,8 @@ import type { LoginDto } from '@tickethub/contracts';
 import { becomeOrganizerAction } from '@/features/organizer/actions';
 import { signIn } from '@/lib/session';
 
+import type { RegisterOrganizerForm } from './register-organizer-schema';
+
 /**
  * Sign-in for the organizer console. Runs on the server, so the tokens go straight into this
  * app's cookies. Returns the message to show when the gateway rejects the credentials; on
@@ -31,21 +33,18 @@ export async function signInAction(next: string, credentials: LoginDto): Promise
  * would guard against is benign. A registered account whose flip failed is a working buyer
  * account one click from `/become`, which is idempotent, so the message says so instead.
  */
-export async function registerOrganizerAction(
-  _previous: string | null,
-  formData: FormData,
-): Promise<string | null> {
+export async function registerOrganizerAction({
+  name,
+  ...credentials
+}: RegisterOrganizerForm): Promise<string | null> {
   try {
-    await signIn('register', {
-      email: formData.get('email'),
-      password: formData.get('password'),
-    });
+    await signIn('register', credentials);
   } catch (failure) {
     return failure instanceof Error ? failure.message : 'Something went wrong';
   }
 
   try {
-    await becomeOrganizerAction(String(formData.get('name') ?? '').trim());
+    await becomeOrganizerAction(name);
   } catch {
     return 'Your account is ready, but we could not set up the organizer profile. Open “Become an organizer” to finish.';
   }
