@@ -16,18 +16,20 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "catalog:",
-    "prettier": "^3.3.0",
-    "eslint": "^8.57.0",
+    "@ianvs/prettier-plugin-sort-imports": "^4.7.1",
     "@tickethub/eslint-config": "workspace:*",
-    "@typescript-eslint/parser": "^7.0.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
-    "tsx": "catalog:",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "husky": "^9.1.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.3.0",
+    "prettier-plugin-tailwindcss": "^0.8.1",
     "ts-node": "^10.9.0",
     "tsconfig-paths": "^4.2.0",
-    "husky": "^9.1.0",
-    "lint-staged": "^15.2.0"
+    "tsx": "catalog:",
+    "turbo": "^2.0.0",
+    "typescript": "catalog:"
   },
   "lint-staged": {
     "*.{ts,tsx,js,cjs,mjs}": [
