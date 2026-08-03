@@ -17,12 +17,6 @@ async function submit(email: string, password: string, button = 'Sign in') {
   await user.click(screen.getByRole('button', { name: button }));
 }
 
-function submittedFields() {
-  const [, , , formData] = vi.mocked(authenticate).mock.calls[0];
-
-  return { email: formData.get('email'), password: formData.get('password') };
-}
-
 afterEach(() => {
   vi.clearAllMocks();
 });
@@ -33,22 +27,38 @@ describe('AuthForm', () => {
 
     await submit('buyer@example.com', 'hunter2hunter2');
 
-    const [mode, next] = vi.mocked(authenticate).mock.calls[0];
+    const [mode, next, credentials] = vi.mocked(authenticate).mock.calls[0];
 
-    expect([mode, next]).toEqual(['login', '/tickets']);
-    expect(submittedFields()).toEqual({
-      email: 'buyer@example.com',
-      password: 'hunter2hunter2',
-    });
+    expect(mode).toBe('login');
+    expect(next).toBe('/tickets');
+    expect(credentials).toEqual({ email: 'buyer@example.com', password: 'hunter2hunter2' });
   });
 
-  it('shows the message the action returns when the credentials are rejected', async () => {
-    vi.mocked(authenticate).mockResolvedValueOnce('Invalid credentials');
+  it('rejects a malformed email before calling the action', async () => {
+    const user = userEvent.setup();
+
     render(<AuthForm mode="login" next="/" />);
 
-    await submit('buyer@example.com', 'wrongpassword');
+    await user.type(screen.getByLabelText('Email'), 'not-an-email');
+    await user.type(screen.getByLabelText('Password'), 'hunter2hunter2');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(authenticate).not.toHaveBeenCalled();
+  });
+
+  it('shows a rejected sign-in at form level, not under the password field', async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(authenticate).mockResolvedValueOnce('Invalid credentials');
+
+    render(<AuthForm mode="login" next="/" />);
+
+    await user.type(screen.getByLabelText('Email'), 'buyer@example.com');
+    await user.type(screen.getByLabelText('Password'), 'wrongpassword');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid credentials');
+    expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
   });
 
   it('renders the register variant with its own copy', async () => {

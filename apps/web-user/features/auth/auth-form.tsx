@@ -1,9 +1,10 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, type LoginDto } from '@tickethub/contracts';
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import Link from 'next/link';
-import { useActionState } from 'react';
-
-import { Button, Field, Input } from '@tickethub/ui';
+import { useForm } from 'react-hook-form';
 
 import { authenticate } from './actions';
 
@@ -29,29 +30,36 @@ export type AuthMode = keyof typeof copy;
 export function AuthForm({ mode, next }: { mode: AuthMode; next: string }) {
   const text = copy[mode];
 
-  const [error, submit, isPending] = useActionState(authenticate.bind(null, mode, next), null);
+  const form = useForm<LoginDto>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onTouched',
+    defaultValues: { email: '', password: '' },
+  });
+
+  // The action redirects on success, so it only ever returns on failure.
+  async function submit(credentials: LoginDto) {
+    const failure = await authenticate(mode, next, credentials);
+
+    if (failure) form.setError('root', { message: failure });
+  }
 
   return (
-    <form action={submit} className="flex flex-col gap-4">
+    <Form form={form} onSubmit={(values) => submit(values)} className="flex flex-col gap-4">
       <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em]">{text.title}</h1>
 
-      <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="email" required />
-      </Field>
+      <FormField name="email" label="Email" type="email" autoComplete="email" />
 
-      <Field label="Password" htmlFor="password" error={error ?? undefined}>
-        <Input
-          id="password"
-          name="password"
-          type="password"
-          minLength={8}
-          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          required
-        />
-      </Field>
+      <FormField
+        name="password"
+        label="Password"
+        type="password"
+        autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+      />
 
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Please wait…' : text.submit}
+      <FormError />
+
+      <Button type="submit" disabled={form.formState.isSubmitting}>
+        {form.formState.isSubmitting ? 'Please wait…' : text.submit}
       </Button>
 
       <p className="text-center text-[13px] text-fg-muted">
@@ -60,6 +68,6 @@ export function AuthForm({ mode, next }: { mode: AuthMode; next: string }) {
           {text.altLabel}
         </Link>
       </p>
-    </form>
+    </Form>
   );
 }
