@@ -17,6 +17,12 @@ interface SelectProps {
   ariaLabel: string;
   /** Forwarded to the trigger so a `<Label htmlFor>` can point at it. */
   id?: string;
+  /** Forwarded to the trigger so a failed-validation state is announced, mirroring `FormField`'s
+   *  `register`-bound inputs. Leave both undefined in the clean state — an unconditional
+   *  `aria-describedby` would dangle, since `Field` only renders the error element when there's
+   *  an error to show. */
+  'aria-invalid'?: boolean;
+  'aria-describedby'?: string;
   className?: string;
   onValueChange: (value: string) => void;
 }
@@ -28,6 +34,8 @@ export function Select({
   placeholder,
   ariaLabel,
   id,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedby,
   className,
   onValueChange,
 }: SelectProps) {
@@ -36,6 +44,8 @@ export function Select({
       <SelectPrimitive.Trigger
         id={id}
         aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedby}
         className={cn(
           'inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-4 py-2 text-[13px] text-fg-secondary hover:border-white/20',
           className,

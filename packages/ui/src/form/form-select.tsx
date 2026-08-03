@@ -30,6 +30,8 @@ export function FormSelect({ name, label, placeholder, options, className }: For
         render={({ field }) => (
           <Select
             id={name}
+            aria-invalid={message ? true : undefined}
+            aria-describedby={message ? `${name}-error` : undefined}
             value={field.value}
             onValueChange={field.onChange}
             ariaLabel={label}

@@ -69,4 +69,35 @@ describe('FormSelect', () => {
     expect(alert).toHaveTextContent('Pick a hall');
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it('marks the trigger invalid and wires it to the error text after a failed submit', async () => {
+    const user = userEvent.setup();
+
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('alert');
+
+    const trigger = screen.getByLabelText('Venue');
+
+    expect(trigger).toHaveAttribute('aria-invalid', 'true');
+    expect(trigger).toHaveAttribute('aria-describedby', 'venueId-error');
+
+    // Proves the `aria-describedby` actually resolves to the rendered error text, not just
+    // that the attribute string matches — `toHaveAccessibleDescription` reads the referenced
+    // element the way assistive tech would.
+    expect(trigger).toHaveAccessibleDescription('Pick a hall');
+  });
+
+  it('leaves the trigger free of aria-invalid/aria-describedby in the clean state', () => {
+    render(<Harness />);
+
+    const trigger = screen.getByLabelText('Venue');
+
+    // `not.toHaveAttribute` rather than checking for `"false"` — a literal `aria-invalid="false"`
+    // or a dangling `aria-describedby` id would both fail this, whereas asserting a falsy value
+    // would let a dangling id slip through.
+    expect(trigger).not.toHaveAttribute('aria-invalid');
+    expect(trigger).not.toHaveAttribute('aria-describedby');
+  });
 });
