@@ -15,6 +15,8 @@ interface SelectProps {
   options: SelectOption[];
   placeholder: string;
   ariaLabel: string;
+  /** Forwarded to the trigger so a `<Label htmlFor>` can point at it. */
+  id?: string;
   className?: string;
   onValueChange: (value: string) => void;
 }
@@ -25,12 +27,14 @@ export function Select({
   options,
   placeholder,
   ariaLabel,
+  id,
   className,
   onValueChange,
 }: SelectProps) {
   return (
     <SelectPrimitive.Root value={value} onValueChange={onValueChange}>
       <SelectPrimitive.Trigger
+        id={id}
         aria-label={ariaLabel}
         className={cn(
           'inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-4 py-2 text-[13px] text-fg-secondary hover:border-white/20',
