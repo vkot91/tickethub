@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { becomeFormSchema, type BecomeForm as BecomeFormValues } from './become-form-schema';
@@ -18,6 +19,13 @@ export function BecomeForm({ email }: { email: string }) {
     mode: 'onTouched',
     defaultValues: { name: email },
   });
+
+  // `mode: 'onTouched'` skips validation on mount, so `isValid` starts `false` even though
+  // `defaultValues.name` (the prefilled email) is already valid. Trigger once on mount so the
+  // submit button reflects the actual prefilled value instead of penalizing an untouched field.
+  useEffect(() => {
+    void form.trigger();
+  }, [form]);
 
   async function submit({ name }: BecomeFormValues) {
     try {

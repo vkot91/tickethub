@@ -27,14 +27,25 @@ describe('BecomeForm', () => {
     expect(screen.getByLabelText('Display name')).toHaveValue('promoter@example.com');
   });
 
+  it('enables submit on mount with the prefilled name, before any interaction', async () => {
+    render(<BecomeForm email="promoter@example.com" />);
+
+    await waitFor(() => expect(submitButton()).not.toBeDisabled());
+  });
+
   it('keeps submit disabled while the name is empty', async () => {
     const user = userEvent.setup();
 
     render(<BecomeForm email="promoter@example.com" />);
 
+    // Let the mount-time `trigger()` (see `become-form.tsx`) settle before interacting — clearing
+    // the field while that validation is still in flight races it and can leave `isValid` stuck
+    // on the stale, pre-clear result.
+    await waitFor(() => expect(submitButton()).not.toBeDisabled());
+
     await user.clear(screen.getByLabelText('Display name'));
 
-    expect(submitButton()).toBeDisabled();
+    await waitFor(() => expect(submitButton()).toBeDisabled());
   });
 
   it('keeps submit disabled for a whitespace-only name', async () => {
@@ -42,10 +53,12 @@ describe('BecomeForm', () => {
 
     render(<BecomeForm email="promoter@example.com" />);
 
+    await waitFor(() => expect(submitButton()).not.toBeDisabled());
+
     await user.clear(screen.getByLabelText('Display name'));
     await user.type(screen.getByLabelText('Display name'), '   ');
 
-    expect(submitButton()).toBeDisabled();
+    await waitFor(() => expect(submitButton()).toBeDisabled());
   });
 
   // The new role lives in the cookies the action just wrote, and `middleware.ts` reads the
