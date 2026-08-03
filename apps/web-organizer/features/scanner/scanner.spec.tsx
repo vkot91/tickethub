@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithQuery } from '@/test/render';
 
-import { type CheckInResult } from '../api';
+import { type CheckInResult } from './api';
 import { Scanner } from './scanner';
 
 function result(overrides: Partial<CheckInResult> = {}): CheckInResult {

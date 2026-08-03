@@ -1,12 +1,11 @@
 'use client';
 
-import * as ProgressPrimitive from '@radix-ui/react-progress';
 import { useMutation } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
-import { Button, Card, Field, Input } from '@tickethub/ui';
+import { Button, Card, Field, Input, Progress } from '@tickethub/ui';
 
-import { checkIn, type CheckInResult } from '../api';
+import { checkIn, type CheckInResult } from './api';
 import { CheckInPanel } from './check-in-result';
 import { useQrScanner } from './use-qr-scanner';
 
@@ -132,17 +131,13 @@ export function Scanner({ showId }: { showId: string }) {
               </span>
             </div>
 
-            <ProgressPrimitive.Root
-              value={(check.data.checkedInCount / Math.max(1, check.data.capacity)) * 100}
-              className="h-1.5 overflow-hidden rounded-pill bg-white/5"
-            >
-              <ProgressPrimitive.Indicator
-                style={{
-                  width: `${(check.data.checkedInCount / Math.max(1, check.data.capacity)) * 100}%`,
-                }}
-                className="h-full bg-success"
-              />
-            </ProgressPrimitive.Root>
+            <Progress
+              value={check.data.checkedInCount}
+              max={check.data.capacity}
+              label="Checked in"
+              className="h-1.5 w-full bg-white/5"
+              indicatorClassName="bg-success"
+            />
           </Card>
         ) : null}
 

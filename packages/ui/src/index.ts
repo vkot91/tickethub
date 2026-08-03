@@ -3,9 +3,18 @@ export { formatPrice, formatShowDate, formatShowDateTime, hueFromSeed } from './
 
 export { Button, buttonVariants, type ButtonProps } from './primitives/button';
 export { Card, type CardProps } from './primitives/card';
+export {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+} from './primitives/dialog';
 export { Eyebrow } from './primitives/eyebrow';
 export { Input, type InputProps } from './primitives/input';
 export { Label } from './primitives/label';
+export { Progress } from './primitives/progress';
 export { Select, type SelectOption } from './primitives/select';
 export { Skeleton } from './primitives/skeleton';
 export { StatusPill, type StatusPillProps, type Tone } from './primitives/status-pill';
