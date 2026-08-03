@@ -1,7 +1,15 @@
 'use client';
 
 import { type OrganizerShow } from '@tickethub/contracts';
-import { formatPrice, formatShowDateTime, Poster, Progress, ShowStatusPill } from '@tickethub/ui';
+import {
+  Button,
+  buttonVariants,
+  formatPrice,
+  formatShowDateTime,
+  Poster,
+  Progress,
+  ShowStatusPill,
+} from '@tickethub/ui';
 import { useRouter } from 'next/navigation';
 import { type MouseEvent } from 'react';
 
@@ -14,11 +22,6 @@ interface ShowsTableProps {
 }
 
 const columns = ['Show', 'Venue', 'Date', 'Status', 'Sold', 'Revenue', 'Actions'];
-
-const actionClass =
-  'rounded-lg border border-line px-2.5 py-1.5 text-[11px] font-medium text-fg-secondary hover:border-white/20';
-const destructiveClass =
-  'rounded-lg border border-danger/40 px-2.5 py-1.5 text-[11px] font-medium text-danger hover:border-danger';
 
 export function ShowsTable({ shows, onCancel, onDelete }: ShowsTableProps) {
   const router = useRouter();
@@ -122,9 +125,9 @@ function ShowRow({ show, onOpen, onCancel, onDelete }: ShowRowProps) {
 
       <td className="px-5 py-4" onClick={stopRowNavigation}>
         <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={onOpen} className={actionClass}>
+          <Button type="button" onClick={onOpen} variant="secondary" size="xs" className="px-4">
             Edit
-          </button>
+          </Button>
 
           {show.status === 'published' && (
             <>
@@ -132,20 +135,20 @@ function ShowRow({ show, onOpen, onCancel, onDelete }: ShowRowProps) {
                 href={`${PUBLIC_ORIGIN}/shows/${show.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className={actionClass}
+                className={buttonVariants({ variant: 'primary', size: 'xs' })}
               >
                 View public page
               </a>
-              <button type="button" onClick={onCancel} className={destructiveClass}>
+              <Button type="button" onClick={onCancel} variant="secondary" size="xs">
                 Cancel show
-              </button>
+              </Button>
             </>
           )}
 
           {show.status === 'draft' && (
-            <button type="button" onClick={onDelete} className={destructiveClass}>
+            <Button type="button" onClick={onDelete} variant="danger" size="xs">
               Delete draft
-            </button>
+            </Button>
           )}
         </div>
       </td>
