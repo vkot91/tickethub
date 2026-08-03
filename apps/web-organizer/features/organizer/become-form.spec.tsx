@@ -85,4 +85,16 @@ describe('BecomeForm', () => {
     expect(screen.getByLabelText('Display name')).toHaveValue('Neon Promotions');
     expect(push).not.toHaveBeenCalled();
   });
+
+  it('hands the action a trimmed name', async () => {
+    const user = userEvent.setup();
+
+    render(<BecomeForm email="promoter@example.com" />);
+
+    await user.clear(screen.getByLabelText('Display name'));
+    await user.type(screen.getByLabelText('Display name'), '  Neon Promotions  ');
+    await user.click(submitButton());
+
+    await waitFor(() => expect(becomeOrganizerAction).toHaveBeenCalledWith('Neon Promotions'));
+  });
 });

@@ -1,10 +1,11 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useForm } from 'react-hook-form';
 
-import { Button, Field, Input } from '@tickethub/ui';
-
+import { becomeFormSchema, type BecomeForm as BecomeFormValues } from './become-form-schema';
 import { becomeOrganizerAction } from './actions';
 
 /** The email is prefilled from the server component rather than fetched again on the client —
@@ -12,21 +13,17 @@ import { becomeOrganizerAction } from './actions';
 export function BecomeForm({ email }: { email: string }) {
   const router = useRouter();
 
-  const [name, setName] = useState(email);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasFailed, setHasFailed] = useState(false);
+  const form = useForm<BecomeFormValues>({
+    resolver: zodResolver(becomeFormSchema),
+    mode: 'onTouched',
+    defaultValues: { name: email },
+  });
 
-  async function handleSubmit(submitEvent: FormEvent<HTMLFormElement>) {
-    submitEvent.preventDefault();
-
-    setIsSubmitting(true);
-    setHasFailed(false);
-
+  async function submit({ name }: BecomeFormValues) {
     try {
-      await becomeOrganizerAction(name.trim());
+      await becomeOrganizerAction(name);
     } catch {
-      setHasFailed(true);
-      setIsSubmitting(false);
+      form.setError('root', { message: "Couldn't set that up. Try again." });
 
       return;
     }
@@ -38,32 +35,21 @@ export function BecomeForm({ email }: { email: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <Field label="Display name" htmlFor="name">
-        <Input
-          id="name"
-          name="name"
-          value={name}
-          onChange={(changeEvent) => setName(changeEvent.target.value)}
-          autoComplete="organization"
-        />
-        <p className="text-[13px] text-fg-muted">Shown to buyers on your show pages</p>
-      </Field>
+    <Form form={form} onSubmit={submit} className="flex flex-col gap-5">
+      <FormField
+        name="name"
+        label="Display name"
+        hint="Shown to buyers on your show pages"
+        autoComplete="organization"
+      />
 
-      {hasFailed && (
-        <p
-          role="alert"
-          className="rounded-control border border-danger/40 p-3 text-[13px] text-danger"
-        >
-          Couldn&apos;t set that up. Try again.
-        </p>
-      )}
+      <FormError />
 
-      <Button type="submit" disabled={isSubmitting || name.trim() === ''}>
-        {isSubmitting ? 'Setting you up…' : 'Become an organizer'}
+      <Button type="submit" disabled={form.formState.isSubmitting || !form.formState.isValid}>
+        {form.formState.isSubmitting ? 'Setting you up…' : 'Become an organizer'}
       </Button>
 
       <p className="text-[13px] text-fg-faint">You keep your existing tickets and orders.</p>
-    </form>
+    </Form>
   );
 }
