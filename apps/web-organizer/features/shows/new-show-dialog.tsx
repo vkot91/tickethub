@@ -14,6 +14,7 @@ import {
   FormError,
   FormField,
   FormSelect,
+  toast,
 } from '@tickethub/ui';
 import { ApiError } from '@tickethub/web-kit';
 import { useRouter } from 'next/navigation';
@@ -26,11 +27,10 @@ import { newShowFormSchema } from './new-show-form-schema';
 
 interface NewShowDialogProps {
   trigger: ReactNode;
-  onCreated?: (message: string) => void;
 }
 
 /** Deliberately small: this creates a *draft*. Everything else about a show is the editor's job. */
-export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
+export function NewShowDialog({ trigger }: NewShowDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const router = useRouter();
@@ -55,7 +55,7 @@ export function NewShowDialog({ trigger, onCreated }: NewShowDialogProps) {
     onSuccess: (show) => {
       queryClient.invalidateQueries({ queryKey: showKeys.all });
       setIsOpen(false);
-      onCreated?.('Draft created');
+      toast.add('success', { title: 'Draft created' });
       router.push(`/shows/${show.id}/edit`);
     },
     // A duplicate title is a 409, and the fix is in that one field — not in a toast.

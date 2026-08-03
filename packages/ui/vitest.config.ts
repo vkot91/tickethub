@@ -19,6 +19,7 @@ export default defineConfig({
         'src/lib/format.ts',
         'src/composites/nav-tabs.tsx',
         'src/form/**/*.tsx',
+        'src/primitives/toaster.tsx',
       ],
       thresholds: { statements: 80, lines: 80, functions: 70, branches: 70 },
     },

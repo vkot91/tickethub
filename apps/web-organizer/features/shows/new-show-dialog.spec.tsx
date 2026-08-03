@@ -115,6 +115,9 @@ describe('NewShowDialog', () => {
     await waitFor(() =>
       expect(push).toHaveBeenCalledWith('/shows/11111111-1111-4111-8111-111111111111/edit'),
     );
+
+    // Fired into the app's single Toaster, which `renderWithQuery` mounts as the layout does.
+    expect(await screen.findByText('Draft created')).toBeInTheDocument();
   });
 
   it('renders a 409 as an inline title error, not a toast', async () => {

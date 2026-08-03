@@ -20,6 +20,7 @@ export { Skeleton } from './primitives/skeleton';
 export { StatusPill, type StatusPillProps, type Tone } from './primitives/status-pill';
 export { Textarea, type TextareaProps } from './primitives/textarea';
 export { Toast, ToastProvider, ToastViewport, type ToastProps } from './primitives/toast';
+export { toast, Toaster, type ToastOptions, type ToastTone } from './primitives/toaster';
 
 export { ConfirmDialog } from './composites/confirm-dialog';
 export { Field } from './composites/field';

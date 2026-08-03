@@ -4,14 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import {
-  formatPrice,
-  Skeleton,
-  StatusPill,
-  Toast,
-  ToastProvider,
-  ToastViewport,
-} from '@tickethub/ui';
+import { formatPrice, Skeleton, StatusPill, toast } from '@tickethub/ui';
 import { ApiError } from '@tickethub/web-kit';
 
 import { createOrder, fetchSeatMap, type OrderSeat, SEAT_MAP_POLL_MS, seatMapKeys } from './api';
@@ -48,7 +41,11 @@ export function SeatMap({ showId }: { showId: string }) {
         // Roll the optimistic pick back and show the map as it actually is now.
         setSelectedIds([]);
         queryClient.invalidateQueries({ queryKey: seatMapKeys.byShow(showId) });
+
+        return void toast.add('warn', CONFLICT_MESSAGE);
       }
+
+      toast.add('danger', { title: 'Could not hold those seats', body: error.message });
     },
   });
 
@@ -60,8 +57,6 @@ export function SeatMap({ showId }: { showId: string }) {
     .flatMap((section) => section.rows)
     .flatMap((row) => [...row.left, ...row.right])
     .filter((seat) => seat.status === 'held').length;
-
-  const isConflict = order.error instanceof ApiError && order.error.kind === 'conflict';
 
   // Hoisted, so the mutation above can call it once a seat map has actually rendered.
   function orderSeats(): OrderSeat[] {
@@ -81,7 +76,7 @@ export function SeatMap({ showId }: { showId: string }) {
   }
 
   return (
-    <ToastProvider swipeDirection="right">
+    <>
       {heldCount > 0 ? (
         <StatusPill tone="warn" className="mb-6 gap-2 px-3 py-2 text-[11px]">
           <span aria-hidden className="size-1.5 rounded-pill bg-warn animate-live" />
@@ -150,18 +145,7 @@ export function SeatMap({ showId }: { showId: string }) {
         onRemove={toggleSeat}
         onContinue={() => order.mutate()}
       />
-
-      <Toast
-        open={order.isError}
-        onOpenChange={(open) => {
-          if (!open) order.reset();
-        }}
-        tone={isConflict ? 'warn' : 'danger'}
-        title={isConflict ? CONFLICT_MESSAGE.title : 'Could not hold those seats'}
-        body={isConflict ? CONFLICT_MESSAGE.body : order.error?.message}
-      />
-      <ToastViewport />
-    </ToastProvider>
+    </>
   );
 }
 

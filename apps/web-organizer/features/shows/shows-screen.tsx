@@ -2,15 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ShowSummary, type OrganizerShow } from '@tickethub/contracts';
-import {
-  Button,
-  cn,
-  ConfirmDialog,
-  Skeleton,
-  Toast,
-  ToastProvider,
-  ToastViewport,
-} from '@tickethub/ui';
+import { Button, cn, ConfirmDialog, Skeleton, toast } from '@tickethub/ui';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -40,7 +32,6 @@ export function ShowsScreen({ status }: ShowsScreenProps) {
   // Which show a confirm is open for, and which of the two destructive verbs it is.
   const [pendingCancel, setPendingCancel] = useState<OrganizerShow>();
   const [pendingDelete, setPendingDelete] = useState<OrganizerShow>();
-  const [toast, setToast] = useState<string>();
 
   const queryClient = useQueryClient();
 
@@ -55,14 +46,15 @@ export function ShowsScreen({ status }: ShowsScreenProps) {
       queryClient.invalidateQueries({ queryKey: showKeys.all });
       setPendingCancel(undefined);
       setPendingDelete(undefined);
+      toast.add('success', { title: 'Show removed' });
     },
   });
 
   return (
-    <ToastProvider>
+    <>
       <div className="mb-5.5 flex flex-wrap items-center justify-between gap-3.5">
         <h1 className="font-display text-[32px] font-semibold tracking-[-0.02em]">Shows</h1>
-        <NewShowDialog trigger={<Button>New show</Button>} onCreated={setToast} />
+        <NewShowDialog trigger={<Button>New show</Button>} />
       </div>
 
       <div className="mb-5 flex w-fit gap-0.5 rounded-control border border-line bg-white/5 p-[3px]">
@@ -91,7 +83,7 @@ export function ShowsScreen({ status }: ShowsScreenProps) {
           <p className="mb-5 text-sm text-fg-muted">
             Create a show, price its sections, then publish it to put it on sale.
           </p>
-          <NewShowDialog trigger={<Button>New show</Button>} onCreated={setToast} />
+          <NewShowDialog trigger={<Button>New show</Button>} />
         </div>
       )}
 
@@ -125,9 +117,6 @@ export function ShowsScreen({ status }: ShowsScreenProps) {
           {remove.error.message}
         </p>
       )}
-
-      {toast && <Toast open onOpenChange={() => setToast(undefined)} title={toast} />}
-      <ToastViewport />
-    </ToastProvider>
+    </>
   );
 }

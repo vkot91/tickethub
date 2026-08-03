@@ -47,6 +47,16 @@ transactions (saga + outbox), concurrency.
   The one documented exception is text input: Radix ships no `TextField` and no `Textarea`, and its
   own Form docs say so — `Input` and `Textarea` are styled native elements, which is the prescribed
   shape, not a gap.
+- **Toasts are one `<Toaster />` per app, mounted in the root layout, fed by `toast.add(tone,
+options)`.** Tone is the design system's (`success`/`warn`/`danger`/`neutral`, same words as
+  `StatusPill`) and is its own argument, so it cannot be left off. `toast.remove(id)` takes it back
+  early; Radix closes on `duration` on its own. The store behind it
+  (`packages/ui/src/primitives/toaster.tsx`) is a module singleton read through
+  `useSyncExternalStore` — not context, because toasts are fired from mutation callbacks and
+  `catch` blocks, which are not render contexts, and because a provider would have to cross the
+  `packages/ui` boundary. A screen never mounts its own `ToastProvider`/`ToastViewport`: two
+  viewports means two stacks fixed to the same corner. Test helpers (`test/render.tsx`) mount the
+  `Toaster` for the same reason the layout does, and `vitest.setup.ts` clears the store per test.
 - **Forms are react-hook-form + a Zod resolver, through `packages/ui`'s form layer.** `Form`,
   `FormField`, `FormSelect`, `FormError` — never a raw `<form>` with `useState` per input, and never
   `useActionState`. A form that posts to a server action still uses RHF and calls the action from its

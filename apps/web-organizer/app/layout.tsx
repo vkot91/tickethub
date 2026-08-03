@@ -1,6 +1,7 @@
 import { type Metadata } from 'next';
 import { Instrument_Sans, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 
+import { Toaster } from '@tickethub/ui';
 import { QueryProvider } from '@tickethub/web-kit/query-provider';
 
 import { ConsoleHeader } from '@/components/console-header';
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <ConsoleHeader />
           <main className="mx-auto max-w-295 px-6 py-10">{children}</main>
+          <Toaster />
         </QueryProvider>
       </body>
     </html>
