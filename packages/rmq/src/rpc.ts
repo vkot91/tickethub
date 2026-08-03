@@ -1,6 +1,8 @@
-import { HttpException } from '@nestjs/common';
 import type { AmqpConnection, MessageErrorHandler } from '@golevelup/nestjs-rabbitmq';
+import { HttpException } from '@nestjs/common';
+
 import { RPC_EXCHANGE, type RpcKey, type RpcPayload, type RpcResult } from '@tickethub/contracts';
+
 import { getRequestId } from './request-context';
 
 // golevelup does NOT reply when an RPC handler throws — it runs the error handler and, by

@@ -3,8 +3,8 @@
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import type { ReactNode } from 'react';
 
-import { buttonVariants } from '../primitives/button';
 import { cn } from '../lib/cn';
+import { buttonVariants } from '../primitives/button';
 
 interface ConfirmDialogProps {
   /** Omit when the caller drives `open` itself — a row action whose button lives elsewhere. */

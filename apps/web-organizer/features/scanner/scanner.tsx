@@ -73,7 +73,7 @@ export function Scanner({ showId }: { showId: string }) {
           {camera.state === 'running' ? (
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-6 top-4 h-0.5 bg-accent shadow-[0_0_12px_var(--color-accent)] animate-scan"
+              className="pointer-events-none absolute inset-x-6 top-4 h-0.5 animate-scan bg-accent shadow-[0_0_12px_var(--color-accent)]"
             />
           ) : null}
         </div>

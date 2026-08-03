@@ -1,11 +1,17 @@
 import 'server-only';
 
-import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { NextResponse, type NextRequest } from 'next/server';
-import { authTokensSchema, loginSchema, registerSchema } from '@tickethub/contracts';
-import type { AuthTokens, UserPayload } from '@tickethub/contracts';
+import { cache } from 'react';
 import type { ZodType } from 'zod';
+
+import {
+  authTokensSchema,
+  loginSchema,
+  registerSchema,
+  type AuthTokens,
+  type UserPayload,
+} from '@tickethub/contracts';
 
 import { cookieOptions, type SessionConfig } from './config';
 import { decodeAccessToken } from './jwt';

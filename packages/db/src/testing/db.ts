@@ -1,10 +1,12 @@
+import * as path from 'node:path';
+
 import { PGlite } from '@electric-sql/pglite';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
-import * as path from 'node:path';
-import * as schema from '../schema';
+
 import type { Db } from '../client';
+import * as schema from '../schema';
 
 // Service schemas to wipe between tests. Add new pgSchema names here as services grow.
 const APP_SCHEMAS = ['auth', 'shows', 'orders', 'payments', 'fulfillment'];

@@ -1,4 +1,4 @@
-import { pgSchema, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const authSchema = pgSchema('auth');
 export const roleEnum = authSchema.enum('role', ['user', 'organizer', 'admin']);

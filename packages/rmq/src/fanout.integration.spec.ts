@@ -1,10 +1,12 @@
-import { RabbitMQContainer, type StartedRabbitMQContainer } from '@testcontainers/rabbitmq';
 import { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import { RabbitMQContainer, type StartedRabbitMQContainer } from '@testcontainers/rabbitmq';
 import * as amqplib from 'amqplib';
 import { v4 as uuid } from 'uuid';
+
 import { EVENTS_EXCHANGE } from '@tickethub/contracts';
-import { rmqConfig, publishStored } from './rmq.config';
+
 import { runWithRequestId } from './request-context';
+import { publishStored, rmqConfig } from './rmq.config';
 
 jest.setTimeout(120_000);
 

@@ -1,5 +1,4 @@
 import { type OrderResponse } from '@tickethub/contracts';
-
 import { Card, formatPrice } from '@tickethub/ui';
 
 /**

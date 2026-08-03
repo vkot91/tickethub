@@ -1,4 +1,4 @@
-import { runWithRequestId, getRequestId } from './request-context';
+import { getRequestId, runWithRequestId } from './request-context';
 
 describe('request id ALS', () => {
   it('exposes the id inside the context', () => {

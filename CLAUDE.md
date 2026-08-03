@@ -29,9 +29,14 @@ transactions (saga + outbox), concurrency.
 - `packages/contracts` (Zod) is the single source of truth for DTOs and RMQ event shapes.
 - `design/` is the single source of truth for UI: `design/README.md` (screens, tokens, behavior)
   and `design/TicketHub.dc.html` (interactive prototype, source project on claude.ai/design).
-  Read it before building any frontend screen; recreate with shadcn/ui + Tailwind at high
-  fidelity — never port its raw HTML/inline styles. Colors, type, radii, and motion come from
-  its token list via CSS variables, not hardcoded per component. The handoff predates the
+  Read it before building any frontend screen; recreate it at high fidelity shadcn-style —
+  Radix primitive + `cva` variants + `cn`, hand-written in `packages/ui`. shadcn/ui itself is
+  **not** a dependency: no `components.json`, no registry copies, no `npx shadcn add`. Nor is
+  Radix **Themes** (`@radix-ui/themes`) — it owns color, spacing and radius through its own
+  `<Theme>` config, which is exactly what `design/README.md` owns here; its `Table` and
+  `TextField` are not an argument for adopting it. Never port the prototype's raw HTML/inline
+  styles. Colors, type, radii, and motion come from its token list via CSS variables, not
+  hardcoded per component. The handoff predates the
   `show` naming rule — its `events/[id]` routes and `GET /events/...` endpoints map to `shows`.
 - Two frontends: `apps/web-user` (buyers) and `apps/web-organizer` (the console). They share `packages/ui`
   (presentational components + design tokens) and `packages/web-kit` (BFF proxy, refresh rotation,
@@ -40,13 +45,15 @@ transactions (saga + outbox), concurrency.
   `http://admin.localhost:4001` — separate hostnames, matching the `app.`/`admin.` subdomains in
   production, with host-only cookies (no `Domain`) and per-app names (`th_*` vs `tho_*`).
 - UI primitives are **Radix-based**: everything in `packages/ui/src/` wraps a
-  `@radix-ui/react-*` primitive (shadcn/ui's own foundation) rather than a bare HTML element —
+  `@radix-ui/react-*` primitive (Radix Primitives, the headless layer) rather than a bare HTML element —
   `Slot` for `asChild` composition, `Label`, `Dialog`, `Toast`, `Progress`, `Select`, `Tabs`.
   Radix owns behavior and accessibility (focus, keyboard, ARIA); we own only the `cva` variants
   that map design tokens onto it. Do not hand-roll a control Radix already ships.
-  The one documented exception is text input: Radix ships no `TextField` and no `Textarea`, and its
-  own Form docs say so — `Input` and `Textarea` are styled native elements, which is the prescribed
-  shape, not a gap.
+  Where Primitives ships nothing, the native element is the answer, not a hand-rolled widget:
+  text input (no `TextField`/`Textarea` — its own Form docs say to use native, so `Input` and
+  `Textarea` are styled `<input>`/`<textarea>`) and tables (no table primitive, and `<table>`
+  already carries the right semantics — a styled `<table>` in the feature folder, no wrapper in
+  `packages/ui` until two screens want the same one).
 - **Toasts are one `<Toaster />` per app, mounted in the root layout, fed by `toast.add(tone,
 options)`.** Tone is the design system's (`success`/`warn`/`danger`/`neutral`, same words as
   `StatusPill`) and is its own argument, so it cannot be left off. `toast.remove(id)` takes it back

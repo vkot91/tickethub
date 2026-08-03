@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { draftShow, publishedShow } from '../test-gateway';
+import { draftShow, publishedShow } from '../../test-gateway';
 import { ShowsTable } from './shows-table';
 
 const push = vi.fn();

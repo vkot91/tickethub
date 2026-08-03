@@ -1,15 +1,16 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Button, Form, FormError, FormField } from '@tickethub/ui';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 
+import { Button, Form, FormError, FormField } from '@tickethub/ui';
+
+import { registerOrganizerAction } from './actions';
 import {
   registerOrganizerFormSchema,
   type RegisterOrganizerForm,
 } from './register-organizer-schema';
-import { registerOrganizerAction } from './actions';
 
 /** Signup and the role flip in one screen — an organizer never has to visit the buyer site to
  *  get an account. Existing buyers go through `/become` instead, which skips the credentials. */

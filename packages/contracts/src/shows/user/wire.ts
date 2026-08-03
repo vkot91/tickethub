@@ -1,5 +1,5 @@
-import type { CatalogPage, CatalogQuery, SeatMap, ShowDetail } from './schema';
 import type { Rpc } from '../../shape';
+import type { CatalogPage, CatalogQuery, SeatMap, ShowDetail } from './schema';
 
 /**
  * The buyer-facing catalog surface. Unprefixed keys: the buyer is the default audience, so

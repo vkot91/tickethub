@@ -1,10 +1,11 @@
 // @vitest-environment node
+import { redirect } from 'next/navigation';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { registerOrganizerAction } from './actions';
-import { signIn } from '@/lib/session';
 import { becomeOrganizerAction } from '@/features/organizer/actions';
-import { redirect } from 'next/navigation';
+import { signIn } from '@/lib/session';
+
+import { registerOrganizerAction } from './actions';
 
 vi.mock('@/lib/session', () => ({ signIn: vi.fn() }));
 vi.mock('@/features/organizer/actions', () => ({ becomeOrganizerAction: vi.fn() }));

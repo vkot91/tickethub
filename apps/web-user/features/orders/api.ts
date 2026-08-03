@@ -5,7 +5,6 @@ import {
   type OrderListItem,
   type OrderResponse,
 } from '@tickethub/contracts';
-
 import { clientApi } from '@tickethub/web-kit';
 
 /** How often the UI asks whether the saga has moved an order on. */

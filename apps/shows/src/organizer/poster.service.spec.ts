@@ -1,6 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { StorageClient } from '@tickethub/storage';
+
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
+import { StorageClient } from '@tickethub/storage';
+
 import { OrganizerPosterService } from './poster.service';
 
 let db: TestDb;

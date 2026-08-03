@@ -1,4 +1,4 @@
-import { orders, seatReservations, ordersOutbox } from './orders';
+import { orders, ordersOutbox, seatReservations } from './orders';
 
 describe('orders schema', () => {
   it('orders table exposes idempotency + status columns', () => {

@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+
 import { sendTicketEmail, startEmailWorker, type EmailDeps } from './email.worker';
 
 type FailedJob = {

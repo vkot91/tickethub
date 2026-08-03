@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { deleteShow, organizerShowsPath, showKeys, venueKeys } from './api';
 import { mockGateway, SHOW_ID } from '../test-gateway';
+import { deleteShow, organizerShowPath, organizerShowsPath, showKeys, venueKeys } from './api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -34,6 +34,12 @@ describe('organizerShowsPath', () => {
 
   it('carries the status the query key was built from', () => {
     expect(organizerShowsPath('draft')).toBe('/organizer/shows?status=draft');
+  });
+
+  // Same pairing for the editor: `app/shows/[id]/edit/page.tsx` seeds `showKeys.byId(id)` with
+  // this path, and `ShowEditor` reads the same pair back.
+  it('builds the single-show path the editor prefetches', () => {
+    expect(organizerShowPath(SHOW_ID)).toBe(`/organizer/shows/${SHOW_ID}`);
   });
 });
 

@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+
+import type { PutPricingDto } from '@tickethub/contracts';
 import {
   sections,
   shows,
@@ -10,7 +12,7 @@ import {
 } from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
 import { OutboxRepository } from '@tickethub/outbox';
-import type { PutPricingDto } from '@tickethub/contracts';
+
 import { OrganizerPublishingService } from './publishing.service';
 
 let db: TestDb;

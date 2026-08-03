@@ -1,5 +1,4 @@
-import { type OrderResponse, orderResponseSchema, seatMapSchema } from '@tickethub/contracts';
-
+import { orderResponseSchema, seatMapSchema, type OrderResponse } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
 /** Polling cadence while the socket gateway does not exist yet (BACKEND-GAPS.md §3). */

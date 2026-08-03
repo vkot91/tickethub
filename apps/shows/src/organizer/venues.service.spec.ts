@@ -1,6 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
+
 import { venues } from '@tickethub/db';
 import { getTestDb, seedShowGraph, type TestDb } from '@tickethub/db/testing';
+
 import { OrganizerVenuesService } from './venues.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.

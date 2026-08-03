@@ -4,8 +4,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NavTabs } from './nav-tabs';
 
 const pathname = vi.fn();
+const search = vi.fn(() => '');
 
-vi.mock('next/navigation', () => ({ usePathname: () => pathname() }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathname(),
+  useSearchParams: () => new URLSearchParams(search()),
+}));
 
 const TABS = [
   { href: '/', label: 'Catalog' },
@@ -18,7 +22,10 @@ function activeTab(): string | null {
   return screen.queryByRole('link', { current: 'page' })?.textContent ?? null;
 }
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  search.mockReturnValue('');
+});
 
 describe('NavTabs', () => {
   it.each([
@@ -57,5 +64,37 @@ describe('NavTabs', () => {
     render(<NavTabs tabs={TABS} />);
 
     expect(activeTab()).toBeNull();
+  });
+});
+
+// The show editor's three tabs are one route and one data fetch, told apart by `?tab=`.
+describe('NavTabs on a search param', () => {
+  const EDITOR_TABS = [
+    { href: '/shows/1/edit', label: 'Details' },
+    { href: '/shows/1/edit?tab=pricing', label: 'Pricing' },
+    { href: '/shows/1/edit?tab=preview', label: 'Preview' },
+  ];
+
+  it.each([
+    ['', 'Details'],
+    ['?tab=pricing', 'Pricing'],
+    ['?tab=preview', 'Preview'],
+  ])('marks %s as %s', (query, expected) => {
+    pathname.mockReturnValue('/shows/1/edit');
+    search.mockReturnValue(query);
+
+    render(<NavTabs tabs={EDITOR_TABS} />);
+
+    expect(activeTab()).toBe(expected);
+    expect(screen.getAllByRole('link', { current: 'page' })).toHaveLength(1);
+  });
+
+  it('falls back to the bare tab when the param names nothing', () => {
+    pathname.mockReturnValue('/shows/1/edit');
+    search.mockReturnValue('?tab=nonsense');
+
+    render(<NavTabs tabs={EDITOR_TABS} />);
+
+    expect(activeTab()).toBe('Details');
   });
 });

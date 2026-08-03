@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithQuery } from '@/test/render';
 
-import { isSettled, ORDER_PAGE_SIZE, orderKeys, type OrderListItem, ordersPath } from './api';
+import { isSettled, ORDER_PAGE_SIZE, orderKeys, ordersPath, type OrderListItem } from './api';
 import { OrderList } from './order-list';
 
 function makeOrder(overrides: Partial<OrderListItem> = {}): OrderListItem {

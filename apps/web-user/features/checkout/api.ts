@@ -1,5 +1,4 @@
-import { type PaymentIntentResponse, paymentIntentResponseSchema } from '@tickethub/contracts';
-
+import { paymentIntentResponseSchema, type PaymentIntentResponse } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
 /** The intent is keyed by order id on the payments side, so asking twice is safe. */

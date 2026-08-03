@@ -1,4 +1,5 @@
 import type { Config } from 'jest';
+
 import base from './nest';
 
 // Nest preset for services that hit the database. Adds the shared db lifecycle

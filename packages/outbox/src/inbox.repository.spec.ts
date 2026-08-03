@@ -1,5 +1,6 @@
 import { ordersProcessedMessages } from '@tickethub/db';
 import { getTestDb } from '@tickethub/db/testing';
+
 import { InboxRepository } from './inbox.repository';
 
 const inbox = new InboxRepository(ordersProcessedMessages);

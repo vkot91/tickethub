@@ -1,5 +1,5 @@
-import { ORGANIZER_TICKETS_MESSAGE_PATTERNS } from './wire';
 import { TICKETS_MESSAGE_PATTERNS } from '../user/wire';
+import { ORGANIZER_TICKETS_MESSAGE_PATTERNS } from './wire';
 
 describe('organizer tickets wire names', () => {
   it('mirrors each key onto its wire value', () => {

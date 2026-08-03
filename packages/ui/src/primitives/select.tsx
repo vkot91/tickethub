@@ -1,7 +1,7 @@
 'use client';
 
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { Check, ChevronDown } from 'lucide-react';
+import { Check, ChevronDown, Lock } from 'lucide-react';
 
 import { cn } from '../lib/cn';
 
@@ -15,14 +15,11 @@ interface SelectProps {
   options: SelectOption[];
   placeholder: string;
   ariaLabel: string;
-  /** Forwarded to the trigger so a `<Label htmlFor>` can point at it. */
   id?: string;
-  /** Forwarded to the trigger so a failed-validation state is announced, mirroring `FormField`'s
-   *  `register`-bound inputs. Leave both undefined in the clean state — an unconditional
-   *  `aria-describedby` would dangle, since `Field` only renders the error element when there's
-   *  an error to show. */
+
   'aria-invalid'?: boolean;
   'aria-describedby'?: string;
+  disabled?: boolean;
   className?: string;
   onValueChange: (value: string) => void;
 }
@@ -36,11 +33,12 @@ export function Select({
   id,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedby,
+  disabled,
   className,
   onValueChange,
 }: SelectProps) {
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onValueChange}>
+    <SelectPrimitive.Root value={value} onValueChange={onValueChange} disabled={disabled}>
       <SelectPrimitive.Trigger
         id={id}
         aria-label={ariaLabel}
@@ -48,12 +46,18 @@ export function Select({
         aria-describedby={ariaDescribedby}
         className={cn(
           'inline-flex items-center gap-2 rounded-pill border border-line bg-surface px-4 py-2 text-[13px] text-fg-secondary hover:border-white/20',
+          'disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line',
+          'aria-invalid:border-danger aria-invalid:hover:border-danger',
           className,
         )}
       >
         <SelectPrimitive.Value placeholder={placeholder} />
         <SelectPrimitive.Icon>
-          <ChevronDown aria-hidden className="size-3.5" />
+          {disabled ? (
+            <Lock aria-hidden className="size-3.5" />
+          ) : (
+            <ChevronDown aria-hidden className="size-3.5" />
+          )}
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
 

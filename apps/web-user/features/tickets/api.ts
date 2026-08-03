@@ -1,5 +1,4 @@
-import { type TicketList, ticketListSchema } from '@tickethub/contracts';
-
+import { ticketListSchema, type TicketList } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
 export const ticketKeys = {

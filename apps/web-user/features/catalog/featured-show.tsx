@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { type ShowSummary } from '@tickethub/contracts';
 
+import { type ShowSummary } from '@tickethub/contracts';
 import { Button, formatShowDateTime, Poster, StatusPill } from '@tickethub/ui';
 
 export function FeaturedShow({ show }: { show: ShowSummary }) {

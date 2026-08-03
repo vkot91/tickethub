@@ -1,4 +1,4 @@
-import { ticketSchema, ticketPdfUrlSchema } from './schema';
+import { ticketPdfUrlSchema, ticketSchema } from './schema';
 import { TICKETS_MESSAGE_PATTERNS } from './wire';
 
 const UUID = '44444444-4444-4444-4444-444444444444';

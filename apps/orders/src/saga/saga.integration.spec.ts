@@ -1,18 +1,20 @@
-import { loadEnv, requireEnv } from '@tickethub/env';
-import { sql, eq } from 'drizzle-orm';
-import { v4 as uuid } from 'uuid';
+import { eq, sql } from 'drizzle-orm';
 import Redis from 'ioredis';
+import { v4 as uuid } from 'uuid';
+
 import {
   createDb,
   orders,
-  seatReservations,
   ordersOutbox,
   ordersProcessedMessages,
+  seatReservations,
   type Db,
 } from '@tickethub/db';
 import { seed } from '@tickethub/db/seed';
+import { loadEnv, requireEnv } from '@tickethub/env';
+import { InboxRepository, OutboxRepository } from '@tickethub/outbox';
 import { RedisService } from '@tickethub/redis';
-import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
+
 import { OrderRepository } from '../orders.repository';
 import { OrdersService } from '../orders.service';
 import { OrderSagaService } from './saga.service';

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import { cn } from '../lib/cn';
 
@@ -10,16 +10,26 @@ export interface NavTab {
   label: string;
 }
 
-function matches(pathname: string, href: string): boolean {
-  return pathname === href || (href !== '/' && pathname.startsWith(`${href}/`));
+/** A tab whose `href` carries a query — the show editor's `?tab=pricing` — is current only when
+ *  the URL carries it too. A bare `href` matches on the pathname alone, which makes it the
+ *  default tab: its siblings' hrefs are longer, so they win the sort whenever they match. */
+function matches(pathname: string, search: URLSearchParams, href: string): boolean {
+  const [path, query] = href.split('?');
+
+  if (pathname !== path && !(path !== '/' && pathname.startsWith(`${path}/`))) return false;
+
+  return [...new URLSearchParams(query)].every(([key, value]) => search.get(key) === value);
 }
 
 export function NavTabs({ tabs }: { tabs: NavTab[] }) {
-  const pathname = usePathname();
+  // Both are typed non-null but return `null` outside the App Router — which is where a unit
+  // test that renders a screen containing these tabs lives.
+  const pathname = usePathname() ?? '';
+  const searchParams = useSearchParams() ?? new URLSearchParams();
 
   // Longest match wins, so /dashboard/shows highlights Shows rather than both it and Dashboard.
   const activeHref = tabs
-    .filter((tab) => matches(pathname, tab.href))
+    .filter((tab) => matches(pathname, searchParams, tab.href))
     .sort((a, b) => b.href.length - a.href.length)
     .at(0)?.href;
 

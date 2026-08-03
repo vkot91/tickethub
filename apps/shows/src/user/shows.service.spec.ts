@@ -1,7 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+
 import { showSectionPricing, ticketTypes } from '@tickethub/db';
 import { getTestDb, seedShowGraph, type TestDb } from '@tickethub/db/testing';
+
 import { UserShowsService } from './shows.service';
 
 // Fresh emulated Postgres per test comes from the nest-db jest preset.

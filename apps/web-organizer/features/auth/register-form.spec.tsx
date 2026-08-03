@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { RegisterForm } from './register-form';
 import { registerOrganizerAction } from './actions';
+import { RegisterForm } from './register-form';
 
 vi.mock('./actions', () => ({ registerOrganizerAction: vi.fn().mockResolvedValue(null) }));
 

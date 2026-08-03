@@ -1,6 +1,6 @@
 import { ORGANIZER_ORDERS_MESSAGE_PATTERNS } from './orders/organizer/wire';
-import { ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './shows/organizer/wire';
 import type { RpcKey, RpcPayload, RpcResult } from './registry';
+import { ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './shows/organizer/wire';
 
 // The registry is types only, so its real test is that it compiles — ts-jest type-checks this
 // file, and an @ts-expect-error that stops erroring fails the run. The runtime assertions below

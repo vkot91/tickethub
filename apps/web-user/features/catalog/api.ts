@@ -1,5 +1,4 @@
-import { type CatalogPage, catalogPageSchema } from '@tickethub/contracts';
-
+import { catalogPageSchema, type CatalogPage } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
 export const CATALOG_PAGE_SIZE = 12;

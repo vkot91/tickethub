@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { PDFDocument, PageSizes, type PDFFont, type PDFPage } from 'pdf-lib';
+
 import fontkit from '@pdf-lib/fontkit';
+import { PageSizes, PDFDocument, type PDFFont, type PDFPage } from 'pdf-lib';
 
 export type PageSize = 'A4' | 'A5';
 

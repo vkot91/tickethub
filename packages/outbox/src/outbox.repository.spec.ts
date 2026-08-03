@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm';
+
+import { ORDER_ROUTING_KEYS } from '@tickethub/contracts';
 import { ordersOutbox } from '@tickethub/db';
 import { getTestDb } from '@tickethub/db/testing';
-import { ORDER_ROUTING_KEYS } from '@tickethub/contracts';
+
 import { OutboxRepository, unpublishedQuery } from './outbox.repository';
 
 const expired = {

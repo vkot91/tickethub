@@ -1,5 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { type MouseEvent } from 'react';
+
 import { type OrganizerShow } from '@tickethub/contracts';
 import {
   Button,
@@ -10,8 +13,6 @@ import {
   Progress,
   ShowStatusPill,
 } from '@tickethub/ui';
-import { useRouter } from 'next/navigation';
-import { type MouseEvent } from 'react';
 
 const PUBLIC_ORIGIN = 'http://app.localhost:4000';
 

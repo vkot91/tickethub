@@ -1,5 +1,5 @@
-import type { CreatePaymentIntentDto, PaymentIntentResponse } from './schema';
 import type { Rpc } from '../shape';
+import type { CreatePaymentIntentDto, PaymentIntentResponse } from './schema';
 
 export const PAYMENTS_MESSAGE_PATTERNS = {
   CREATE_INTENT: 'payments.createIntent',

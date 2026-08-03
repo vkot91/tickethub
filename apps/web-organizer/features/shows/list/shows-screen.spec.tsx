@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithQuery } from '@/test/render';
 
-import { mockGateway } from '../test-gateway';
+import { mockGateway } from '../../test-gateway';
 import { ShowsScreen } from './shows-screen';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));

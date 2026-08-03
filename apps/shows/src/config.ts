@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import { storageEnvSchema } from '@tickethub/storage';
 
 export const schema = z.object({

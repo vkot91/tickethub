@@ -1,7 +1,8 @@
-import { type SeatMap, type SeatTier } from '@tickethub/contracts';
 import { describe, expect, it } from 'vitest';
 
-import { findSeats, rowLetter, type SeatStatus, toSeatMapView, totalCents } from './model';
+import { type SeatMap, type SeatTier } from '@tickethub/contracts';
+
+import { findSeats, rowLetter, toSeatMapView, totalCents, type SeatStatus } from './model';
 
 function seatMapWith(
   rowNumbers: number[],

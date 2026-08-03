@@ -8,7 +8,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
 
   return (
-    <div className="mx-auto max-w-295 px-6 pt-7 pb-22.5 [animation:var(--animate-fade)]">
+    <div className="mx-auto max-w-295 [animation:var(--animate-fade)] px-6 pt-7 pb-22.5">
       <Checkout orderId={id} />
     </div>
   );

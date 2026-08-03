@@ -1,0 +1,6 @@
+# pnpm owns this file's formatting; prettier re-wraps it and pnpm rewrites it back on every install.
+pnpm-lock.yaml
+
+dist
+.next
+coverage

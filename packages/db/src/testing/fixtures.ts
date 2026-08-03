@@ -2,13 +2,13 @@ import type { Db } from '../client';
 import { users } from '../schema/auth';
 import {
   organizers,
-  venues,
-  sections,
   rows,
   seats,
+  sections,
   shows,
-  ticketTypes,
   showSectionPricing,
+  ticketTypes,
+  venues,
 } from '../schema/shows';
 
 // Monotonic suffix so repeated seeds in one db don't collide on unique columns

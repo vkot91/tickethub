@@ -1,14 +1,15 @@
+import { sql } from 'drizzle-orm';
 import {
-  pgSchema,
-  uuid,
-  text,
+  index,
   integer,
+  pgSchema,
+  text,
   timestamp,
   unique,
   uniqueIndex,
-  index,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { sql } from 'drizzle-orm';
+
 import { createOutboxTable, createProcessedMessagesTable } from './outbox';
 
 export const ordersSchema = pgSchema('orders');

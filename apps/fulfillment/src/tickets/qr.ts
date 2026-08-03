@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+
 import QRCode from 'qrcode';
 
 /**

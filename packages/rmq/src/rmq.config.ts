@@ -1,5 +1,7 @@
-import type { RabbitMQConfig, AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+import type { AmqpConnection, RabbitMQConfig } from '@golevelup/nestjs-rabbitmq';
+
 import { EVENTS_EXCHANGE, RPC_EXCHANGE } from '@tickethub/contracts';
+
 import { getRequestId } from './request-context';
 import { rpcErrorReplyHandler } from './rpc';
 

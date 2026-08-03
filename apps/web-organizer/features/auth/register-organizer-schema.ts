@@ -1,5 +1,6 @@
-import { registerSchema } from '@tickethub/contracts';
 import { z } from 'zod';
+
+import { registerSchema } from '@tickethub/contracts';
 
 /** Signup and the role flip are one screen here, so the form carries the display name that
  *  `become-organizer` needs alongside the credentials `register` needs. Trimmed for the same

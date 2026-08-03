@@ -13,9 +13,9 @@ const seatVariants = cva(
       state: {
         available: 'bg-seat hover:-translate-y-px',
         selected:
-          'border-accent bg-accent text-white -translate-y-px shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-accent)_30%,transparent)]',
-        held: 'border-warn bg-warn/15 text-warn cursor-not-allowed animate-hold',
-        sold: 'border-line-faint bg-deep text-fg-disabled cursor-not-allowed',
+          '-translate-y-px border-accent bg-accent text-white shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-accent)_30%,transparent)]',
+        held: 'animate-hold cursor-not-allowed border-warn bg-warn/15 text-warn',
+        sold: 'cursor-not-allowed border-line-faint bg-deep text-fg-disabled',
       },
       tier: { vip: '', standard: '', economy: '' },
     },

@@ -1,8 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { safeRedirectPath } from '@tickethub/web-kit';
+
 import type { LoginDto } from '@tickethub/contracts';
+import { safeRedirectPath } from '@tickethub/web-kit';
 
 import { becomeOrganizerAction } from '@/features/organizer/actions';
 import { signIn } from '@/lib/session';

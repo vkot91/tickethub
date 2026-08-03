@@ -5,9 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 
 import { Card, Skeleton } from '@tickethub/ui';
-import { getStripe, stripeAppearance } from '@/lib/stripe';
 
 import { fetchOrder, isSettled, ORDER_POLL_MS, orderKeys } from '@/features/orders/api';
+import { getStripe, stripeAppearance } from '@/lib/stripe';
 
 import { createPaymentIntent } from './api';
 import { CheckoutResult } from './checkout-result';

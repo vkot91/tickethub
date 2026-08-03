@@ -1,6 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
+
 import { ROLES_KEY } from '@tickethub/common';
+
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { GatewayOrganizerShowsController } from './shows.controller';

@@ -1,6 +1,12 @@
 import { Nack } from '@golevelup/nestjs-rabbitmq';
-import { EVENTS_EXCHANGE, RPC_EXCHANGE } from '@tickethub/contracts';
-import type { EventKey, EventQueue, RpcKey } from '@tickethub/contracts';
+
+import {
+  EVENTS_EXCHANGE,
+  RPC_EXCHANGE,
+  type EventKey,
+  type EventQueue,
+  type RpcKey,
+} from '@tickethub/contracts';
 
 // Every RPC handler binds one queue named after its own message pattern — golevelup runs a
 // consumer per @RabbitRPC, so a queue shared between handlers would make them compete and drop

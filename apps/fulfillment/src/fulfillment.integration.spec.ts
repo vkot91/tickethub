@@ -1,17 +1,9 @@
 import { S3Client as AwsS3, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { loadEnv, requireEnv } from '@tickethub/env';
 import { sql } from 'drizzle-orm';
+
 import {
-  createDb,
-  tickets,
-  fulfillmentOutbox,
-  fulfillmentProcessedMessages,
-  type Db,
-} from '@tickethub/db';
-import { OutboxRepository, InboxRepository } from '@tickethub/outbox';
-import {
-  ORDERS_MESSAGE_PATTERNS,
   ORDER_ROUTING_KEYS,
+  ORDERS_MESSAGE_PATTERNS,
   SHOWS_MESSAGE_PATTERNS,
   TICKET_ROUTING_KEYS,
   type EventEnvelope,
@@ -19,7 +11,17 @@ import {
   type SeatMap,
   type ShowDetail,
 } from '@tickethub/contracts';
+import {
+  createDb,
+  fulfillmentOutbox,
+  fulfillmentProcessedMessages,
+  tickets,
+  type Db,
+} from '@tickethub/db';
+import { loadEnv, requireEnv } from '@tickethub/env';
+import { InboxRepository, OutboxRepository } from '@tickethub/outbox';
 import { StorageClient } from '@tickethub/storage';
+
 import { verifyTicketToken } from './tickets/qr';
 import { TicketsService } from './tickets/tickets.service';
 

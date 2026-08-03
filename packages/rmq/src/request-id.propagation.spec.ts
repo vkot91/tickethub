@@ -1,11 +1,13 @@
 import 'reflect-metadata';
+
+import { RABBIT_HANDLER, type AmqpConnection } from '@golevelup/nestjs-rabbitmq';
 import { of } from 'rxjs';
-import { RABBIT_HANDLER } from '@golevelup/nestjs-rabbitmq';
-import type { AmqpConnection } from '@golevelup/nestjs-rabbitmq';
+
 import { EVENTS_EXCHANGE, PAYMENT_ROUTING_KEYS } from '@tickethub/contracts';
+
+import { RequestIdInterceptor } from './request-id.interceptor';
 import { RequestIdMiddleware } from './request-id.middleware';
 import { publishStored } from './rmq.config';
-import { RequestIdInterceptor } from './request-id.interceptor';
 
 const middleware = new RequestIdMiddleware();
 

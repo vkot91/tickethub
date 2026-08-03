@@ -1,8 +1,9 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type OrderResponse } from '@tickethub/contracts';
 import { type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { type OrderResponse } from '@tickethub/contracts';
 
 import { renderWithQuery } from '@/test/render';
 

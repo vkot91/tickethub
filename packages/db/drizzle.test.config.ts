@@ -1,5 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
+
 import { useTestDatabase } from '@tickethub/env';
+
 import { requireDatabaseUrl } from './src/env';
 
 // Same migrations, aimed at the throwaway integration database (`pnpm db:migrate:test`).

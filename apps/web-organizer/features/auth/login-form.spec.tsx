@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LoginForm } from './login-form';
 import { signInAction } from './actions';
+import { LoginForm } from './login-form';
 
 /** The action itself runs on the server; this suite covers what the form hands it and what it
  *  does with the message it gets back. `actions.spec.ts` covers the action. */

@@ -1,14 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ShowSummary } from '@tickethub/contracts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { type ShowSummary } from '@tickethub/contracts';
+import { ShowStatusPill } from '@tickethub/ui';
 
 import { renderWithQuery } from '@/test/render';
 
 import { CatalogGrid } from './catalog-grid';
 import { FeaturedShow } from './featured-show';
 import { ShowCard } from './show-card';
-import { ShowStatusPill } from '@tickethub/ui';
 
 function makeShow(overrides: Partial<ShowSummary> = {}): ShowSummary {
   return {

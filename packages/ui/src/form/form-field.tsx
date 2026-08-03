@@ -16,20 +16,33 @@ type FormFieldProps = {
   label: string;
   hint?: string;
   autoComplete?: string;
+  disabled?: boolean;
 } & ControlProps;
 
-export function FormField({ name, label, hint, autoComplete, ...control }: FormFieldProps) {
+export function FormField({
+  name,
+  label,
+  hint,
+  autoComplete,
+  disabled,
+  ...control
+}: FormFieldProps) {
   const { register, formState } = useFormContext();
 
   const error = formState.errors[name]?.message;
   const message = typeof error === 'string' ? error : undefined;
+
+  const registered = register(name);
 
   const bind = {
     id: name,
     autoComplete,
     'aria-invalid': message ? true : undefined,
     'aria-describedby': message ? `${name}-error` : undefined,
-    ...register(name),
+    ...registered,
+    // After the spread: `register` only carries a `disabled` key when the *form* is disabled,
+    // so a per-field lock has to be OR-ed in rather than left to be overwritten by `undefined`.
+    disabled: registered.disabled || disabled,
   };
 
   return (

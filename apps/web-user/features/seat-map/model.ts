@@ -1,5 +1,4 @@
 import { type SeatMap, type SeatTier } from '@tickethub/contracts';
-
 import { DEFAULT_TIER } from '@tickethub/ui';
 
 /** What the server knows about a seat. `selected` is client state and never appears here. */

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { Toaster } from '@tickethub/ui';
 import { describe, expect, it } from 'vitest';
+
+import { Toaster } from '@tickethub/ui';
 
 import { WelcomeToast } from './welcome-toast';
 

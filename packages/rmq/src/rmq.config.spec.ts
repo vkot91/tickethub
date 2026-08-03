@@ -1,4 +1,5 @@
 import { EVENTS_EXCHANGE, RPC_EXCHANGE } from '@tickethub/contracts';
+
 import { rmqConfig } from './rmq.config';
 
 describe('rmqConfig', () => {

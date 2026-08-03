@@ -1,6 +1,8 @@
-import { Logger } from '@nestjs/common';
 import { Nack } from '@golevelup/nestjs-rabbitmq';
+import { Logger } from '@nestjs/common';
+
 import { ORDER_ROUTING_KEYS, type EventEnvelope } from '@tickethub/contracts';
+
 import { TicketsController } from './tickets.controller';
 
 describe('TicketsController', () => {

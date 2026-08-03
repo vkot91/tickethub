@@ -1,9 +1,10 @@
 // @vitest-environment node
+import { redirect } from 'next/navigation';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { signInAction } from './actions';
 import { signIn } from '@/lib/session';
-import { redirect } from 'next/navigation';
+
+import { signInAction } from './actions';
 
 vi.mock('@/lib/session', () => ({ signIn: vi.fn() }));
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }));

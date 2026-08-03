@@ -1,6 +1,8 @@
 import { Nack } from '@golevelup/nestjs-rabbitmq';
+
 import { EVENTS_EXCHANGE, RPC_EXCHANGE } from '@tickethub/contracts';
-import { eventSub, rpcSub, nackOnError } from './consumer';
+
+import { eventSub, nackOnError, rpcSub } from './consumer';
 
 describe('eventSub', () => {
   it('binds the routing key to its own queue with a matching DLX', () => {

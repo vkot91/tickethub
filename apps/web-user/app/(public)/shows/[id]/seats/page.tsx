@@ -1,12 +1,13 @@
 import { type Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+
 import { showDetailSchema } from '@tickethub/contracts';
+import { formatShowDateTime } from '@tickethub/ui';
+import { ApiError } from '@tickethub/web-kit';
 
 import { SeatMap } from '@/features/seat-map/seat-map';
-import { ApiError } from '@tickethub/web-kit';
 import { serverApi } from '@/lib/session';
-import { formatShowDateTime } from '@tickethub/ui';
 
 export const metadata: Metadata = { title: 'Choose your seats' };
 
@@ -22,7 +23,7 @@ export default async function SeatsPage({ params }: { params: Promise<{ id: stri
   );
 
   return (
-    <div className="mx-auto max-w-295 px-6 pt-7 pb-35 [animation:var(--animate-fade)]">
+    <div className="mx-auto max-w-295 [animation:var(--animate-fade)] px-6 pt-7 pb-35">
       <Link
         href={`/shows/${show.id}`}
         className="mb-4 inline-block text-[13px] text-fg-muted hover:text-fg"

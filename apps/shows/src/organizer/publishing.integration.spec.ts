@@ -1,5 +1,5 @@
 import { eq, sql } from 'drizzle-orm';
-import { loadEnv, requireEnv } from '@tickethub/env';
+
 import {
   createDb,
   organizers,
@@ -15,9 +15,11 @@ import {
   type Db,
 } from '@tickethub/db';
 import { seedShowGraph } from '@tickethub/db/testing';
+import { loadEnv, requireEnv } from '@tickethub/env';
 import { OutboxRepository } from '@tickethub/outbox';
-import { OrganizerPublishingService } from './publishing.service';
+
 import { UserShowsService } from '../user/shows.service';
+import { OrganizerPublishingService } from './publishing.service';
 
 jest.setTimeout(30_000);
 

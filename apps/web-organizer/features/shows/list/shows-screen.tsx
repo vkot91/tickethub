@@ -1,12 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShowSummary, type OrganizerShow } from '@tickethub/contracts';
-import { Button, cn, ConfirmDialog, Skeleton, toast } from '@tickethub/ui';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { deleteShow, fetchOrganizerShows, showKeys } from './api';
+import { ShowSummary, type OrganizerShow } from '@tickethub/contracts';
+import { Button, cn, ConfirmDialog, Skeleton, toast } from '@tickethub/ui';
+
+import { deleteShow, fetchOrganizerShows, showKeys } from '../api';
 import { NewShowDialog } from './new-show-dialog';
 import { ShowsTable } from './shows-table';
 
@@ -24,12 +25,10 @@ const filters: readonly Filter[] = [
 ] as const;
 
 interface ShowsScreenProps {
-  /** From the URL, not local state — the route filters server-side, so the query key follows it. */
   status?: string;
 }
 
 export function ShowsScreen({ status }: ShowsScreenProps) {
-  // Which show a confirm is open for, and which of the two destructive verbs it is.
   const [pendingCancel, setPendingCancel] = useState<OrganizerShow>();
   const [pendingDelete, setPendingDelete] = useState<OrganizerShow>();
 

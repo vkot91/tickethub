@@ -1,6 +1,5 @@
-import { Card, formatPrice, OrderStatusPill } from '@tickethub/ui';
-
 import { type RecentOrder } from '@tickethub/contracts';
+import { Card, formatPrice, OrderStatusPill } from '@tickethub/ui';
 
 /**
  * ponytail: a plain table. Six static columns, no sorting, filtering or virtualisation —

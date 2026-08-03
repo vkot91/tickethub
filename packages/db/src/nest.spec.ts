@@ -1,5 +1,7 @@
 import { FactoryProvider } from '@nestjs/common';
+
 import { ConfigService } from '@tickethub/config';
+
 import { DbModule } from './nest';
 
 describe('DbModule', () => {
