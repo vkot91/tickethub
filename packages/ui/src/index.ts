@@ -18,6 +18,7 @@ export { Progress } from './primitives/progress';
 export { Select, type SelectOption } from './primitives/select';
 export { Skeleton } from './primitives/skeleton';
 export { StatusPill, type StatusPillProps, type Tone } from './primitives/status-pill';
+export { Textarea, type TextareaProps } from './primitives/textarea';
 export { Toast, ToastProvider, ToastViewport, type ToastProps } from './primitives/toast';
 
 export { ConfirmDialog } from './composites/confirm-dialog';
