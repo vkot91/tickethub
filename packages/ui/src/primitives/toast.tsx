@@ -42,9 +42,10 @@ export interface ToastProps
   extends ComponentProps<typeof ToastPrimitive.Root>, VariantProps<typeof toastVariants> {
   title: string;
   body?: string;
+  action?: { label: string; href: string };
 }
 
-export function Toast({ className, tone, title, body, ...props }: ToastProps) {
+export function Toast({ className, tone, title, body, action, ...props }: ToastProps) {
   return (
     <ToastPrimitive.Root className={cn(toastVariants({ tone }), className)} {...props}>
       <div className="flex-1">
@@ -55,6 +56,16 @@ export function Toast({ className, tone, title, body, ...props }: ToastProps) {
           <ToastPrimitive.Description className="mt-1 text-[13px] text-fg-muted">
             {body}
           </ToastPrimitive.Description>
+        ) : null}
+        {action ? (
+          <ToastPrimitive.Action altText={action.label} asChild>
+            <a
+              href={action.href}
+              className="mt-1.5 inline-block text-[13px] text-accent hover:text-accent-hover"
+            >
+              {action.label}
+            </a>
+          </ToastPrimitive.Action>
         ) : null}
       </div>
       <ToastPrimitive.Close aria-label="Dismiss" className="text-fg-faint hover:text-fg">

@@ -13,6 +13,7 @@ describe('OrganizerShowsController', () => {
   };
   const publishing = {
     putPricing: jest.fn().mockResolvedValue(undefined),
+    getPricing: jest.fn().mockResolvedValue({ ticketTypes: [], assignments: [] }),
     publishChecklist: jest.fn().mockResolvedValue({ hasTicketTypes: true }),
     publishShow: jest.fn().mockResolvedValue(undefined),
   };
@@ -80,6 +81,14 @@ describe('OrganizerShowsController', () => {
     await controller.putPricing({ userId: 'u1', showId: 's1', dto });
 
     expect(publishing.putPricing).toHaveBeenCalledWith('u1', 's1', dto);
+  });
+
+  it('delegates getPricing to the publishing service', async () => {
+    await expect(controller.pricing({ userId: 'u1', showId: 's1' })).resolves.toEqual({
+      ticketTypes: [],
+      assignments: [],
+    });
+    expect(publishing.getPricing).toHaveBeenCalledWith('u1', 's1');
   });
 
   it('delegates publishChecklist', async () => {

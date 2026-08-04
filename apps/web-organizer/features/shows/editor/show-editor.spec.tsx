@@ -1,8 +1,16 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithQuery } from '../../../test/render';
-import { draftShow, mockGateway, publishedShow, SHOW_ID } from '../../test-gateway';
+import {
+  draftShow,
+  emptyPricing,
+  mockGateway,
+  publishedShow,
+  readyChecklist,
+  SHOW_ID,
+} from '../../test-gateway';
 import { ShowEditor } from './show-editor';
 
 // `next/navigation` is deliberately not mocked here: pnpm resolves `packages/ui`'s copy through
@@ -10,7 +18,13 @@ import { ShowEditor } from './show-editor';
 // marks current is pinned in `packages/ui`'s own spec; this file tests the frame around it.
 
 function withShow(show: unknown) {
-  return mockGateway({ [`/organizer/shows/${SHOW_ID}`]: { status: 200, body: show } });
+  return mockGateway({
+    [`/organizer/shows/${SHOW_ID}`]: { status: 200, body: show },
+    // The show's own sub-routes, which the pricing and preview tabs read. Spelled out because
+    // the key above is a prefix of both and would otherwise answer them with the show.
+    [`/organizer/shows/${SHOW_ID}/pricing`]: { status: 200, body: emptyPricing },
+    [`/organizer/shows/${SHOW_ID}/publish-checklist`]: { status: 200, body: readyChecklist },
+  });
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -35,13 +49,14 @@ describe('ShowEditor', () => {
     expect(await screen.findByLabelText('Title')).toBeDisabled();
   });
 
-  it('offers Publish on a draft, inert until the next slice wires it', async () => {
+  it('offers Publish on a draft, and it opens the checklist', async () => {
     withShow({ ...draftShow, id: SHOW_ID });
 
     renderWithQuery(<ShowEditor showId={SHOW_ID} />);
 
-    expect(await screen.findByRole('button', { name: 'Publish' })).toBeDisabled();
-    expect(screen.queryByText(/on sale/)).not.toBeInTheDocument();
+    await userEvent.click(await screen.findByRole('button', { name: 'Publish' }));
+
+    expect(await screen.findByText('Ready to publish?')).toBeInTheDocument();
   });
 
   it('shows Details when no tab is named', async () => {
@@ -57,7 +72,19 @@ describe('ShowEditor', () => {
 
     renderWithQuery(<ShowEditor showId={SHOW_ID} tab="pricing" />);
 
-    expect(await screen.findByText(/Pricing lands in the next slice/)).toBeInTheDocument();
+    expect(await screen.findByText('Price bands')).toBeInTheDocument();
     expect(screen.queryByLabelText('Title')).not.toBeInTheDocument();
+  });
+
+  it('renders the preview under ?tab=preview', async () => {
+    withShow({ ...draftShow, id: SHOW_ID });
+
+    renderWithQuery(<ShowEditor showId={SHOW_ID} tab="preview" />);
+
+    expect(
+      await screen.findByText(
+        'This is what buyers see. Seat availability is live once the show is published.',
+      ),
+    ).toBeInTheDocument();
   });
 });

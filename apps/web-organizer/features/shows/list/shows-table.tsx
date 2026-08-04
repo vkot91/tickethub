@@ -14,7 +14,7 @@ import {
   ShowStatusPill,
 } from '@tickethub/ui';
 
-const PUBLIC_ORIGIN = 'http://app.localhost:4000';
+import { PUBLIC_ORIGIN } from '../public-origin';
 
 interface ShowsTableProps {
   shows: OrganizerShow[];

@@ -1,6 +1,12 @@
 import { vi } from 'vitest';
 
-import { type OrganizerShow, type VenueSummary } from '@tickethub/contracts';
+import {
+  type OrganizerShow,
+  type PublishChecklist,
+  type ShowPricing,
+  type VenueDetail,
+  type VenueSummary,
+} from '@tickethub/contracts';
 
 /** Fixtures and the gateway stub shared by the organizer screens — dashboard and shows both
  *  read the same `/organizer/shows` list, so the mock lives at the feature root rather than in
@@ -53,6 +59,51 @@ export const venues: VenueSummary[] = [
   { id: OTHER_VENUE_ID, name: 'Side Room', address: '2 Back St', city: 'Berlin', seatCount: 90 },
 ];
 
+export const SECTION_A_ID = '66666666-6666-4666-8666-666666666666';
+export const SECTION_B_ID = '77777777-7777-4777-8777-777777777777';
+export const BAND_ID = '88888888-8888-4888-8888-888888888888';
+
+/** One row per section, so a section's seat count is just the row's length — Parterre 4,
+ *  Balcony 2, and every summary number in the pricing specs derives from those two. */
+function section(id: string, name: string, seats: number): VenueDetail['sections'][number] {
+  return {
+    id,
+    name,
+    rows: [
+      {
+        id: `${id.slice(0, 8)}-0000-4000-8000-000000000000`,
+        number: 1,
+        seats: Array.from({ length: seats }, (_, i) => ({
+          id: `${id.slice(0, 8)}-0000-4000-8000-00000000000${i}`,
+          number: i + 1,
+        })),
+      },
+    ],
+  };
+}
+
+export const venueDetail: VenueDetail = {
+  venue: { id: VENUE_ID, name: 'Grand Hall', address: '1 Main St', city: 'Berlin' },
+  sections: [section(SECTION_A_ID, 'Parterre', 4), section(SECTION_B_ID, 'Balcony', 2)],
+};
+
+/** A show with nothing priced — the state a fresh draft is actually in. */
+export const emptyPricing: ShowPricing = { ticketTypes: [], assignments: [] };
+
+export const savedPricing: ShowPricing = {
+  ticketTypes: [{ id: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 }],
+  assignments: [{ sectionId: SECTION_A_ID, ticketTypeId: BAND_ID }],
+};
+
+export const readyChecklist: PublishChecklist = {
+  hasTicketTypes: true,
+  hasPricedSections: true,
+  startsInFuture: true,
+  pricedSectionCount: 1,
+  sectionCount: 2,
+  seatsOnSale: 4,
+};
+
 export const stats = {
   soldCount: 120,
   capacity: 400,
@@ -88,21 +139,37 @@ export function mockGateway(overrides: Record<string, { status: number; body?: u
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
     const path = String(url).replace('/api/gateway', '');
 
+    // Longest key wins, so an override for `/organizer/shows/:id` does not also swallow that
+    // show's `/pricing` and `/publish-checklist` — both of which start with it.
     const match =
-      Object.entries(overrides).find(([key]) => path.startsWith(key))?.[1] ??
+      Object.entries(overrides)
+        .filter(([key]) => path.startsWith(key))
+        .sort(([a], [b]) => b.length - a.length)[0]?.[1] ??
       // DELETE is `Promise<void>` in `ShowsService` — 200 with nothing in it, for both the
       // delete-a-draft and the cancel-a-published-show branch.
-      (init?.method === 'DELETE'
+      // `putPricing` and `publish` are `Promise<void>` in `apps/shows` too, so they answer with
+      // nothing at all. A fixture that returned a convenient object here would hide the bug
+      // where a response schema parses that empty body and throws inside the mutation.
+      (init?.method === 'DELETE' || init?.method === 'PUT'
         ? { status: 200, body: undefined }
-        : init?.method === 'PATCH' || init?.method === 'POST'
-          ? { status: 200, body: publishedShow }
-          : path.startsWith('/organizer/venues')
-            ? { status: 200, body: venues }
-            : path.startsWith('/organizer/shows')
-              ? { status: 200, body: organizerShows }
-              : path.startsWith('/shows/')
-                ? { status: 200, body: stats }
-                : { status: 200, body: recentOrders });
+        : init?.method === 'POST' && path.endsWith('/publish')
+          ? { status: 200, body: undefined }
+          : init?.method === 'PATCH' || init?.method === 'POST'
+            ? { status: 200, body: publishedShow }
+            : path.endsWith('/publish-checklist')
+              ? { status: 200, body: readyChecklist }
+              : path.endsWith('/pricing')
+                ? { status: 200, body: emptyPricing }
+                : // A single venue, not the catalogue: `/organizer/venues/:id` is a VenueDetail.
+                  path.startsWith('/organizer/venues/')
+                  ? { status: 200, body: venueDetail }
+                  : path.startsWith('/organizer/venues')
+                    ? { status: 200, body: venues }
+                    : path.startsWith('/organizer/shows')
+                      ? { status: 200, body: organizerShows }
+                      : path.startsWith('/shows/')
+                        ? { status: 200, body: stats }
+                        : { status: 200, body: recentOrders });
 
     return Promise.resolve({
       ok: match.status < 400,

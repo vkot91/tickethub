@@ -63,6 +63,11 @@ export class OrganizerShowsController {
     return this.publishingService.putPricing(params.userId, params.showId, params.dto);
   }
 
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.PRICING))
+  pricing(params: { userId: string; showId: string }) {
+    return this.publishingService.getPricing(params.userId, params.showId);
+  }
+
   @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUBLISH_CHECKLIST))
   publishChecklist(params: { userId: string; showId: string }) {
     return this.publishingService.publishChecklist(params.userId, params.showId);

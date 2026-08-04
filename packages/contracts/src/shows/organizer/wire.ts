@@ -7,6 +7,7 @@ import type {
   PosterUploadUrl,
   PublishChecklist,
   PutPricingDto,
+  ShowPricing,
   UpdateShowDto,
 } from './schema';
 
@@ -27,6 +28,9 @@ export const ORGANIZER_SHOWS_MESSAGE_PATTERNS = {
   // published → cancel). The gateway cannot branch without reading a stale status.
   DELETE: 'organizer.shows.delete',
   PUT_PRICING: 'organizer.shows.putPricing',
+  // The read side of PUT_PRICING. Not folded into GET: the show list answers with the same
+  // shape as GET, and every row would then carry a bands join no list screen renders.
+  PRICING: 'organizer.shows.pricing',
   PUBLISH_CHECKLIST: 'organizer.shows.publishChecklist',
   PUBLISH: 'organizer.shows.publish',
   POSTER_UPLOAD_URL: 'organizer.shows.posterUploadUrl',
@@ -58,6 +62,10 @@ export interface OrganizerShowsRpcContracts {
   [ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUT_PRICING]: Rpc<{
     payload: { userId: string; showId: string; dto: PutPricingDto };
     result: void;
+  }>;
+  [ORGANIZER_SHOWS_MESSAGE_PATTERNS.PRICING]: Rpc<{
+    payload: { userId: string; showId: string };
+    result: ShowPricing;
   }>;
   [ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUBLISH_CHECKLIST]: Rpc<{
     payload: { userId: string; showId: string };

@@ -60,6 +60,28 @@ export const publishChecklistSchema = z.object({
 export type PublishChecklist = z.infer<typeof publishChecklistSchema>;
 
 /**
+ * A show's saved pricing, read back. The console needs it twice and can get it nowhere else: to
+ * seed the pricing form — an empty form saved over a priced show wipes it, since `putPricing`
+ * replaces wholesale — and to draw the preview seat map, which cannot use the buyer's seat map
+ * because that 404s a draft, on purpose.
+ *
+ * Dearest band first, the order the public show page lists them in. Assignments carry
+ * `ticketTypeId`, not the write side's `key`: keys are client handles the server never persists.
+ */
+export const showPricingSchema = z.object({
+  ticketTypes: z.array(
+    z.object({
+      id: z.string().uuid(),
+      name: z.string(),
+      tier: seatTierSchema,
+      priceCents: z.number().int(),
+    }),
+  ),
+  assignments: z.array(z.object({ sectionId: z.string().uuid(), ticketTypeId: z.string().uuid() })),
+});
+export type ShowPricing = z.infer<typeof showPricingSchema>;
+
+/**
  * Draft-only, transactional, wholesale replace of a show's bands and which sections they price.
  * `key` is a client-side handle so an assignment can reference a band that has no id yet; the
  * server maps it to the inserted id and never persists it.

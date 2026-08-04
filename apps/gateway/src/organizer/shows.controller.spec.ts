@@ -100,6 +100,17 @@ describe('GatewayOrganizerShowsController', () => {
     );
   });
 
+  it('forwards a pricing read by show id', async () => {
+    await controller.pricing(req, 's1');
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.shows.pricing',
+        payload: { userId: 'u1', showId: 's1' },
+      }),
+    );
+  });
+
   it('forwards a publish-checklist read by show id', async () => {
     await controller.publishChecklist(req, 's1');
 
