@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import {
   organizers,
   rows,
@@ -16,7 +16,12 @@ import {
   type Db,
 } from '@tickethub/db';
 import { OutboxRepository, type Tx } from '@tickethub/outbox';
-import { SHOW_ROUTING_KEYS, type PublishChecklist, type PutPricingDto } from '@tickethub/contracts';
+import {
+  SHOW_ROUTING_KEYS,
+  type PublishChecklist,
+  type PutPricingDto,
+  type ShowPricing,
+} from '@tickethub/contracts';
 
 /** The show as the publishing rules need it — status to gate on, venue to pin pricing to. */
 interface OwnedShow {
@@ -118,6 +123,37 @@ export class OrganizerPublishingService {
         })),
       );
     });
+  }
+
+  /**
+   * The read side of `putPricing`. Not gated on draft: the console's preview tab renders a
+   * published show's pricing too, and this returns nothing a buyer could not already see.
+   */
+  async getPricing(userId: string, showId: string): Promise<ShowPricing> {
+    const show = await this.ownedShow(userId, showId);
+
+    const bands = await this.db
+      .select({
+        id: ticketTypes.id,
+        name: ticketTypes.name,
+        tier: ticketTypes.tier,
+        priceCents: ticketTypes.priceCents,
+      })
+      .from(ticketTypes)
+      .where(eq(ticketTypes.showId, show.id))
+      // Dearest first, matching the public show page. `name` breaks the tie so two bands at the
+      // same price do not swap places between reads and shuffle the form under the organizer.
+      .orderBy(desc(ticketTypes.priceCents), ticketTypes.name);
+
+    const assignments = await this.db
+      .select({
+        sectionId: showSectionPricing.sectionId,
+        ticketTypeId: showSectionPricing.ticketTypeId,
+      })
+      .from(showSectionPricing)
+      .where(eq(showSectionPricing.showId, show.id));
+
+    return { ticketTypes: bands, assignments };
   }
 
   async publishChecklist(userId: string, showId: string): Promise<PublishChecklist> {

@@ -85,6 +85,16 @@ export class GatewayOrganizerShowsController {
     });
   }
 
+  // The read side of the PUT below. The console seeds its pricing form from this and draws the
+  // preview map with it — the buyer's seat map 404s a draft, which is the whole point of it.
+  @Get(':id/pricing')
+  pricing(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.PRICING, {
+      userId: req.user.id,
+      showId: id,
+    });
+  }
+
   // What still stands between this draft and going on sale. A convenience for the popover — the
   // publish route re-checks the same rules, because this answer is stale the moment it is read.
   @Get(':id/publish-checklist')

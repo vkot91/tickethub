@@ -5,11 +5,18 @@ import {
   organizerShowSchema,
   posterUploadRequestSchema,
   posterUploadUrlSchema,
+  publishChecklistSchema,
+  putPricingSchema,
+  showPricingSchema,
   showSummarySchema,
   updateShowSchema,
+  venueDetailSchema,
   venueSummarySchema,
   type OrganizerShow,
   type PosterUploadUrl,
+  type PublishChecklist,
+  type ShowPricing,
+  type VenueDetail,
   type VenueSummary,
 } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
@@ -19,6 +26,12 @@ export const showKeys = {
   // The status lives in the URL and the route filters server-side, so it belongs in the key.
   list: (status?: string) => [...showKeys.all, 'list', status ?? 'all'] as const,
   byId: (showId: string) => [...showKeys.all, showId] as const,
+  // Its own key rather than part of `byId`: the pricing PUT invalidates this without refetching
+  // the show, and the preview tab reads it without caring about the show's title.
+  pricing: (showId: string) => [...showKeys.byId(showId), 'pricing'] as const,
+  // Never prefetched and never held: the checklist is stale the moment anything touches the
+  // show, so the dialog fetches it on open and throws it away on close.
+  checklist: (showId: string) => [...showKeys.byId(showId), 'checklist'] as const,
 };
 
 /** Venues have no screen of their own — the catalogue is seeded and shared, and an organizer
@@ -27,6 +40,8 @@ export const showKeys = {
 export const venueKeys = {
   all: ['venues'] as const,
   list: () => [...venueKeys.all, 'list'] as const,
+  // Sections, rows and seats — the geometry the pricing tab counts and the preview tab draws.
+  detail: (venueId: string) => [...venueKeys.all, venueId] as const,
 };
 
 // Both list routes return a bare array, not a `{ items }` page — parsed as arrays rather than
@@ -89,4 +104,35 @@ export function createPosterUploadUrl(
 
 export function deleteShow(showId: string): Promise<void> {
   return clientApi(`/organizer/shows/${showId}`, { method: 'DELETE' });
+}
+
+export function fetchVenueDetail(venueId: string): Promise<VenueDetail> {
+  return clientApi(`/organizer/venues/${venueId}`, {}, venueDetailSchema);
+}
+
+/** What the show is priced at today. Both pricing screens start here: an empty form saved over
+ *  a priced show would wipe it, since `putPricing` replaces wholesale. */
+export function fetchShowPricing(showId: string): Promise<ShowPricing> {
+  return clientApi(`/organizer/shows/${showId}/pricing`, {}, showPricingSchema);
+}
+
+export function fetchPublishChecklist(showId: string): Promise<PublishChecklist> {
+  return clientApi(`/organizer/shows/${showId}/publish-checklist`, {}, publishChecklistSchema);
+}
+
+/** No response schema, deliberately: `putPricing` is `Promise<void>` in `apps/shows`, so the
+ *  gateway answers 200 with an empty body. Parsing that `null` against a schema throws *inside*
+ *  the mutation, which skips `onSuccess` — nothing invalidates and the screen sits on stale data
+ *  while the write has in fact succeeded. FE-2 shipped exactly that bug on `deleteShow`. */
+export function putPricing(showId: string, input: unknown): Promise<void> {
+  return clientApi(`/organizer/shows/${showId}/pricing`, {
+    method: 'PUT',
+    body: putPricingSchema.parse(input),
+  });
+}
+
+/** Also `Promise<void>` — see `putPricing`. A 409 here names the checklist rule that failed and
+ *  is meant to be read, not swallowed. */
+export function publishShow(showId: string): Promise<void> {
+  return clientApi(`/organizer/shows/${showId}/publish`, { method: 'POST' });
 }

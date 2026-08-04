@@ -384,6 +384,73 @@ describe('OrganizerPublishingService.cancelShow', () => {
   );
 });
 
+describe('OrganizerPublishingService.getPricing', () => {
+  it('reads back what putPricing wrote, dearest band first', async () => {
+    const { show, userId, sectionIds } = await seedDraft();
+
+    await svc.putPricing(userId, show.id, {
+      ticketTypes: [band('cheap', 1000), band('vip', 9000)],
+      assignments: [
+        { sectionId: sectionIds[0], ticketTypeKey: 'cheap' },
+        { sectionId: sectionIds[1], ticketTypeKey: 'vip' },
+      ],
+    });
+
+    const pricing = await svc.getPricing(userId, show.id);
+
+    expect(pricing.ticketTypes.map((b) => [b.name, b.priceCents])).toEqual([
+      ['vip', 9000],
+      ['cheap', 1000],
+    ]);
+
+    // The assignment points at the band's real id — the write side's `key` is never persisted,
+    // so a client that held one across this read would be holding a dead handle.
+    const vip = pricing.ticketTypes.find((b) => b.name === 'vip');
+    expect(pricing.assignments).toContainEqual({ sectionId: sectionIds[1], ticketTypeId: vip?.id });
+  });
+
+  it('returns empty arrays for a show nothing has priced yet', async () => {
+    const { show, userId } = await seedDraft();
+
+    expect(await svc.getPricing(userId, show.id)).toEqual({ ticketTypes: [], assignments: [] });
+  });
+
+  it('reads a published show too — the preview tab outlives the draft', async () => {
+    const { show, userId, sectionIds } = await seedDraft();
+
+    await svc.putPricing(userId, show.id, {
+      ticketTypes: [band('vip', 9000)],
+      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'vip' }],
+    });
+    await db.update(shows).set({ status: 'published' }).where(eq(shows.id, show.id));
+
+    expect((await svc.getPricing(userId, show.id)).ticketTypes).toHaveLength(1);
+  });
+
+  it('does not leak another show’s bands', async () => {
+    const { show, userId, sectionIds } = await seedDraft();
+    const other = await seedShowGraph(db, {
+      show: { status: 'draft', startsAt: FUTURE },
+      sections: [{ name: 'Only', rows: 1, seatsPerRow: 2 }],
+      ticketType: false,
+    });
+
+    await svc.putPricing(userId, show.id, {
+      ticketTypes: [band('mine', 100)],
+      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'mine' }],
+    });
+    await svc.putPricing(other.organizer.userId, other.show.id, {
+      ticketTypes: [band('theirs', 200)],
+      assignments: [{ sectionId: other.sections[0].section.id, ticketTypeKey: 'theirs' }],
+    });
+
+    const pricing = await svc.getPricing(userId, show.id);
+
+    expect(pricing.ticketTypes.map((b) => b.name)).toEqual(['mine']);
+    expect(pricing.assignments).toHaveLength(1);
+  });
+});
+
 // The rule that stops an organizer probing for a competitor's show by id: a row that exists but
 // is someone else's is indistinguishable from one that does not.
 describe('ownership is a 404, never a 403', () => {
@@ -393,6 +460,7 @@ describe('ownership is a 404, never a 403', () => {
       (userId: string, showId: string) =>
         svc.putPricing(userId, showId, { ticketTypes: [], assignments: [] }),
     ],
+    ['getPricing', (userId: string, showId: string) => svc.getPricing(userId, showId)],
     ['publishChecklist', (userId: string, showId: string) => svc.publishChecklist(userId, showId)],
     ['publishShow', (userId: string, showId: string) => svc.publishShow(userId, showId)],
     ['cancelShow', (userId: string, showId: string) => svc.cancelShow(userId, showId)],

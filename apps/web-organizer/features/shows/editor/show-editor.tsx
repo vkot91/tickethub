@@ -3,11 +3,14 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 
-import { Button, NavTabs, ShowStatusPill, Skeleton } from '@tickethub/ui';
+import { NavTabs, ShowStatusPill, Skeleton } from '@tickethub/ui';
 
 import { fetchOrganizerShow, showKeys } from '../api';
 import { DetailsForm } from './details-form';
 import { PosterPanel } from './poster-panel';
+import { PreviewTab } from './preview-tab';
+import { PricingTab } from './pricing-tab';
+import { PublishDialog } from './publish-dialog';
 
 interface ShowEditorProps {
   showId: string;
@@ -65,13 +68,7 @@ export function ShowEditor({ showId, tab }: ShowEditorProps) {
           <ShowStatusPill status={show.status} />
         </div>
 
-        {/* ponytail: inert until FE-4 wires the publish checklist — rendered disabled rather than
-            omitted, so the header does not shift the day it starts working. */}
-        {show.status === 'draft' && (
-          <Button disabled title="Publishing lands in the next slice">
-            Publish
-          </Button>
-        )}
+        {show.status === 'draft' && <PublishDialog show={show} />}
       </div>
 
       {banner && (
@@ -90,10 +87,10 @@ export function ShowEditor({ showId, tab }: ShowEditorProps) {
         />
       </div>
 
-      {tab === 'pricing' || tab === 'preview' ? (
-        <div className="rounded-panel border border-dashed border-white/16 px-6 py-15 text-center text-[13px] text-fg-muted">
-          {tab === 'pricing' ? 'Pricing' : 'Preview'} lands in the next slice.
-        </div>
+      {tab === 'pricing' ? (
+        <PricingTab show={show} />
+      ) : tab === 'preview' ? (
+        <PreviewTab show={show} />
       ) : (
         <div className="grid items-start gap-9 lg:grid-cols-[1fr_380px]">
           <DetailsForm show={show} />

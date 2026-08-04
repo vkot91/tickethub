@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { mockGateway, SHOW_ID } from '../test-gateway';
-import { deleteShow, organizerShowPath, organizerShowsPath, showKeys, venueKeys } from './api';
+import { mockGateway, SHOW_ID, VENUE_ID } from '../test-gateway';
+import {
+  deleteShow,
+  organizerShowPath,
+  organizerShowsPath,
+  publishShow,
+  putPricing,
+  showKeys,
+  venueKeys,
+} from './api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -21,6 +29,14 @@ describe('shows api keys', () => {
 
   it('keys venues separately — they outlive any one show', () => {
     expect(venueKeys.list()).toEqual(['venues', 'list']);
+    expect(venueKeys.detail(VENUE_ID)).toEqual(['venues', VENUE_ID]);
+  });
+
+  // Both hang off `byId`, so invalidating a show's key covers its pricing and its checklist —
+  // which is what a successful publish needs.
+  it('nests pricing and the checklist under the show they belong to', () => {
+    expect(showKeys.pricing(SHOW_ID)).toEqual(['shows', SHOW_ID, 'pricing']);
+    expect(showKeys.checklist(SHOW_ID)).toEqual(['shows', SHOW_ID, 'checklist']);
   });
 });
 
@@ -40,6 +56,39 @@ describe('organizerShowsPath', () => {
   // this path, and `ShowEditor` reads the same pair back.
   it('builds the single-show path the editor prefetches', () => {
     expect(organizerShowPath(SHOW_ID)).toBe(`/organizer/shows/${SHOW_ID}`);
+  });
+});
+
+// The same empty-body trap as `deleteShow`, twice over. Both handlers are `Promise<void>` in
+// `apps/shows`, so a response schema on either would throw inside the mutation and skip
+// `onSuccess` — the write lands, nothing invalidates, and the screen sits on stale data.
+describe('the void routes resolve on an empty body', () => {
+  it('accepts what putPricing actually returns', async () => {
+    mockGateway();
+
+    await expect(putPricing(SHOW_ID, { ticketTypes: [], assignments: [] })).resolves.not.toThrow();
+  });
+
+  it('accepts what publishShow actually returns', async () => {
+    mockGateway();
+
+    await expect(publishShow(SHOW_ID)).resolves.not.toThrow();
+  });
+
+  // The body is still validated on the way out — a bad price never reaches the gateway.
+  it('rejects a malformed pricing body before it is sent', () => {
+    const fetchMock = mockGateway();
+
+    // Throws where it is called, not on the returned promise: the parse happens before the
+    // request is built, which is the point — a negative price never reaches the gateway.
+    expect(() =>
+      putPricing(SHOW_ID, {
+        ticketTypes: [{ key: 'k', name: 'n', tier: 'vip', priceCents: -1 }],
+        assignments: [],
+      }),
+    ).toThrow();
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

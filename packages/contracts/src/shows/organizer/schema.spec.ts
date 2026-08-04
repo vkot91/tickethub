@@ -1,4 +1,4 @@
-import { createShowSchema, updateShowSchema } from './schema';
+import { createShowSchema, showPricingSchema, updateShowSchema } from './schema';
 import { ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './wire';
 
 describe('organizer shows wire names', () => {
@@ -32,6 +32,26 @@ describe('updateShowSchema', () => {
     expect(updateShowSchema.parse({ posterUrl: null, saleStartsAt: null })).toEqual({
       posterUrl: null,
       saleStartsAt: null,
+    });
+  });
+});
+
+describe('showPricingSchema', () => {
+  // The read side addresses bands by id. A client that sent the write side's `key` back would
+  // parse-fail here rather than silently assigning a section to nothing.
+  it('rejects an assignment carrying a client key instead of a band id', () => {
+    expect(() =>
+      showPricingSchema.parse({
+        ticketTypes: [],
+        assignments: [{ sectionId: crypto.randomUUID(), ticketTypeId: 'front-vip' }],
+      }),
+    ).toThrow();
+  });
+
+  it('accepts a show with nothing priced', () => {
+    expect(showPricingSchema.parse({ ticketTypes: [], assignments: [] })).toEqual({
+      ticketTypes: [],
+      assignments: [],
     });
   });
 });

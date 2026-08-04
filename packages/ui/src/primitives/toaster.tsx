@@ -7,7 +7,7 @@ import { Toast, ToastProvider, ToastViewport, type ToastProps } from './toast';
 /** The design's toast tones. `danger` is the error one — the token name the rest of the UI uses. */
 export type ToastTone = NonNullable<ToastProps['tone']>;
 
-export type ToastOptions = Pick<ToastProps, 'title' | 'body' | 'duration'>;
+export type ToastOptions = Pick<ToastProps, 'title' | 'body' | 'duration' | 'action'>;
 
 interface ToastItem extends ToastOptions {
   id: string;
