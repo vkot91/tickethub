@@ -14,13 +14,26 @@ import {
 import { fulfillmentProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
 import type { OutboxMessage } from '@tickethub/outbox';
 
-import { verifyTicketToken } from './qr';
+import { renderQrPng, verifyTicketToken } from './qr';
 import { renderTicketPdf } from './ticket-pdf';
 import { TicketsService } from './tickets.service';
 
 jest.mock('./ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));
 
+/**
+ * Only `renderQrPng` is faked; the id derivation and the token signing stay real, because they are
+ * what half of this file asserts on. Real PNG encoding costs ~100ms per seat, which every test
+ * here pays twice for a byte string none of them decode — `qr.spec.ts` owns the "it is a real PNG"
+ * assertion. The fake is derived from the token rather than constant, so "each seat gets its own
+ * QR" and "a redelivery renders the identical one" both still mean something.
+ */
+jest.mock('./qr', () => ({
+  ...jest.requireActual('./qr'),
+  renderQrPng: jest.fn(),
+}));
+
 const renderTicketPdfMock = jest.mocked(renderTicketPdf);
+const renderQrPngMock = jest.mocked(renderQrPng);
 
 const QR_SECRET = 'qr-secret';
 
@@ -280,6 +293,9 @@ describe('TicketsService.handleOrderPaid', () => {
   beforeEach(() => {
     renderTicketPdfMock.mockReset();
     renderTicketPdfMock.mockResolvedValue(Buffer.from('rendered-pdf'));
+
+    renderQrPngMock.mockReset();
+    renderQrPngMock.mockImplementation(async (token) => Buffer.from(`qr-png:${token}`));
   });
 
   it('is a no-op when the message was already processed', async () => {
