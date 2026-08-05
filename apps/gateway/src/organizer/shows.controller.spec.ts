@@ -9,29 +9,29 @@ import { GatewayOrganizerShowsController } from './shows.controller';
 
 describe('GatewayOrganizerShowsController', () => {
   const amqp = { request: jest.fn().mockResolvedValue('result') };
-  const controller = new GatewayOrganizerShowsController(amqp as never);
+  const shows = { listWithSales: jest.fn().mockResolvedValue([]) };
+  const controller = new GatewayOrganizerShowsController(amqp as never, shows as never);
   const req = { user: { id: 'u1' } };
   const startsAt = '2026-12-01T20:00:00.000Z';
 
-  beforeEach(() => amqp.request.mockClear());
+  beforeEach(() => {
+    amqp.request.mockClear();
+    shows.listWithSales.mockClear();
+  });
 
-  it('forwards the show list with the caller and no filter', async () => {
+  // Not a passthrough: the list is the one organizer route that merges sales in, so the
+  // controller's job is the parse and the delegation.
+  it('delegates the show list to the merging service', async () => {
     await controller.getList(req, {});
 
-    expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({
-        routingKey: 'organizer.shows.myShows',
-        payload: { userId: 'u1' },
-      }),
-    );
+    expect(shows.listWithSales).toHaveBeenCalledWith('u1', {});
+    expect(amqp.request).not.toHaveBeenCalled();
   });
 
   it('passes a status filter through', async () => {
     await controller.getList(req, { status: 'draft' });
 
-    expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ payload: { userId: 'u1', status: 'draft' } }),
-    );
+    expect(shows.listWithSales).toHaveBeenCalledWith('u1', { status: 'draft' });
   });
 
   // The parse runs before the RPC, so a bad query never reaches the broker. Asserting the
@@ -39,7 +39,7 @@ describe('GatewayOrganizerShowsController', () => {
   // `schema.parse()` throws, which Nest renders as a 500 — bad input has to be a 400.
   it('rejects a status that is not a show status', () => {
     expect(() => controller.getList(req, { status: 'sold-out' })).toThrow(BadRequestException);
-    expect(amqp.request).not.toHaveBeenCalled();
+    expect(shows.listWithSales).not.toHaveBeenCalled();
   });
 
   it('forwards a single show read by id', async () => {

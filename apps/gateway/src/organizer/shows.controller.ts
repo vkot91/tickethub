@@ -25,6 +25,7 @@ import {
 import { rpcRequest } from '@tickethub/rmq';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
+import { OrganizerShowsService } from './shows.service';
 
 /**
  * Validate a request body or query here rather than via `@Body(new ZodValidationPipe(...))`: a
@@ -50,14 +51,16 @@ function parse<S extends ZodSchema>(schema: S, value: unknown): TypeOf<S> {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('organizer')
 export class GatewayOrganizerShowsController {
-  constructor(private readonly amqp: AmqpConnection) {}
+  constructor(
+    private readonly amqp: AmqpConnection,
+    private readonly shows: OrganizerShowsService,
+  ) {}
 
+  // The one route here that is not a single hop: sold/capacity/revenue come from Orders and Shows
+  // and are merged in the service. Everything else below still RPCs directly.
   @Get()
   getList(@Req() req: { user: { id: string } }, @Query() query: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS, {
-      userId: req.user.id,
-      ...parse(organizerShowsQuerySchema, query),
-    });
+    return this.shows.listWithSales(req.user.id, parse(organizerShowsQuerySchema, query));
   }
 
   @Get(':id')
