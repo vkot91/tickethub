@@ -56,6 +56,25 @@ describe('PricingTab', () => {
     expect(screen.getByText('1 OF 2 SECTIONS ON SALE · 4 SEATS')).toBeInTheDocument();
   });
 
+  // What a venue move leaves behind: the bands are still there, nothing is assigned. Without the
+  // note it reads like the assignments failed to save.
+  it('explains bands with no assignments, and stays quiet once one is assigned', async () => {
+    mockGateway({
+      [`/organizer/shows/${draftShow.id}/pricing`]: {
+        status: 200,
+        body: { ...savedPricing, assignments: [] },
+      },
+    });
+
+    renderWithQuery(<PricingTab show={draftShow} />);
+
+    expect(await screen.findByText(/No section is on sale yet/)).toBeInTheDocument();
+
+    await assignSection('Parterre', 'Front VIP');
+
+    expect(screen.queryByText(/No section is on sale yet/)).not.toBeInTheDocument();
+  });
+
   it('sends $19.99 as 1999 cents', async () => {
     const fetchMock = mockGateway();
 

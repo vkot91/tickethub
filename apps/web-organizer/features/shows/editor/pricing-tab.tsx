@@ -256,6 +256,15 @@ function PricingForm({ show, pricing, sections }: PricingFormProps) {
           </span>
         </div>
 
+        {/* Bands but nothing assigned is what a venue move leaves behind — without this line it
+            reads like the assignments failed to save. */}
+        {!locked && bands.length > 0 && sections.every((section) => !assignments[section.id]) && (
+          <p className="mb-3 text-[13px] text-fg-muted">
+            No section is on sale yet. If you just changed the venue, this hall’s sections are new —
+            your bands are still here, they only need re-assigning.
+          </p>
+        )}
+
         <div className="flex flex-col gap-2.5">
           {sections.map((section) => {
             const assigned = bands.find((band) => band.key === assignments[section.id]);

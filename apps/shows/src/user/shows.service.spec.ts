@@ -55,6 +55,17 @@ describe('UserShowsService.catalog', () => {
     expect(res.items).toEqual([]); // show's own id is not > itself
     expect(res.nextCursor).toBeNull();
   });
+
+  // `String(date)` gives "Tue Dec 01 2026 22:00:00 GMT+0200 (…)" — parseable by `new Date()` on
+  // the server that produced it and nowhere reliably else. Both public reads return ISO 8601.
+  it('returns startsAt as ISO 8601', async () => {
+    const startsAt = new Date('2026-12-01T20:00:00.000Z');
+    await seedShowGraph(db, { sections: [], show: { startsAt } });
+
+    const res = await svc.catalog({ limit: 20 });
+
+    expect(res.items[0].startsAt).toBe('2026-12-01T20:00:00.000Z');
+  });
 });
 
 describe('UserShowsService.detail', () => {
@@ -65,6 +76,15 @@ describe('UserShowsService.detail', () => {
 
     expect(res.id).toBe(show.id);
     expect(res.title).toBe('Show');
+  });
+
+  it('returns startsAt as ISO 8601', async () => {
+    const { show } = await seedShowGraph(db, {
+      sections: [],
+      show: { startsAt: new Date('2026-12-01T20:00:00.000Z') },
+    });
+
+    expect((await svc.detail(show.id)).startsAt).toBe('2026-12-01T20:00:00.000Z');
   });
 
   it('throws NotFound when the show is missing', async () => {

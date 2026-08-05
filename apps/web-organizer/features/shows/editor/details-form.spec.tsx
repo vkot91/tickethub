@@ -62,7 +62,7 @@ describe('DetailsForm', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 
-  it('warns that a venue change clears the pricing, and saves nothing until it is confirmed', async () => {
+  it('warns that a venue change unassigns every section, and saves nothing until it is confirmed', async () => {
     const fetchMock = mockGateway();
 
     renderWithQuery(<DetailsForm show={draftShow} />);
@@ -74,7 +74,7 @@ describe('DetailsForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByRole('alertdialog')).toHaveTextContent(
-      "Changing the venue clears this show's pricing.",
+      /Every section goes back to Not on sale.*price bands and their prices are kept/,
     );
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false);
 
