@@ -7,6 +7,7 @@ import {
   posterUploadUrlSchema,
   publishChecklistSchema,
   putPricingSchema,
+  showNameSchema,
   showPricingSchema,
   showSummarySchema,
   updateShowSchema,
@@ -15,6 +16,7 @@ import {
   type OrganizerShow,
   type PosterUploadUrl,
   type PublishChecklist,
+  type ShowName,
   type ShowPricing,
   type VenueDetail,
   type VenueSummary,
@@ -25,6 +27,8 @@ export const showKeys = {
   all: ['shows'] as const,
   // The status lives in the URL and the route filters server-side, so it belongs in the key.
   list: (status?: string) => [...showKeys.all, 'list', status ?? 'all'] as const,
+  // The dashboard's show picker — id/title only, never the sales-shaped `list` above.
+  names: () => [...showKeys.all, 'names'] as const,
   byId: (showId: string) => [...showKeys.all, showId] as const,
   // Its own key rather than part of `byId`: the pricing PUT invalidates this without refetching
   // the show, and the preview tab reads it without caring about the show's title.
@@ -47,12 +51,19 @@ export const venueKeys = {
 // Both list routes return a bare array, not a `{ items }` page — parsed as arrays rather than
 // wrapped on the client to look like the buyer's `catalogPageSchema`.
 export const organizerShowsSchema = z.array(organizerShowSchema);
+export const showNamesSchema = z.array(showNameSchema);
 const venuesSchema = z.array(venueSummarySchema);
 
 /** Shared with `app/shows/page.tsx`, which prefetches this exact path through `serverApi`.
  *  One builder, so the server seed and the client refetch cannot drift apart. */
 export function organizerShowsPath(status?: string): string {
   return `/organizer/shows${status ? `?status=${status}` : ''}`;
+}
+
+/** Never prefetched: the picker's options don't gate first paint, so this is a client-only path
+ *  with no server seed to keep in sync. */
+export function showNamesPath(): string {
+  return '/organizer/shows/names';
 }
 
 /** The editor's own path builder, shared with `app/shows/[id]/edit/page.tsx`'s prefetch for the
@@ -67,6 +78,10 @@ export function fetchOrganizerShow(showId: string): Promise<OrganizerShow> {
 
 export function fetchOrganizerShows(status?: string): Promise<OrganizerShow[]> {
   return clientApi(organizerShowsPath(status), {}, organizerShowsSchema);
+}
+
+export function fetchShowNames(): Promise<ShowName[]> {
+  return clientApi(showNamesPath(), {}, showNamesSchema);
 }
 
 export function fetchVenues(): Promise<VenueSummary[]> {

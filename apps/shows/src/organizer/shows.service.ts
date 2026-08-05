@@ -14,6 +14,8 @@ import type {
   CreateShowDto,
   OrganizerShow,
   OrganizerShowsQuery,
+  SeatTier,
+  ShowName,
   UpdateShowDto,
 } from '@tickethub/contracts';
 import { OrganizerPublishingService } from './publishing.service';
@@ -81,31 +83,79 @@ export class OrganizerShowsService {
   }
 
   /**
-   * Seats on sale per show — the denominator behind every "sold / capacity" the console shows.
-   * Only sections the show actually prices count; an unpriced section is furniture, not stock.
+   * Per-show facts the console's numbers need: seats on sale — the denominator behind every
+   * "sold / capacity" — and the date the show went on sale, which the dashboard's graph clips to.
+   * Only sections the show actually prices count towards capacity; an unpriced section is
+   * furniture, not stock.
    *
    * Batched on purpose: the dashboard asks about several shows at once, and one round trip per
-   * show is how a dashboard becomes slow. Ownership was resolved by the caller.
+   * show is how a dashboard becomes slow. `saleStartsAt` rides along rather than costing its own
+   * RPC — it is a column on the row this already scans. Ownership was resolved by the caller.
    */
-  async capacity(showIds: string[]): Promise<{ showId: string; capacity: number }[]> {
+  async capacity(
+    showIds: string[],
+  ): Promise<{ showId: string; capacity: number; saleStartsAt: string | null }[]> {
     if (showIds.length === 0) return [];
 
+    // Left-joined down from `shows` rather than up from the pricing rows: a show with nothing
+    // priced still has to come back (at zero), and starting from `shows` is also what puts
+    // `saleStartsAt` in reach without a second query.
     const counted = await this.db
       .select({
-        showId: showSectionPricing.showId,
+        showId: shows.id,
         capacity: sql<number>`count(${seats.id})::int`,
+        saleStartsAt: shows.saleStartsAt,
       })
-      .from(showSectionPricing)
-      .innerJoin(rows, eq(rows.sectionId, showSectionPricing.sectionId))
-      .innerJoin(seats, eq(seats.rowId, rows.id))
-      .where(inArray(showSectionPricing.showId, showIds))
-      .groupBy(showSectionPricing.showId);
+      .from(shows)
+      .leftJoin(showSectionPricing, eq(showSectionPricing.showId, shows.id))
+      .leftJoin(rows, eq(rows.sectionId, showSectionPricing.sectionId))
+      .leftJoin(seats, eq(seats.rowId, rows.id))
+      .where(inArray(shows.id, showIds))
+      .groupBy(shows.id);
 
-    const byShow = new Map(counted.map((row) => [row.showId, row.capacity]));
+    const byShow = new Map(counted.map((row) => [row.showId, row]));
 
-    // A show with nothing priced has no group above; it still owes the caller a row, or the
-    // dashboard silently drops the show instead of showing it at zero.
-    return showIds.map((showId) => ({ showId, capacity: byShow.get(showId) ?? 0 }));
+    // Driven by the *requested* ids: a show that no longer exists still owes the caller a row, or
+    // the dashboard silently drops it instead of showing it at zero.
+    return showIds.map((showId) => ({
+      showId,
+      capacity: byShow.get(showId)?.capacity ?? 0,
+      saleStartsAt: byShow.get(showId)?.saleStartsAt?.toISOString() ?? null,
+    }));
+  }
+
+  /**
+   * `id`/`title` only, for the dashboard's show picker. Same join as `showIds` — an empty list for
+   * a user who has never authored anything, not a 404 — rather than `myShows`'s venue join and
+   * sales-shaped zeros a `<Select>` never reads.
+   */
+  async showNames(userId: string): Promise<ShowName[]> {
+    return this.db
+      .select({ id: shows.id, title: shows.title })
+      .from(shows)
+      .innerJoin(organizers, eq(organizers.id, shows.organizerId))
+      .where(eq(organizers.userId, userId))
+      .orderBy(desc(shows.startsAt));
+  }
+
+  /**
+   * What to label a band in the dashboard's "sales by band" card. One query and three columns —
+   * the buyer's `detail()` reads the whole show row first to drive a 404 this caller has no use
+   * for, and refuses a draft besides. Ownership was resolved by the caller, as with `capacity`.
+   *
+   * Unfiltered by `show_section_pricing`, unlike the buyer's: that join hides a band pricing no
+   * section, because advertising an unbuyable price is a lie. A band that already *sold* is not
+   * hypothetical, and dropping it here would leave those sales labelled blank.
+   */
+  async tierNames(showId: string): Promise<{ id: string; name: string; tier: SeatTier }[]> {
+    return (
+      this.db
+        .select({ id: ticketTypes.id, name: ticketTypes.name, tier: ticketTypes.tier })
+        .from(ticketTypes)
+        .where(eq(ticketTypes.showId, showId))
+        // Dearest first, the order the console lists bands in everywhere else.
+        .orderBy(desc(ticketTypes.priceCents), ticketTypes.name)
+    );
   }
 
   async myShows(userId: string, query: OrganizerShowsQuery = {}): Promise<OrganizerShow[]> {

@@ -63,6 +63,13 @@ export class GatewayOrganizerShowsController {
     return this.shows.listWithSales(req.user.id, parse(organizerShowsQuerySchema, query));
   }
 
+  // `id`/`title` only, for the dashboard's show picker — a direct RPC, unlike `getList`, because
+  // there is nothing here for the gateway to merge in.
+  @Get('names')
+  getNames(@Req() req: { user: { id: string } }) {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.NAMES, { userId: req.user.id });
+  }
+
   @Get(':id')
   getOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
     return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET, {
