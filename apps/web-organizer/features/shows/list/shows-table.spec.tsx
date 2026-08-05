@@ -68,6 +68,18 @@ describe('ShowsTable', () => {
     ).not.toBeInTheDocument();
   });
 
+  // The only path to the scanner that does not involve pasting a uuid into the address bar.
+  it('sends a published show to the scanner, already scoped, and never a draft', () => {
+    render(<ShowsTable shows={[publishedShow, draftShow]} onCancel={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(
+      within(rowFor('Demo Concert')).getByRole('link', { name: 'Scan tickets' }),
+    ).toHaveAttribute('href', `/scanner?showId=${publishedShow.id}`);
+    expect(
+      within(rowFor('Neon Nights')).queryByRole('link', { name: 'Scan tickets' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('opens the editor when the row is clicked', async () => {
     push.mockClear();
     render(<ShowsTable shows={[draftShow]} onCancel={vi.fn()} onDelete={vi.fn()} />);

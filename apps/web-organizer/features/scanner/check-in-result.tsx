@@ -47,10 +47,10 @@ export function CheckInPanel({ result }: { result: CheckInResult }) {
           <p className="font-display text-lg font-semibold">{title}</p>
         </div>
 
+        {/* Seat only — the show is named by the picker at the top of the screen, and repeating it
+            here cost two RPCs a scan to re-send a constant. */}
         {result.seatLabel ? (
-          <p className="text-sm text-fg-secondary">
-            {result.showTitle} · seat {result.seatLabel}
-          </p>
+          <p className="text-sm text-fg-secondary">Seat {result.seatLabel}</p>
         ) : null}
 
         {result.result === 'used' && result.checkedInAt ? (

@@ -1,8 +1,11 @@
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
 import { type Metadata } from 'next';
 
-import { Card } from '@tickethub/ui';
+import { getServerQueryClient } from '@tickethub/web-kit/server';
 
 import { Scanner } from '@/features/scanner/scanner';
+import { organizerShowsPath, organizerShowsSchema, showKeys } from '@/features/shows/api';
+import { serverApi } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Scanner' };
 
@@ -13,18 +16,18 @@ export default async function ScannerPage({
 }) {
   const { showId } = await searchParams;
 
-  // A scanner without a gate cannot scan: admitting against "any show you own" is what lets
-  // tonight's attendant burn next week's ticket. ponytail: the show picker is screen K's job —
-  // until then the gate comes in on the query string.
-  if (!showId) {
-    return (
-      <Card padding="lg" radius="panel">
-        <p className="text-sm text-fg-secondary">
-          Pick a show to scan for — open this page as <code>/scanner?showId=…</code>.
-        </p>
-      </Card>
-    );
-  }
+  const queryClient = getServerQueryClient();
 
-  return <Scanner showId={showId} />;
+  // Seeded rather than fetched client-side, unlike the dashboard's picker: here the gate cannot do
+  // anything at all until it has picked a show, so the options are first paint.
+  await queryClient.prefetchQuery({
+    queryKey: showKeys.list('published'),
+    queryFn: () => serverApi(organizerShowsPath('published'), {}, organizerShowsSchema),
+  });
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <Scanner showId={showId} />
+    </HydrationBoundary>
+  );
 }

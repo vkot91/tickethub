@@ -41,6 +41,26 @@ export function verifyTicketToken(token: string, secret: string): string | null 
   return ticketId;
 }
 
+/**
+ * The code a human reads off the ticket — the first eight hex characters of the derived id. It
+ * carries no signature, so it is never a credential on its own: the gate resolves it to a real
+ * `qrToken` and only then runs the admission, and the lookup is always scoped to one show.
+ */
+export const displayCode = (ticketId: string) =>
+  `TH-${ticketId.slice(0, 4)}-${ticketId.slice(4, 8)}`.toUpperCase();
+
+const DISPLAY_CODE = /^TH-([0-9a-f]{4})-([0-9a-f]{4})$/i;
+
+/**
+ * The id prefix a display code names, or `null` for anything that is not one. Shape-checked
+ * before any query, so a forged token still costs a string comparison rather than a table scan.
+ */
+export function parseDisplayCode(code: string): string | null {
+  const match = DISPLAY_CODE.exec(code.trim());
+
+  return match ? `${match[1]}${match[2]}`.toLowerCase() : null;
+}
+
 export function renderQrPng(token: string): Promise<Buffer> {
   return QRCode.toBuffer(token, { type: 'png', errorCorrectionLevel: 'M' });
 }

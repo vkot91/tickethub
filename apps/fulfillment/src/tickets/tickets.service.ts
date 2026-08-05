@@ -16,15 +16,11 @@ import {
   type TicketList,
   type TicketPdfUrl,
 } from '@tickethub/contracts';
-import { signTicketToken, renderQrPng, deriveTicketId } from './qr';
+import { signTicketToken, renderQrPng, deriveTicketId, displayCode } from './qr';
 import { renderTicketPdf } from './ticket-pdf';
 
 /** Long enough to follow one redirect, short enough that a leaked URL is worthless. */
 const PDF_URL_TTL_SECONDS = 60;
-
-/** Display only. Never parsed, never used for lookup — the QR token is the only credential. */
-const displayCode = (ticketId: string) =>
-  `TH-${ticketId.slice(0, 4)}-${ticketId.slice(4, 8)}`.toUpperCase();
 
 @Injectable()
 export class TicketsService {

@@ -28,17 +28,19 @@ export type CheckInDto = z.infer<typeof checkInSchema>;
  * caller's own shows — because from the gate's point of view those are the same situation, and
  * neither reveals anything about the show the ticket *is* for.
  *
- * `checkedInCount`/`capacity` describe **the gate**, not the scanned ticket, so they ride along
- * with every result — including a rejection — and the counter on screen stays correct without a
- * second request.
+ * `checkedInCount` describes **the gate**, not the scanned ticket, so it rides along with every
+ * result — including a rejection — and the counter on screen stays correct without a second
+ * request.
+ *
+ * Nothing about the *show* is here. The title and the seat count are the same on the first scan and
+ * the four-hundredth, and the scanner already holds both: it picked the show from a list that
+ * carries them. Merging them in per scan cost two RPCs a scan to re-send a constant.
  */
 export const checkInResultSchema = z.object({
   result: z.enum(['valid', 'used', 'invalid', 'wrongShow']),
   seatLabel: z.string().nullable(),
-  showTitle: z.string().nullable(),
   /** When it was *first* admitted — on `used` this is the original scan, never now. */
   checkedInAt: z.string().nullable(),
   checkedInCount: z.number().int(),
-  capacity: z.number().int(),
 });
 export type CheckInResult = z.infer<typeof checkInResultSchema>;
