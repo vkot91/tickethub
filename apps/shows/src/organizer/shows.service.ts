@@ -232,6 +232,8 @@ export class OrganizerShowsService {
       this.db.transaction(async (tx) => {
         // The old sections are in a different building — the composite FK would reject them
         // anyway, so dropping them here makes the data loss intentional and testable.
+        // `ticket_types` deliberately survive: a band is a name, a tier and a price, none of them
+        // venue-bound, and deleting them would only make the organizer retype the same numbers.
         if (movingVenue) {
           await tx.delete(showSectionPricing).where(eq(showSectionPricing.showId, showId));
         }

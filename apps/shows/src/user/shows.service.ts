@@ -45,7 +45,7 @@ export class UserShowsService {
 
     const items = rowsOut
       .slice(0, q.limit)
-      .map((e) => ({ ...e, startsAt: String(e.startsAt) })) as ShowSummary[];
+      .map((e) => ({ ...e, startsAt: e.startsAt.toISOString() })) as ShowSummary[];
     const nextCursor = rowsOut.length > q.limit ? rowsOut[q.limit].id : null;
     return { items, nextCursor };
   }
@@ -74,7 +74,7 @@ export class UserShowsService {
       id: e.id,
       title: e.title,
       description: e.description,
-      startsAt: String(e.startsAt),
+      startsAt: e.startsAt.toISOString(),
       posterUrl: e.posterUrl,
       status: e.status,
       venueId: e.venueId,

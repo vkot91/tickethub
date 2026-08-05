@@ -115,7 +115,9 @@ export function DetailsForm({ show }: DetailsFormProps) {
             label="Venue"
             placeholder="Pick a hall"
             disabled={!isDraft}
-            hint={isDraft ? "Changing the venue clears the pricing you've set." : undefined}
+            hint={
+              isDraft ? 'Changing the venue unassigns every section. Bands are kept.' : undefined
+            }
             options={(venues ?? []).map((venue) => ({
               value: venue.id,
               label: `${venue.name} — ${venue.city ?? '—'} · ${venue.seatCount} seats`,
@@ -139,7 +141,7 @@ export function DetailsForm({ show }: DetailsFormProps) {
           open
           onOpenChange={(open) => !open && setPendingVenueChange(undefined)}
           title="Change venue?"
-          body="Changing the venue clears this show's pricing."
+          body="Every section goes back to Not on sale — the new hall has different sections. Your price bands and their prices are kept, ready to re-assign."
           confirmLabel="Change venue"
           isPending={save.isPending}
           onConfirm={() => save.mutate(pendingVenueChange)}

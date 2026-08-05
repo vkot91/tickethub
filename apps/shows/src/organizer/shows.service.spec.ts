@@ -360,6 +360,23 @@ describe('OrganizerShowsService.updateShow', () => {
     expect(pricing).toEqual([]);
   });
 
+  // The other half of the move, decided 2026-08-05: a band is a name, a tier and a price, none of
+  // which is about a building. The organizer re-assigns sections in the new hall and keeps
+  // "Front VIP · $90" rather than retyping it. Only the assignments are venue-bound.
+  it('keeps the price bands when a draft moves to another venue', async () => {
+    const { show, organizer } = await seedShowGraph(db, {
+      show: { status: 'draft' },
+      sections: [{ name: 'Stalls', rows: 1, seatsPerRow: 2 }],
+      ticketType: { name: 'Front VIP', tier: 'vip', priceCents: 9_000 },
+    });
+    const [other] = await db.insert(venues).values({ name: 'Another Hall' }).returning();
+
+    await svc.updateShow(organizer.userId, show.id, { venueId: other.id });
+
+    const bands = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+    expect(bands).toMatchObject([{ name: 'Front VIP', priceCents: 9_000 }]);
+  });
+
   it('keeps the pricing when a draft edit leaves the venue alone', async () => {
     const { show, organizer } = await seedShowGraph(db, {
       show: { status: 'draft' },
