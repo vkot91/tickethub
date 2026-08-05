@@ -1,10 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { orders, seatReservations, type Db } from '@tickethub/db';
-import type { OrderStats, RecentOrderRow } from '@tickethub/contracts';
+import type { OrderStats, RecentOrderRow, ShowSales } from '@tickethub/contracts';
 
 const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_RECENT_LIMIT = 10;
+
+/**
+ * What counts as money and what counts as a sale. `stats` and `salesByShow` answer these same two
+ * questions at different grains — one total vs one row per show — so the definitions live once.
+ * Two copies drift, and then the dashboard and the show list disagree about the same show.
+ */
+const sumPaidRevenueCents = sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'paid'), 0)::int`;
+
+const confirmedSeatsForShows = (showIds: string[]) =>
+  and(inArray(seatReservations.showId, showIds), eq(seatReservations.status, 'confirmed'));
 
 const dayKey = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -32,7 +42,7 @@ export class OrganizerStatsService {
     const [[money], tiers, days] = await Promise.all([
       this.db
         .select({
-          revenueCents: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'paid'), 0)::int`,
+          revenueCents: sumPaidRevenueCents,
           refundedCents: sql<number>`coalesce(sum(${orders.totalCents}) filter (where ${orders.status} = 'refunded'), 0)::int`,
         })
         .from(orders)
@@ -44,12 +54,7 @@ export class OrganizerStatsService {
           soldCount: sql<number>`count(*)::int`,
         })
         .from(seatReservations)
-        .where(
-          and(
-            inArray(seatReservations.showId, params.showIds),
-            eq(seatReservations.status, 'confirmed'),
-          ),
-        )
+        .where(confirmedSeatsForShows(params.showIds))
         .groupBy(seatReservations.ticketTypeId),
 
       this.db
@@ -77,6 +82,39 @@ export class OrganizerStatsService {
       byDay: zeroFill(days, from, to),
       byTier: tiers,
     };
+  }
+
+  /**
+   * The same two numbers as `stats`, one row per show, for the console's list. Every requested id
+   * comes back — a show nobody bought from reads zero rather than vanishing from the table.
+   */
+  async salesByShow(params: { showIds: string[] }): Promise<ShowSales[]> {
+    if (params.showIds.length === 0) return [];
+
+    const [revenueRows, soldRows] = await Promise.all([
+      this.db
+        .select({ showId: orders.showId, revenueCents: sumPaidRevenueCents })
+        .from(orders)
+        .where(inArray(orders.showId, params.showIds))
+        .groupBy(orders.showId),
+
+      this.db
+        .select({ showId: seatReservations.showId, soldCount: sql<number>`count(*)::int` })
+        .from(seatReservations)
+        .where(confirmedSeatsForShows(params.showIds))
+        .groupBy(seatReservations.showId),
+    ]);
+
+    const revenueCentsByShowId = new Map(revenueRows.map((row) => [row.showId, row.revenueCents]));
+    const soldCountByShowId = new Map(soldRows.map((row) => [row.showId, row.soldCount]));
+
+    // Driven by the *requested* ids, not by what the group-bys found: a show nobody bought from
+    // has to come back at zero, or it silently disappears from the caller's table.
+    return params.showIds.map((showId) => ({
+      showId,
+      soldCount: soldCountByShowId.get(showId) ?? 0,
+      revenueCents: revenueCentsByShowId.get(showId) ?? 0,
+    }));
   }
 
   async recent(params: { showIds: string[]; limit?: number }): Promise<RecentOrderRow[]> {

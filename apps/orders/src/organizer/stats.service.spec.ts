@@ -12,6 +12,10 @@ beforeEach(async () => {
   svc = new OrganizerStatsService(db);
 });
 
+const throwOnRead = () => {
+  throw new Error('salesByShow must not query for an empty showIds');
+};
+
 const day = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
 
 /** One order with one confirmed-or-otherwise reservation, on a given day. */
@@ -161,6 +165,63 @@ describe('OrganizerStatsService.stats', () => {
 
     expect(stats.revenueCents).toBe(0);
     expect(stats.soldCount).toBe(0);
+  });
+});
+
+describe('OrganizerStatsService.salesByShow', () => {
+  // Same rule as `stats`, and the one that matters most here: an unfiltered group-by would hand
+  // one organizer every show on the platform.
+  it('returns nothing for an empty showIds, without reading anything', async () => {
+    const exploding = { select: () => throwOnRead() } as never;
+
+    await expect(
+      new OrganizerStatsService(exploding).salesByShow({ showIds: [] }),
+    ).resolves.toEqual([]);
+  });
+
+  it('keeps a show with no sales in the list, at zero', async () => {
+    const sold = await seedShowGraph(db);
+    const quiet = await seedShowGraph(db);
+
+    await seedOrder({
+      showId: sold.show.id,
+      ticketTypeId: sold.ticketType!.id,
+      status: 'paid',
+      totalCents: 4500,
+      createdAt: day('2026-07-10'),
+      seatId: '11111111-2222-3333-4444-555555555555',
+    });
+
+    await expect(svc.salesByShow({ showIds: [sold.show.id, quiet.show.id] })).resolves.toEqual([
+      { showId: sold.show.id, soldCount: 1, revenueCents: 4500 },
+      { showId: quiet.show.id, soldCount: 0, revenueCents: 0 },
+    ]);
+  });
+
+  // The test that catches `stats` and `salesByShow` drifting apart on what "revenue" means.
+  it('excludes a refunded order from revenueCents', async () => {
+    const { show, ticketType } = await seedShowGraph(db);
+
+    await seedOrder({
+      showId: show.id,
+      ticketTypeId: ticketType!.id,
+      status: 'paid',
+      totalCents: 2000,
+      createdAt: day('2026-07-10'),
+      seatId: '11111111-1111-1111-1111-111111111111',
+    });
+    await seedOrder({
+      showId: show.id,
+      ticketTypeId: ticketType!.id,
+      status: 'refunded',
+      totalCents: 9000,
+      createdAt: day('2026-07-11'),
+      seatId: '22222222-2222-2222-2222-222222222222',
+    });
+
+    const [row] = await svc.salesByShow({ showIds: [show.id] });
+
+    expect(row.revenueCents).toBe(2000);
   });
 });
 
