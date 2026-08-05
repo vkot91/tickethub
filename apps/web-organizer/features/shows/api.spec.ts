@@ -15,7 +15,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// `updateShowSchema` now lives in `@tickethub/contracts` and is tested there.
 describe('shows api keys', () => {
   it('keys a list by its status, so a filtered list is not served from the all-shows cache', () => {
     expect(showKeys.list('draft')).toEqual(['shows', 'list', 'draft']);
@@ -66,7 +65,7 @@ describe('the void routes resolve on an empty body', () => {
   it('accepts what putPricing actually returns', async () => {
     mockGateway();
 
-    await expect(putPricing(SHOW_ID, { ticketTypes: [], assignments: [] })).resolves.not.toThrow();
+    await expect(putPricing(SHOW_ID, { priceBands: [], assignments: [] })).resolves.not.toThrow();
   });
 
   it('accepts what publishShow actually returns', async () => {
@@ -75,7 +74,6 @@ describe('the void routes resolve on an empty body', () => {
     await expect(publishShow(SHOW_ID)).resolves.not.toThrow();
   });
 
-  // The body is still validated on the way out — a bad price never reaches the gateway.
   it('rejects a malformed pricing body before it is sent', () => {
     const fetchMock = mockGateway();
 
@@ -83,7 +81,7 @@ describe('the void routes resolve on an empty body', () => {
     // request is built, which is the point — a negative price never reaches the gateway.
     expect(() =>
       putPricing(SHOW_ID, {
-        ticketTypes: [{ key: 'k', name: 'n', tier: 'vip', priceCents: -1 }],
+        priceBands: [{ key: 'k', name: 'n', tier: 'vip', priceCents: -1 }],
         assignments: [],
       }),
     ).toThrow();
@@ -93,9 +91,6 @@ describe('the void routes resolve on an empty body', () => {
 });
 
 describe('deleteShow', () => {
-  // `ShowsService.deleteShow` is `Promise<void>`, so the gateway answers 200 with an empty body.
-  // Parsing that against a schema rejected the mutation, which skipped `onSuccess` — the list was
-  // never invalidated and the deleted row stayed on screen until a reload.
   it('resolves on the empty body the route actually returns', async () => {
     mockGateway();
 

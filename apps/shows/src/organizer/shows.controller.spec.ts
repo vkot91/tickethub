@@ -1,10 +1,10 @@
 import { OrganizerShowsController } from './shows.controller';
 
-// Thin RPC controller — verify each pattern delegates to the matching service method.
 describe('OrganizerShowsController', () => {
   const svc = {
     showIds: jest.fn().mockResolvedValue(['s1']),
-    capacity: jest.fn().mockResolvedValue([{ showId: 's1', capacity: 12 }]),
+    summaries: jest.fn().mockResolvedValue([{ showId: 's1', title: 'Hamlet', capacity: 12 }]),
+    seatLabels: jest.fn().mockResolvedValue({ seat1: 'Stalls A1' }),
     myShows: jest.fn().mockResolvedValue([{ id: 's1' }]),
     createShow: jest.fn().mockResolvedValue({ id: 's1' }),
     updateShow: jest.fn().mockResolvedValue({ id: 's1' }),
@@ -13,8 +13,8 @@ describe('OrganizerShowsController', () => {
   };
   const publishing = {
     putPricing: jest.fn().mockResolvedValue(undefined),
-    getPricing: jest.fn().mockResolvedValue({ ticketTypes: [], assignments: [] }),
-    publishChecklist: jest.fn().mockResolvedValue({ hasTicketTypes: true }),
+    getPricing: jest.fn().mockResolvedValue({ priceBands: [], assignments: [] }),
+    publishChecklist: jest.fn().mockResolvedValue({ hasPriceBands: true }),
     publishShow: jest.fn().mockResolvedValue(undefined),
   };
   const poster = {
@@ -31,11 +31,18 @@ describe('OrganizerShowsController', () => {
     expect(svc.showIds).toHaveBeenCalledWith('u1');
   });
 
-  it('delegates capacity, batched', async () => {
-    await expect(controller.capacity({ showIds: ['s1'] })).resolves.toEqual([
-      { showId: 's1', capacity: 12 },
+  it('delegates summaries, batched', async () => {
+    await expect(controller.summaries({ showIds: ['s1'] })).resolves.toEqual([
+      { showId: 's1', title: 'Hamlet', capacity: 12 },
     ]);
-    expect(svc.capacity).toHaveBeenCalledWith(['s1']);
+    expect(svc.summaries).toHaveBeenCalledWith(['s1']);
+  });
+
+  it('delegates seatLabels with both the show and the seats', async () => {
+    await expect(controller.seatLabels({ showId: 's1', seatIds: ['seat1'] })).resolves.toEqual({
+      seat1: 'Stalls A1',
+    });
+    expect(svc.seatLabels).toHaveBeenCalledWith('s1', ['seat1']);
   });
 
   it('delegates myShows with its status filter', async () => {
@@ -76,7 +83,7 @@ describe('OrganizerShowsController', () => {
   });
 
   it('delegates putPricing to the publishing service', async () => {
-    const dto = { ticketTypes: [], assignments: [] };
+    const dto = { priceBands: [], assignments: [] };
 
     await controller.putPricing({ userId: 'u1', showId: 's1', dto });
 
@@ -85,7 +92,7 @@ describe('OrganizerShowsController', () => {
 
   it('delegates getPricing to the publishing service', async () => {
     await expect(controller.pricing({ userId: 'u1', showId: 's1' })).resolves.toEqual({
-      ticketTypes: [],
+      priceBands: [],
       assignments: [],
     });
     expect(publishing.getPricing).toHaveBeenCalledWith('u1', 's1');
@@ -93,7 +100,7 @@ describe('OrganizerShowsController', () => {
 
   it('delegates publishChecklist', async () => {
     await expect(controller.publishChecklist({ userId: 'u1', showId: 's1' })).resolves.toEqual({
-      hasTicketTypes: true,
+      hasPriceBands: true,
     });
     expect(publishing.publishChecklist).toHaveBeenCalledWith('u1', 's1');
   });

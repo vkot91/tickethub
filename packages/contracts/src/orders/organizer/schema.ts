@@ -15,10 +15,9 @@ export const statsByDaySchema = z.array(
     count: z.number().int(),
   }),
 );
-export type StatsByDay = z.infer<typeof statsByDaySchema>;
 
 // The half of the dashboard `apps/orders` can answer on its own: capacity, tier names and
-// check-ins are merged in by the gateway from Shows and Fulfillment.
+// check-ins are merged in by the gateway from Shows and Tickets.
 export const orderStatsSchema = z.object({
   soldCount: z.number().int(),
   revenueCents: z.number().int(),
@@ -26,7 +25,7 @@ export const orderStatsSchema = z.object({
   byDay: statsByDaySchema,
   byTier: z.array(
     z.object({
-      ticketTypeId: z.string().uuid(),
+      bandId: z.string().uuid(),
       soldCount: z.number().int(),
     }),
   ),

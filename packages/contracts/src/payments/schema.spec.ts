@@ -4,7 +4,7 @@ import { PAYMENTS_MESSAGE_PATTERNS } from './wire';
 
 describe('payments wire names', () => {
   it('mirrors each key onto its wire value', () => {
-    expect(PAYMENTS_MESSAGE_PATTERNS.CREATE_INTENT).toBe('payments.createIntent');
+    expect(PAYMENTS_MESSAGE_PATTERNS.CREATE_INTENT).toBe('user.payments.createIntent');
     expect(PAYMENTS_MESSAGE_PATTERNS.WEBHOOK).toBe('payments.webhook');
   });
 });

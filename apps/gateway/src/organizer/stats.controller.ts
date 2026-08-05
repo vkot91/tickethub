@@ -3,7 +3,7 @@ import { Roles, ZodValidationPipe } from '@tickethub/common';
 import { showStatsQuerySchema, type ShowStatsQuery } from '@tickethub/contracts';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
-import { OrganizerStatsService } from './stats.service';
+import { GatewayOrganizerStatsService } from './stats.service';
 
 /** What the recent-orders table shows without scrolling. */
 const RECENT_LIMIT = 10;
@@ -14,7 +14,7 @@ const RECENT_LIMIT = 10;
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('organizer')
 export class GatewayOrganizerStatsController {
-  constructor(private readonly statsService: OrganizerStatsService) {}
+  constructor(private readonly statsService: GatewayOrganizerStatsService) {}
 
   @Get('stats')
   stats(@Req() req: { user: { id: string } }, @Query() query: unknown) {

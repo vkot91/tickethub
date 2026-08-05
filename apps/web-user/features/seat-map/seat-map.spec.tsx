@@ -11,7 +11,7 @@ const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
 const SHOW_ID = '11111111-1111-4111-8111-111111111111';
-const TICKET_TYPE_ID = '77777777-7777-4777-8777-777777777771';
+const BAND_ID = '77777777-7777-4777-8777-777777777771';
 
 const seatMap = {
   showId: SHOW_ID,
@@ -27,14 +27,14 @@ const seatMap = {
             {
               id: '44444444-4444-4444-8444-444444444441',
               number: 1,
-              ticketTypeId: TICKET_TYPE_ID,
+              bandId: BAND_ID,
               priceCents: 5000,
               tier: 'standard',
             },
             {
               id: '44444444-4444-4444-8444-444444444442',
               number: 2,
-              ticketTypeId: TICKET_TYPE_ID,
+              bandId: BAND_ID,
               priceCents: 5000,
               tier: 'standard',
             },
@@ -129,7 +129,7 @@ describe('SeatMap', () => {
         seats: [
           {
             seatId: '99999999-9999-4999-8999-999999999991',
-            ticketTypeId: '88888888-8888-4888-8888-888888888881',
+            bandId: '88888888-8888-4888-8888-888888888881',
           },
         ],
       },
@@ -148,10 +148,10 @@ describe('SeatMap', () => {
     expect(post?.[0]).toBe('/api/gateway/orders');
     expect(post?.[1]?.headers).toHaveProperty('idempotency-key');
 
-    // Orders 400s with "Unknown ticketTypeId" if the seat id is sent in its place.
+    // Orders 400s with "Unknown bandId" if the seat id is sent in its place.
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({
       showId: SHOW_ID,
-      seats: [{ seatId: '44444444-4444-4444-8444-444444444441', ticketTypeId: TICKET_TYPE_ID }],
+      seats: [{ seatId: '44444444-4444-4444-8444-444444444441', bandId: BAND_ID }],
     });
   });
 
@@ -193,7 +193,7 @@ describe('SeatMap', () => {
               seats: Array.from({ length: 10 }, (_, index) => ({
                 id: `66666666-6666-4666-8666-66666666600${index}`,
                 number: index + 1,
-                ticketTypeId: TICKET_TYPE_ID,
+                bandId: BAND_ID,
                 priceCents: 5000,
                 tier: 'standard',
               })),

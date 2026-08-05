@@ -5,9 +5,9 @@ describe('buyer catalog wire names', () => {
   // Unprefixed: the buyer is the default audience. If one of these ever grows an `organizer.`
   // prefix it has moved surface, and that is a different queue.
   it('mirrors each key onto its wire value', () => {
-    expect(SHOWS_MESSAGE_PATTERNS.CATALOG).toBe('shows.catalog');
-    expect(SHOWS_MESSAGE_PATTERNS.DETAIL).toBe('shows.detail');
-    expect(SHOWS_MESSAGE_PATTERNS.SEAT_MAP).toBe('shows.seatMap');
+    expect(SHOWS_MESSAGE_PATTERNS.CATALOG).toBe('user.shows.catalog');
+    expect(SHOWS_MESSAGE_PATTERNS.DETAIL).toBe('user.shows.detail');
+    expect(SHOWS_MESSAGE_PATTERNS.SEAT_MAP).toBe('user.shows.seatMap');
   });
 });
 

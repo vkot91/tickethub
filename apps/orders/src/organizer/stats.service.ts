@@ -50,12 +50,12 @@ export class OrganizerStatsService {
 
       this.db
         .select({
-          ticketTypeId: seatReservations.ticketTypeId,
+          bandId: seatReservations.bandId,
           soldCount: sql<number>`count(*)::int`,
         })
         .from(seatReservations)
         .where(confirmedSeatsForShows(params.showIds))
-        .groupBy(seatReservations.ticketTypeId),
+        .groupBy(seatReservations.bandId),
 
       this.db
         .select({
@@ -108,8 +108,6 @@ export class OrganizerStatsService {
     const revenueCentsByShowId = new Map(revenueRows.map((row) => [row.showId, row.revenueCents]));
     const soldCountByShowId = new Map(soldRows.map((row) => [row.showId, row.soldCount]));
 
-    // Driven by the *requested* ids, not by what the group-bys found: a show nobody bought from
-    // has to come back at zero, or it silently disappears from the caller's table.
     return params.showIds.map((showId) => ({
       showId,
       soldCount: soldCountByShowId.get(showId) ?? 0,

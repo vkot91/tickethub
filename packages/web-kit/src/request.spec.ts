@@ -67,9 +67,9 @@ describe('request', () => {
   });
 
   it('reads the message from a bare-string error body rather than the status text', async () => {
-    vi.stubGlobal('fetch', respondWith('Unknown ticketTypeId abc', 400));
+    vi.stubGlobal('fetch', respondWith('Unknown bandId abc', 400));
 
-    await expect(request('/x')).rejects.toThrow('Unknown ticketTypeId abc');
+    await expect(request('/x')).rejects.toThrow('Unknown bandId abc');
   });
 
   it('joins an array of validation messages', async () => {

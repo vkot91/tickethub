@@ -21,9 +21,13 @@ transactions (saga + outbox), concurrency.
 
 ## Conventions
 
+- Branch names start with a type prefix: `feature/`, `chore/`, `fix/`, `refactor/`, `docs/`,
+  followed by a kebab-case description — `feature/organizer-check-in`, `fix/seat-lock-race`.
 - Monorepo: Turborepo + pnpm workspaces. Deps via `workspace:*`.
 - Naming: **show** = the ticketed thing people buy seats for (`apps/shows`, PG schema `shows`,
-  `showId`, routing keys `show.published`/`show.cancelled`). **event** = an RMQ message, and
+  `showId`, routing keys `show.published`/`show.cancelled`). **price band** = a priced row of a
+  show (`price_bands`, `bandId`), never a "ticket type" — a `ticket` is the issued admission
+  credential in `apps/tickets`, and there is no FK between the two. **event** = an RMQ message, and
   nothing else (`EVENTS_EXCHANGE`, `publishEvent`, `PaymentSucceededEvent`). Never use "event"
   for the domain object.
 - `packages/contracts` (Zod) is the single source of truth for DTOs and RMQ event shapes.
@@ -88,11 +92,30 @@ options)`.** Tone is the design system's (`success`/`warn`/`danger`/`neutral`, s
   `OrganizerShowsController`, `user/shows.controller.ts` → `UserShowsController`. Both may talk to the
   same tables; they are different files because they serve different callers, return different shapes
   and carry different guards. A file is never half public catalog and half authenticated authoring —
-  that is how a route ends up unguarded. Applies to `apps/gateway` and `apps/shows` today, and to any
-  service the console reaches into next (`apps/orders` stats, `apps/fulfillment` check-in).
+  that is how a route ends up unguarded. Applies to `apps/gateway`, `apps/shows`, `apps/orders` and
+  `apps/tickets`.
   RPC pattern maps follow the same seam: `SHOWS_MESSAGE_PATTERNS` is the buyer catalog surface,
   `ORGANIZER_SHOWS_MESSAGE_PATTERNS` the console's — one map per audience surface, never one map
   mixing both.
+- **An audience folder holds the entry surface only.** Domain core (`orders.service.ts`,
+  `orders.repository.ts`, `orders.state.ts`, `tickets.service.ts`, `qr.ts`) and everything with no
+  audience at all (sagas, event consumers, workers) stay at the app root or in their own
+  non-audience folder. An event has no audience by construction — its publisher is another service
+  and nobody is logged in — so a `@RabbitSubscribe` handler never lives in `user/` or `organizer/`
+  (`apps/tickets/src/issue.controller.ts` is the `order.paid` consumer, and sits at the root).
+- **A file serving one audience sends only that audience's keys.** Buyer code never calls an
+  `organizer.*` key and console code never calls a `user.*` one — including in `apps/gateway`, where
+  an organizer HTTP route is organizer code. Greppable, and that is the point: no file under a
+  `user/` folder mentions `organizer.`, and none under an `organizer/` folder mentions `user.`.
+  Unaudienced services (`auth`, `venues`, `payments.webhook`) are callable by anyone; that is the
+  escape hatch, and the become-organizer flow in `apps/gateway/src/auth` is its one legitimate use.
+- **`shared/` holds audience-agnostic code only.** Reusable logic is welcome there; a hardcoded
+  routing key is not. `shared/show-context.ts` owns the merge (dedupe show ids, fan out once per
+  show, tolerate a purged show) and takes the fetch as an argument — each audience folder passes its
+  own keys, so a third audience adds a `fetchShow` and changes nothing shared.
+- **One controller per `*_MESSAGE_PATTERNS` map.** If two `@RabbitRPC`s import the same map they
+  belong in one controller; services may still split by concern behind it. Two 8-line controllers
+  over one table were two files saying the same thing.
 - **`packages/contracts` splits service-then-audience.** One folder per owning service; inside it
   `schema.ts` (only what both audiences extend), `events.ts` (routing keys + payloads — events have
   no audience, every consumer is another service), and one folder per audience carrying its own
@@ -101,15 +124,27 @@ options)`.** Tone is the design system's (`success`/`warn`/`danger`/`neutral`, s
   what decides the guard. A stats shape then has nowhere to land but an `organizer/` folder, and a
   map cannot quietly grow a second audience's key — which `ORDERS_MESSAGE_PATTERNS.STATS` once did.
   A service with one audience (`auth`, `venues`, `payments`) has no subfolders; add them when a
-  second audience actually turns up. Top-level `organizer/` is the organizer _resource_ — the
-  account, plus the dashboard shapes the gateway stitches from three services and no one folder owns.
-- **Wire values are `<audience>.<service>.<action>`**, with the buyer unprefixed as the default
-  audience: `shows.catalog` and `orders.create`, but `organizer.shows.putPricing`,
-  `organizer.orders.stats`, `organizer.profile.create`. Audience first because it decides the guard,
-  service second because it decides the queue. `admin.*` slots in as a sibling with nothing to
-  rethink. Action names never repeat their map (`ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET`, not
-  `.GET_SHOW`). Renaming one of these renames its RMQ queue — a breaking change for a running
-  deployment, so say so in the commit.
+  second audience actually turns up. **`organizer` means audience, always, at exactly one depth** —
+  the shapes the gateway stitches from three services live in `contracts/gateway/organizer/`, since
+  the gateway is the process that answers for them.
+- **A Zod schema is re-exported from the contracts barrel iff someone calls `.parse()` on it.**
+  `index.ts` re-exports every _type_ wholesale (`export type * from`) and names the runtime schemas
+  one by one, so the barrel advertises exactly the validation surface that exists. A schema that
+  only derives a type stays in its own file, still covered by its spec.
+- **Wire values are `<audience>.<resource>.<action>`**, every audience explicit, the buyer included:
+  `user.shows.catalog`, `user.orders.create`, `organizer.shows.updatePricing`,
+  `organizer.orders.stats`, `organizer.profile.create`. Audience first because it decides the guard;
+  the middle slot is the resource, usually but not always the owning service's name (the contracts
+  _folder_ carries the service, so `organizer.shows.ids` is a shows question answered by
+  `apps/shows`). "Unprefixed = buyer" was defensible with two audiences and stops being so with
+  three — `orders.create` no longer states who may call it, and `grep '^user\.'` is impossible while
+  `organizer.` and `admin.` grep cleanly. `admin.*` slots in as a sibling with nothing to rethink.
+  Action names never repeat their map (`ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET`, not `.GET_SHOW`), and
+  drop a `get`/`put` prefix the map already implies (`venues.list`, not `venues.getList`; but
+  `auth.getUser` keeps its verb, since there the resource lives in the action). Events use the same
+  camelCase as RPCs (`order.awaitingPayment`, `ticket.pdfReady`) — one convention, not two.
+  Renaming one of these renames its RMQ queue — a breaking change for a running deployment, so say
+  so in the commit.
 - Contract constants are **flat**: one exported `const` per concern, named `<SCOPE>_<KIND>`
   (`AUTH_MESSAGE_PATTERNS`, `SHOWS_MESSAGE_PATTERNS`, `RPC_QUEUES`, `EVENTS_QUEUES`,
   `SHOW_ROUTING_KEYS`). No nested grouping object (`MESSAGE_PATTERNS.auth.login`) — one level

@@ -12,7 +12,7 @@ import {
   sections,
   shows,
   showSectionPricing,
-  ticketTypes,
+  priceBands,
   type Db,
 } from '@tickethub/db';
 import { OutboxRepository, type Tx } from '@tickethub/outbox';
@@ -36,8 +36,8 @@ interface OwnedShow {
  * server-side on every publish: the popover's copy of this is a convenience, never the gate.
  */
 const CHECKLIST_FAILURES = [
-  ['hasTicketTypes', 'Add at least one ticket type before publishing'],
-  ['hasPricedSections', 'Assign at least one section to a ticket type before publishing'],
+  ['hasPriceBands', 'Add at least one price band before publishing'],
+  ['hasPricedSections', 'Assign at least one section to a price band before publishing'],
   ['startsInFuture', 'A show that has already started cannot be published'],
 ] as const satisfies readonly (readonly [keyof PublishChecklist, string])[];
 
@@ -64,10 +64,10 @@ export class OrganizerPublishingService {
       throw new ConflictException(`Cannot change pricing on a ${show.status} show`);
     }
 
-    const idByKey = new Map(dto.ticketTypes.map((band) => [band.key, '']));
+    const idByKey = new Map(dto.priceBands.map((band) => [band.key, '']));
 
-    if (idByKey.size !== dto.ticketTypes.length) {
-      throw new BadRequestException('Two ticket types share the same key');
+    if (idByKey.size !== dto.priceBands.length) {
+      throw new BadRequestException('Two price bands share the same key');
     }
 
     const sectionIds = new Set<string>();
@@ -77,8 +77,8 @@ export class OrganizerPublishingService {
         throw new BadRequestException(`Section ${assignment.sectionId} is priced twice`);
       }
 
-      if (!idByKey.has(assignment.ticketTypeKey)) {
-        throw new BadRequestException(`No ticket type with key ${assignment.ticketTypeKey}`);
+      if (!idByKey.has(assignment.bandKey)) {
+        throw new BadRequestException(`No price band with key ${assignment.bandKey}`);
       }
 
       sectionIds.add(assignment.sectionId);
@@ -90,25 +90,25 @@ export class OrganizerPublishingService {
       // Safe in draft and only in draft: nothing was ever on sale, so no reservation can point at
       // a band we are about to delete.
       await tx.delete(showSectionPricing).where(eq(showSectionPricing.showId, showId));
-      await tx.delete(ticketTypes).where(eq(ticketTypes.showId, showId));
+      await tx.delete(priceBands).where(eq(priceBands.showId, showId));
 
-      if (dto.ticketTypes.length === 0) return;
+      if (dto.priceBands.length === 0) return;
 
       // Postgres returns a multi-row INSERT in the order of its VALUES list, which is what lets
       // the client-side `key` line up with the id it just got.
       const inserted = await tx
-        .insert(ticketTypes)
+        .insert(priceBands)
         .values(
-          dto.ticketTypes.map((band) => ({
+          dto.priceBands.map((band) => ({
             showId,
             name: band.name,
             tier: band.tier,
             priceCents: band.priceCents,
           })),
         )
-        .returning({ id: ticketTypes.id });
+        .returning({ id: priceBands.id });
 
-      dto.ticketTypes.forEach((band, i) => idByKey.set(band.key, inserted[i].id));
+      dto.priceBands.forEach((band, i) => idByKey.set(band.key, inserted[i].id));
 
       if (dto.assignments.length === 0) return;
 
@@ -119,7 +119,7 @@ export class OrganizerPublishingService {
           // From the show, never from the request: this column is what pins both composite FKs to
           // one building, so a request that could name its own venue would defeat them.
           venueId: show.venueId,
-          ticketTypeId: idByKey.get(assignment.ticketTypeKey) ?? '',
+          bandId: idByKey.get(assignment.bandKey) ?? '',
         })),
       );
     });
@@ -134,26 +134,26 @@ export class OrganizerPublishingService {
 
     const bands = await this.db
       .select({
-        id: ticketTypes.id,
-        name: ticketTypes.name,
-        tier: ticketTypes.tier,
-        priceCents: ticketTypes.priceCents,
+        id: priceBands.id,
+        name: priceBands.name,
+        tier: priceBands.tier,
+        priceCents: priceBands.priceCents,
       })
-      .from(ticketTypes)
-      .where(eq(ticketTypes.showId, show.id))
+      .from(priceBands)
+      .where(eq(priceBands.showId, show.id))
       // Dearest first, matching the public show page. `name` breaks the tie so two bands at the
       // same price do not swap places between reads and shuffle the form under the organizer.
-      .orderBy(desc(ticketTypes.priceCents), ticketTypes.name);
+      .orderBy(desc(priceBands.priceCents), priceBands.name);
 
     const assignments = await this.db
       .select({
         sectionId: showSectionPricing.sectionId,
-        ticketTypeId: showSectionPricing.ticketTypeId,
+        bandId: showSectionPricing.bandId,
       })
       .from(showSectionPricing)
       .where(eq(showSectionPricing.showId, show.id));
 
-    return { ticketTypes: bands, assignments };
+    return { priceBands: bands, assignments };
   }
 
   async publishChecklist(userId: string, showId: string): Promise<PublishChecklist> {
@@ -219,8 +219,8 @@ export class OrganizerPublishingService {
   private async checklistFor(show: OwnedShow): Promise<PublishChecklist> {
     const [bands] = await this.db
       .select({ n: count() })
-      .from(ticketTypes)
-      .where(eq(ticketTypes.showId, show.id));
+      .from(priceBands)
+      .where(eq(priceBands.showId, show.id));
 
     const [priced] = await this.db
       .select({ n: count() })
@@ -242,7 +242,7 @@ export class OrganizerPublishingService {
       .where(eq(showSectionPricing.showId, show.id));
 
     return {
-      hasTicketTypes: bands.n > 0,
+      hasPriceBands: bands.n > 0,
       hasPricedSections: priced.n > 0,
       startsInFuture: show.startsAt.getTime() > Date.now(),
       pricedSectionCount: priced.n,

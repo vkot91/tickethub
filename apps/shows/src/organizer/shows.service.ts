@@ -4,9 +4,10 @@ import {
   organizers,
   rows,
   seats,
+  sections,
   shows,
   showSectionPricing,
-  ticketTypes,
+  priceBands,
   venues,
   type Db,
 } from '@tickethub/db';
@@ -18,6 +19,7 @@ import type {
   ShowName,
   UpdateShowDto,
 } from '@tickethub/contracts';
+import { seatLabel } from '@tickethub/common';
 import { OrganizerPublishingService } from './publishing.service';
 
 /**
@@ -48,8 +50,8 @@ const toOrganizerShow = (show: ShowRow): OrganizerShow => ({
   ...show,
   startsAt: show.startsAt.toISOString(),
   saleStartsAt: show.saleStartsAt?.toISOString() ?? null,
-  // Sales live in `apps/orders` and capacity behind this service's own batched `capacity()`, so
-  // the gateway merges the real numbers onto the list (`OrganizerShowsService.listWithSales`).
+  // Sales live in `apps/orders` and capacity behind this service's own batched `summaries()`, so
+  // the gateway merges the real numbers onto the list (`GatewayOrganizerShowsService.listWithSales`).
   // Zero rather than omitted: the shape is the same before and after the merge, and anyone
   // calling this RPC directly gets an honest "this service does not know" rather than a hole.
   soldCount: 0,
@@ -69,7 +71,7 @@ export class OrganizerShowsService {
   ) {}
 
   /**
-   * The single mechanism by which orders, fulfillment and the gateway fan-outs learn what an
+   * The single mechanism by which orders, tickets and the gateway fan-outs learn what an
    * organizer owns. Empty for a user who has never authored anything.
    */
   async showIds(userId: string): Promise<string[]> {
@@ -89,20 +91,23 @@ export class OrganizerShowsService {
    * furniture, not stock.
    *
    * Batched on purpose: the dashboard asks about several shows at once, and one round trip per
-   * show is how a dashboard becomes slow. `saleStartsAt` rides along rather than costing its own
-   * RPC — it is a column on the row this already scans. Ownership was resolved by the caller.
+   * show is how a dashboard becomes slow. `title` and `saleStartsAt` ride along rather than
+   * costing their own RPC — both are columns on the row this already scans, and the title is what
+   * keeps the console off the buyer's `detail`, which 404s the drafts this audience owns.
+   * Ownership was resolved by the caller.
    */
-  async capacity(
+  async summaries(
     showIds: string[],
-  ): Promise<{ showId: string; capacity: number; saleStartsAt: string | null }[]> {
+  ): Promise<{ showId: string; title: string; capacity: number; saleStartsAt: string | null }[]> {
     if (showIds.length === 0) return [];
 
     // Left-joined down from `shows` rather than up from the pricing rows: a show with nothing
     // priced still has to come back (at zero), and starting from `shows` is also what puts
-    // `saleStartsAt` in reach without a second query.
+    // `title` and `saleStartsAt` in reach without a second query.
     const counted = await this.db
       .select({
         showId: shows.id,
+        title: shows.title,
         capacity: sql<number>`count(${seats.id})::int`,
         saleStartsAt: shows.saleStartsAt,
       })
@@ -119,9 +124,40 @@ export class OrganizerShowsService {
     // the dashboard silently drops it instead of showing it at zero.
     return showIds.map((showId) => ({
       showId,
+      title: byShow.get(showId)?.title ?? '',
       capacity: byShow.get(showId)?.capacity ?? 0,
       saleStartsAt: byShow.get(showId)?.saleStartsAt?.toISOString() ?? null,
     }));
+  }
+
+  /**
+   * Seat id → the label the console prints, for exactly the seats asked about. The buyer's
+   * `seatMap()` answers the same question by returning a whole venue's geometry, and refuses a
+   * draft while it is at it; the console needs a handful of labels for shows it owns, drafts
+   * included. Ownership was resolved by the caller, as with `summaries`.
+   */
+  async seatLabels(showId: string, seatIds: string[]): Promise<Record<string, string>> {
+    if (seatIds.length === 0) return {};
+
+    const labelled = await this.db
+      .select({
+        seatId: seats.id,
+        sectionName: sections.name,
+        rowNumber: rows.number,
+        seatNumber: seats.number,
+      })
+      .from(seats)
+      .innerJoin(rows, eq(rows.id, seats.rowId))
+      .innerJoin(sections, eq(sections.id, rows.sectionId))
+      .innerJoin(showSectionPricing, eq(showSectionPricing.sectionId, sections.id))
+      .where(and(eq(showSectionPricing.showId, showId), inArray(seats.id, seatIds)));
+
+    return Object.fromEntries(
+      labelled.map((seat) => [
+        seat.seatId,
+        seatLabel(seat.sectionName, seat.rowNumber, seat.seatNumber),
+      ]),
+    );
   }
 
   /**
@@ -141,7 +177,7 @@ export class OrganizerShowsService {
   /**
    * What to label a band in the dashboard's "sales by band" card. One query and three columns —
    * the buyer's `detail()` reads the whole show row first to drive a 404 this caller has no use
-   * for, and refuses a draft besides. Ownership was resolved by the caller, as with `capacity`.
+   * for, and refuses a draft besides. Ownership was resolved by the caller, as with `summaries`.
    *
    * Unfiltered by `show_section_pricing`, unlike the buyer's: that join hides a band pricing no
    * section, because advertising an unbuyable price is a lie. A band that already *sold* is not
@@ -150,11 +186,11 @@ export class OrganizerShowsService {
   async tierNames(showId: string): Promise<{ id: string; name: string; tier: SeatTier }[]> {
     return (
       this.db
-        .select({ id: ticketTypes.id, name: ticketTypes.name, tier: ticketTypes.tier })
-        .from(ticketTypes)
-        .where(eq(ticketTypes.showId, showId))
+        .select({ id: priceBands.id, name: priceBands.name, tier: priceBands.tier })
+        .from(priceBands)
+        .where(eq(priceBands.showId, showId))
         // Dearest first, the order the console lists bands in everywhere else.
-        .orderBy(desc(ticketTypes.priceCents), ticketTypes.name)
+        .orderBy(desc(priceBands.priceCents), priceBands.name)
     );
   }
 
@@ -232,7 +268,7 @@ export class OrganizerShowsService {
       this.db.transaction(async (tx) => {
         // The old sections are in a different building — the composite FK would reject them
         // anyway, so dropping them here makes the data loss intentional and testable.
-        // `ticket_types` deliberately survive: a band is a name, a tier and a price, none of them
+        // `price_bands` deliberately survive: a band is a name, a tier and a price, none of them
         // venue-bound, and deleting them would only make the organizer retype the same numbers.
         if (movingVenue) {
           await tx.delete(showSectionPricing).where(eq(showSectionPricing.showId, showId));
@@ -262,7 +298,7 @@ export class OrganizerShowsService {
 
     await this.db.transaction(async (tx) => {
       await tx.delete(showSectionPricing).where(eq(showSectionPricing.showId, showId));
-      await tx.delete(ticketTypes).where(eq(ticketTypes.showId, showId));
+      await tx.delete(priceBands).where(eq(priceBands.showId, showId));
       await tx.delete(shows).where(eq(shows.id, showId));
     });
   }

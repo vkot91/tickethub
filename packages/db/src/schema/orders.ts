@@ -56,7 +56,7 @@ export const seatReservations = ordersSchema.table(
       .references(() => orders.id),
     showId: uuid('show_id').notNull(),
     seatId: uuid('seat_id').notNull(),
-    ticketTypeId: uuid('ticket_type_id').notNull(),
+    bandId: uuid('price_band_id').notNull(),
     status: seatReservationStatusEnum('status').notNull().default('held'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import { OrganizerCheckInService } from './check-in.service';
+import { GatewayOrganizerCheckInService } from './check-in.service';
 
 const SHOW_ID = '11111111-1111-4111-8111-111111111111';
 const RIVAL_SHOW = '22222222-2222-4222-8222-222222222222';
@@ -14,10 +14,10 @@ const scan = {
   checkedInCount: 41,
 };
 
-describe('OrganizerCheckInService', () => {
+describe('GatewayOrganizerCheckInService', () => {
   const amqp = { request: jest.fn() };
-  const myShows = { assertOwnsShow: jest.fn() };
-  const service = new OrganizerCheckInService(amqp as never, myShows as never);
+  const ownership = { assertOwnsShow: jest.fn() };
+  const service = new GatewayOrganizerCheckInService(amqp as never, ownership as never);
 
   /** One entry per routing key, so a second one turning up here is a failure, not a stub miss. */
   const answer = (byKey: Record<string, unknown>) =>
@@ -27,17 +27,15 @@ describe('OrganizerCheckInService', () => {
 
   beforeEach(() => {
     amqp.request.mockReset();
-    myShows.assertOwnsShow.mockReset().mockResolvedValue([SHOW_ID]);
+    ownership.assertOwnsShow.mockReset().mockResolvedValue([SHOW_ID]);
   });
 
-  it('answers Fulfillment’s verdict as it stands', async () => {
+  it('answers Tickets’s verdict as it stands', async () => {
     answer({ 'organizer.tickets.checkIn': scan });
 
     await expect(service.checkIn('u1', dto)).resolves.toEqual(scan);
   });
 
-  // The title and the seat count are gate constants the scanner already holds from the show it
-  // picked. Fetching them per scan was two RPCs a scan to re-send a number that cannot change.
   it('asks Shows nothing — one scan is one RPC behind the ownership check', async () => {
     answer({ 'organizer.tickets.checkIn': scan });
 
@@ -46,7 +44,7 @@ describe('OrganizerCheckInService', () => {
     expect(amqp.request).toHaveBeenCalledTimes(1);
   });
 
-  it('hands Fulfillment the one gate, never the user and never a list', async () => {
+  it('hands Tickets the one gate, never the user and never a list', async () => {
     answer({ 'organizer.tickets.checkIn': scan });
 
     await service.checkIn('u1', dto);
@@ -62,7 +60,7 @@ describe('OrganizerCheckInService', () => {
   // 404 and not 403, so an organizer cannot probe for a competitor's show by id. An organizer who
   // owns nothing owns no gate either, and lands here too.
   it('refuses a gate the caller does not own, before scanning anything', async () => {
-    myShows.assertOwnsShow.mockRejectedValue(new NotFoundException('Show not found'));
+    ownership.assertOwnsShow.mockRejectedValue(new NotFoundException('Show not found'));
 
     await expect(service.checkIn('u1', { code: 'tok', showId: RIVAL_SHOW })).rejects.toThrow(
       NotFoundException,
@@ -76,7 +74,7 @@ describe('OrganizerCheckInService', () => {
 
     await service.checkIn('u1', dto);
 
-    expect(myShows.assertOwnsShow).toHaveBeenCalledWith('u1', SHOW_ID);
+    expect(ownership.assertOwnsShow).toHaveBeenCalledWith('u1', SHOW_ID);
   });
 
   // The counter describes the gate, so a rejection carries it exactly like an admission.

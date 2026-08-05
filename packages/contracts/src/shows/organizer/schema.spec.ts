@@ -1,19 +1,35 @@
-import { createShowSchema, showPricingSchema, updateShowSchema } from './schema';
-import { ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './wire';
+import {
+  becomeOrganizerSchema,
+  createShowSchema,
+  showPricingSchema,
+  updateShowSchema,
+} from './schema';
+import { ORGANIZER_PROFILE_MESSAGE_PATTERNS, ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './wire';
 
 describe('organizer shows wire names', () => {
   // `<audience>.<service>.<action>`, every one of them. A key missing the `organizer.` prefix is a
   // console call that landed on the buyer surface.
   it('mirrors each key onto its wire value', () => {
-    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS).toBe('organizer.shows.myShows');
-    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUT_PRICING).toBe('organizer.shows.putPricing');
-    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY).toBe('organizer.shows.capacity');
+    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.LIST).toBe('organizer.shows.list');
+    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.UPDATE_PRICING).toBe('organizer.shows.updatePricing');
+    expect(ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES).toBe('organizer.shows.summaries');
   });
 
   it('namespaces every action under organizer.shows', () => {
     for (const key of Object.values(ORGANIZER_SHOWS_MESSAGE_PATTERNS)) {
       expect(key.startsWith('organizer.shows.')).toBe(true);
     }
+  });
+});
+
+describe('organizer profile wire names', () => {
+  it('mirrors each key onto its wire value', () => {
+    expect(ORGANIZER_PROFILE_MESSAGE_PATTERNS.CREATE).toBe('organizer.profile.create');
+  });
+
+  it('requires a non-empty organizer name', () => {
+    expect(becomeOrganizerSchema.parse({ name: 'Acme' })).toEqual({ name: 'Acme' });
+    expect(() => becomeOrganizerSchema.parse({ name: '' })).toThrow();
   });
 });
 
@@ -42,15 +58,15 @@ describe('showPricingSchema', () => {
   it('rejects an assignment carrying a client key instead of a band id', () => {
     expect(() =>
       showPricingSchema.parse({
-        ticketTypes: [],
-        assignments: [{ sectionId: crypto.randomUUID(), ticketTypeId: 'front-vip' }],
+        priceBands: [],
+        assignments: [{ sectionId: crypto.randomUUID(), bandId: 'front-vip' }],
       }),
     ).toThrow();
   });
 
   it('accepts a show with nothing priced', () => {
-    expect(showPricingSchema.parse({ ticketTypes: [], assignments: [] })).toEqual({
-      ticketTypes: [],
+    expect(showPricingSchema.parse({ priceBands: [], assignments: [] })).toEqual({
+      priceBands: [],
       assignments: [],
     });
   });

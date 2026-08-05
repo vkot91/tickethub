@@ -21,19 +21,19 @@ export const showDetailSchema = showSummarySchema.extend({
   description: z.string(),
   venueId: z.string().uuid(),
   // Dearest first, so the show page reads top-down like the design. Empty for a show with no
-  // ticket types — such a show has nothing on sale.
+  // price bands — such a show has nothing on sale.
   priceTiers: z.array(priceTierSchema),
 });
 export type ShowDetail = z.infer<typeof showDetailSchema>;
 
-// `ticketTypeId` is what `createOrderSchema` needs per seat to price the order, and
+// `bandId` is what `createOrderSchema` needs per seat to price the order, and
 // `priceCents` is what orders will actually charge for it — the UI must never invent its own
-// number. All three null when no ticket type covers the seat: it still renders, but nothing
+// number. All three null when no price band covers the seat: it still renders, but nothing
 // about it can be bought.
 export const seatSchema = z.object({
   id: z.string().uuid(),
   number: z.number().int(),
-  ticketTypeId: z.string().uuid().nullable(),
+  bandId: z.string().uuid().nullable(),
   priceCents: z.number().int().nullable(),
   tier: seatTierSchema.nullable(),
 });

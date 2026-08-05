@@ -34,7 +34,7 @@ function order(overrides: Partial<OrderResponse> = {}): OrderResponse {
     seats: [
       {
         seatId: '99999999-9999-4999-8999-999999999991',
-        ticketTypeId: '88888888-8888-4888-8888-888888888881',
+        bandId: '88888888-8888-4888-8888-888888888881',
       },
     ],
     ...overrides,

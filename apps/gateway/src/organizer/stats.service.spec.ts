@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 
-import { OrganizerStatsService } from './stats.service';
+import { GatewayOrganizerStatsService } from './stats.service';
 
 const SHOW_A = '11111111-1111-4111-8111-111111111111';
 const SHOW_B = '22222222-2222-4222-8222-222222222222';
@@ -13,22 +13,21 @@ const ORDERS_STATS = {
   revenueCents: 12000,
   refundedCents: 3000,
   byDay: [{ date: '2026-07-01', revenueCents: 12000, count: 2 }],
-  byTier: [{ ticketTypeId: TIER, soldCount: 2 }],
+  byTier: [{ bandId: TIER, soldCount: 2 }],
 };
 
 /** One fake AmqpConnection, dispatching on routing key like the real broker would. */
 function makeService(overrides: Record<string, unknown> = {}, showIds = [SHOW_A]) {
   const replies: Record<string, unknown> = {
     'organizer.orders.stats': ORDERS_STATS,
-    'organizer.orders.recent': [],
-    'organizer.shows.capacity': [{ showId: SHOW_A, capacity: 10, saleStartsAt: null }],
+    'organizer.orders.latest': [],
+    'organizer.shows.summaries': [
+      { showId: SHOW_A, title: 'Neon Nights', capacity: 10, saleStartsAt: null },
+    ],
+    'organizer.shows.seatLabels': { 'seat-1': 'A1' },
     'organizer.tickets.checkedInCount': 4,
     'auth.getUsersByIds': [{ id: BUYER, email: 'buyer@x.com' }],
-    'organizer.shows.tierNames': [{ id: TIER, name: 'VIP', tier: 'vip' }],
-    'shows.detail': {
-      title: 'Neon Nights',
-      priceTiers: [{ id: TIER, name: 'VIP', tier: 'vip', priceCents: 6000, currency: 'usd' }],
-    },
+    'organizer.shows.bands': [{ id: TIER, name: 'VIP', tier: 'vip' }],
     ...overrides,
   };
 
@@ -41,24 +40,15 @@ function makeService(overrides: Record<string, unknown> = {}, showIds = [SHOW_A]
   });
 
   const amqp = { request };
-  const myShows = { showIds: jest.fn().mockResolvedValue(showIds) };
-  const showContext = {
-    withShowContext: jest.fn((items: { seats: { seatId: string }[] }[]) =>
-      Promise.resolve(
-        items.map((item) => ({ ...item, showTitle: 'Neon Nights', seatLabels: ['A1'] })),
-      ),
-    ),
-  };
-
+  const ownership = { showIds: jest.fn().mockResolvedValue(showIds) };
   return {
-    svc: new OrganizerStatsService(amqp as never, myShows as never, showContext as never),
+    svc: new GatewayOrganizerStatsService(amqp as never, ownership as never),
     amqp,
-    myShows,
-    showContext,
+    ownership,
   };
 }
 
-describe('OrganizerStatsService.stats', () => {
+describe('GatewayOrganizerStatsService.stats', () => {
   it('short-circuits to zeros for an organizer with no shows, asking nobody', async () => {
     const { svc, amqp } = makeService({}, []);
 
@@ -89,7 +79,7 @@ describe('OrganizerStatsService.stats', () => {
   it('sums capacity across every show when no showId is given', async () => {
     const { svc } = makeService(
       {
-        'organizer.shows.capacity': [
+        'organizer.shows.summaries': [
           { showId: SHOW_A, capacity: 10, saleStartsAt: null },
           { showId: SHOW_B, capacity: 5, saleStartsAt: null },
         ],
@@ -119,7 +109,7 @@ describe('OrganizerStatsService.stats', () => {
 
     const stats = await svc.stats('u1', { showId: SHOW_A });
 
-    expect(stats.byTier).toEqual([{ ticketTypeId: TIER, name: 'VIP', tier: 'vip', soldCount: 2 }]);
+    expect(stats.byTier).toEqual([{ bandId: TIER, name: 'VIP', tier: 'vip', soldCount: 2 }]);
   });
 
   // The console reads the organizer surface, never the buyer catalog: `shows.detail` reads a
@@ -131,23 +121,21 @@ describe('OrganizerStatsService.stats', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.shows.tierNames',
+        routingKey: 'organizer.shows.bands',
         payload: { showId: SHOW_A },
       }),
     );
     expect(amqp.request).not.toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'shows.detail' }),
+      expect.objectContaining({ routingKey: 'user.shows.detail' }),
     );
   });
 
   it('degrades to an unnamed tier when the band names are unavailable', async () => {
-    const { svc } = makeService({ 'organizer.shows.tierNames': new Error('gone') });
+    const { svc } = makeService({ 'organizer.shows.bands': new Error('gone') });
 
     const stats = await svc.stats('u1', { showId: SHOW_A });
 
-    expect(stats.byTier).toEqual([
-      { ticketTypeId: TIER, name: '', tier: 'standard', soldCount: 2 },
-    ]);
+    expect(stats.byTier).toEqual([{ bandId: TIER, name: '', tier: 'standard', soldCount: 2 }]);
   });
 
   // A day before the show went on sale is a zero nobody could have bought — real, but padding.
@@ -161,7 +149,7 @@ describe('OrganizerStatsService.stats', () => {
           { date: '2026-06-30', revenueCents: 12000, count: 2 },
         ],
       },
-      'organizer.shows.capacity': [
+      'organizer.shows.summaries': [
         { showId: SHOW_A, capacity: 10, saleStartsAt: '2026-06-30T00:00:00.000Z' },
       ],
     });
@@ -184,7 +172,7 @@ describe('OrganizerStatsService.stats', () => {
   it('leaves the graph untouched across every show, whatever their sale starts', async () => {
     const { svc } = makeService(
       {
-        'organizer.shows.capacity': [
+        'organizer.shows.summaries': [
           { showId: SHOW_A, capacity: 10, saleStartsAt: '2030-01-01T00:00:00.000Z' },
           { showId: SHOW_B, capacity: 5, saleStartsAt: null },
         ],
@@ -210,7 +198,7 @@ describe('OrganizerStatsService.stats', () => {
   });
 });
 
-describe('OrganizerStatsService.recentOrders', () => {
+describe('GatewayOrganizerStatsService.recentOrders', () => {
   const recentRow = {
     id: ORDER,
     showId: SHOW_A,
@@ -223,7 +211,7 @@ describe('OrganizerStatsService.recentOrders', () => {
 
   it('resolves buyer emails in exactly one call for the whole page', async () => {
     const { svc, amqp } = makeService({
-      'organizer.orders.recent': [recentRow, { ...recentRow, id: 'o2' }],
+      'organizer.orders.latest': [recentRow, { ...recentRow, id: 'o2' }],
     });
 
     const page = await svc.recentOrders('u1', 10);
@@ -242,13 +230,28 @@ describe('OrganizerStatsService.recentOrders', () => {
       ([args]) => args.routingKey === 'auth.getUsersByIds',
     );
     expect(emailCalls).toHaveLength(1);
-    // De-duplicated: two orders by the same buyer is one id on the wire.
     expect(emailCalls[0][0].payload).toEqual({ ids: [BUYER] });
+  });
+
+  // `summaries` runs a four-join capacity aggregate; batching avoids one call per row.
+  it('asks Shows for every title on the page in one batched call', async () => {
+    const { svc, amqp } = makeService({
+      'organizer.orders.latest': [recentRow, { ...recentRow, id: 'o2', showId: SHOW_B }],
+    });
+
+    await svc.recentOrders('u1', 10);
+
+    const summaryCalls = amqp.request.mock.calls.filter(
+      ([args]) => args.routingKey === 'organizer.shows.summaries',
+    );
+
+    expect(summaryCalls).toHaveLength(1);
+    expect(summaryCalls[0][0].payload).toEqual({ showIds: [SHOW_A, SHOW_B] });
   });
 
   it('degrades a missing buyer to null rather than dropping the order', async () => {
     const { svc } = makeService({
-      'organizer.orders.recent': [recentRow],
+      'organizer.orders.latest': [recentRow],
       'auth.getUsersByIds': [],
     });
 
@@ -257,11 +260,30 @@ describe('OrganizerStatsService.recentOrders', () => {
     expect(page.items[0].buyerEmail).toBeNull();
   });
 
-  it('keeps the "Unavailable show" fallback from the shared show context', async () => {
-    const { svc, showContext } = makeService({ 'organizer.orders.recent': [recentRow] });
-    showContext.withShowContext.mockResolvedValueOnce([
-      { ...recentRow, seats: [], showTitle: 'Unavailable show', seatLabels: [] },
-    ]);
+  // The show context is resolved over the *organizer* keys, never the buyer's: `user.shows.detail`
+  // 404s a draft, and it would haul back a whole venue's geometry for two seat labels.
+  it('resolves titles and seat labels over the organizer surface', async () => {
+    const { svc, amqp } = makeService({ 'organizer.orders.latest': [recentRow] });
+
+    await svc.recentOrders('u1', 10);
+
+    const keys = amqp.request.mock.calls.map(([args]) => args.routingKey);
+
+    expect(keys).toContain('organizer.shows.seatLabels');
+    expect(keys.filter((key: string) => key.startsWith('user.'))).toEqual([]);
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.shows.seatLabels',
+        payload: { showId: SHOW_A, seatIds: ['seat-1'] },
+      }),
+    );
+  });
+
+  it('keeps the "Unavailable show" fallback when the show cannot be resolved', async () => {
+    const { svc } = makeService({
+      'organizer.orders.latest': [recentRow],
+      'organizer.shows.summaries': new Error('gone'),
+    });
 
     const page = await svc.recentOrders('u1', 10);
 

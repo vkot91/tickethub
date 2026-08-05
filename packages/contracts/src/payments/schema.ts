@@ -15,5 +15,3 @@ export const paymentIntentResponseSchema = z.object({
   currency: z.string(),
 });
 export type PaymentIntentResponse = z.infer<typeof paymentIntentResponseSchema>;
-
-export const refundOrderSchema = z.object({ orderId: uuid });

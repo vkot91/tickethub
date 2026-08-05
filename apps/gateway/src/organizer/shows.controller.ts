@@ -25,7 +25,7 @@ import {
 import { rpcRequest } from '@tickethub/rmq';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
-import { OrganizerShowsService } from './shows.service';
+import { GatewayOrganizerShowsService } from './shows.service';
 
 /**
  * Validate a request body or query here rather than via `@Body(new ZodValidationPipe(...))`: a
@@ -53,7 +53,7 @@ function parse<S extends ZodSchema>(schema: S, value: unknown): TypeOf<S> {
 export class GatewayOrganizerShowsController {
   constructor(
     private readonly amqp: AmqpConnection,
-    private readonly shows: OrganizerShowsService,
+    private readonly shows: GatewayOrganizerShowsService,
   ) {}
 
   // The one route here that is not a single hop: sold/capacity/revenue come from Orders and Shows
@@ -67,7 +67,7 @@ export class GatewayOrganizerShowsController {
   // there is nothing here for the gateway to merge in.
   @Get('names')
   getNames(@Req() req: { user: { id: string } }) {
-    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.NAMES, { userId: req.user.id });
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.TITLES, { userId: req.user.id });
   }
 
   @Get(':id')
@@ -126,7 +126,7 @@ export class GatewayOrganizerShowsController {
   // PUT, not PATCH: the body is the show's whole pricing, and `apps/shows` replaces it wholesale.
   @Put(':id/pricing')
   putPricing(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() body: unknown) {
-    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUT_PRICING, {
+    return rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.UPDATE_PRICING, {
       userId: req.user.id,
       showId: id,
       dto: parse(putPricingSchema, body),

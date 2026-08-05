@@ -19,7 +19,7 @@ export function fetchSeatMap(showId: string) {
 
 export interface OrderSeat {
   seatId: string;
-  ticketTypeId: string;
+  bandId: string;
 }
 
 export function createOrder(showId: string, seats: OrderSeat[]): Promise<OrderResponse> {
