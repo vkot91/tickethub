@@ -64,7 +64,7 @@ Until this lands the catalog renders title + date + status only, and the show pa
 ## 2. Seat map — partly done
 
 `GET /shows/:id/seat-map` returns geometry **plus pricing**:
-`{ showId, sections: [{ id, name, rows: [{ id, number, seats: [{ id, number, ticketTypeId, priceCents, tier }] }] }] }`.
+`{ showId, sections: [{ id, name, rows: [{ id, number, seats: [{ id, number, bandId, priceCents, tier }] }] }] }`.
 
 **Still missing — blocking for a correct seat map:**
 
@@ -72,22 +72,22 @@ Until this lands the catalog renders title + date + status only, and the show pa
   and paid orders. Without it every seat renders as available and the first click 409s. This is
   the only remaining gap in this section.
 
-**Done, and now real** — `ticketTypeId`, `priceCents` and `tier` per seat, all three null when
+**Done, and now real** — `bandId`, `priceCents` and `tier` per seat, all three null when
 nothing covers the seat. The client derives none of them; the old row-number band (A–B / C–E /
 F–H) is deleted.
 
 > **Correction.** An earlier revision of this file said pricing was resolved through a
-> `ticket_types.section_id` column. That column does not exist and never did. The section →
+> `price_bands.section_id` column. That column does not exist and never did. The section →
 > price-band link is the **`show_section_pricing`** table: PK `(show_id, section_id)`, one band per
 > section per show, with two composite FKs pinning the show and the section to the same venue.
 > A section absent from `show_section_pricing` is simply not on sale. There is no show-wide fallback
-> ticket type — `seatMap` joins through `show_section_pricing`, so an unpriced section does not appear
+> price band — `seatMap` joins through `show_section_pricing`, so an unpriced section does not appear
 > in the map at all.
 
 Pricing is per _section_, not per row: a section needing two prices would want
-`ticket_types.row_id` or a `tiers` table, neither of which anything asks for yet.
+`price_bands.row_id` or a `tiers` table, neither of which anything asks for yet.
 
-`ticket_types` is the price source of truth end to end: the seat map returns the `priceCents`
+`price_bands` is the price source of truth end to end: the seat map returns the `priceCents`
 orders charges, `GET /shows/:id` returns the show's bands as `priceTiers` (dearest first), and
 the seeder prices its demo orders through the same lookup. Nothing in `apps/web` computes a
 price or a band; `features/seat-map/pricing.ts` is gone, replaced by `lib/format/tiers.ts`,
@@ -166,12 +166,12 @@ including the confirm dialog and the "wait for Stripe" invalidation.
 `GET /tickets` — the caller's tickets, **one per seat** (not per paid order: a gate scanner
 admits one seat at a time, and check-in is per ticket).
 
-- RPC on `apps/fulfillment`; gateway route behind `JwtAuthGuard`.
+- RPC on `apps/tickets`; gateway route behind `JwtAuthGuard`.
 - `pdfUrl` is a **stable gateway-relative path** (`/tickets/:id/pdf`), not a signed URL. That
   endpoint authorizes the caller and 302s to a 60-second presigned URL minted at click time — so
   ownership is checked on the click rather than when the list was rendered, and no perishable
   credential enters a cacheable response.
-- `qrToken` is the HMAC token the fulfillment service generates; the card renders a real
+- `qrToken` is the HMAC token the tickets service generates; the card renders a real
   scannable QR from it client-side (`qrcode.react`) rather than downloading the PDF to show a QR.
 - `pdfUrl` is treated as nullable: a paid order whose PDF has not landed yet shows "PDF is
   still being generated" rather than a dead link.
@@ -201,7 +201,7 @@ that matter:
 - `shows.title` has a **global `UNIQUE`** today, so two organizers cannot both run "Summer Fest".
   The spec migrates it to `UNIQUE(organizer_id, title)`.
 - Pricing gets one draft-only transactional endpoint, `PUT /shows/:id/pricing`, replacing
-  `ticket_types` + `show_section_pricing` wholesale. After publish, pricing and seating freeze; only
+  `price_bands` + `show_section_pricing` wholesale. After publish, pricing and seating freeze; only
   title, description, poster and sale start stay editable.
 
 **Frontend state**: `features/organizer/api.ts` already calls `GET /shows?organizer=me`,
@@ -235,7 +235,7 @@ former and `createdAt` plus a nullable `buyerEmail` to the latter.
 
 ## 8. Check-in — **specced in `docs/10-organizer-console.md`**
 
-Still not implemented, but it needs **no schema change**: `fulfillment.tickets` already has
+Still not implemented, but it needs **no schema change**: `tickets.tickets` already has
 `show_id`, `qr_token` and `checked_in_at`.
 
 - Route is `POST /tickets/check-in { code }` — the scanner holds the QR's HMAC token, not a
@@ -254,7 +254,7 @@ Still not implemented, but it needs **no schema change**: `fulfillment.tickets` 
   of the same ticket, exactly one `valid`.
 
 **Also flagged by the spec**: two seat-label formats exist today — the gateway's `"A2"`
-(`orders.controller.ts`) and fulfillment's `"Parterre 1-1"` (`tickets.seat_label`). The scanner
+(`orders.controller.ts`) and tickets's `"Parterre 1-1"` (`tickets.seat_label`). The scanner
 would show one next to a dashboard showing the other. The spec unifies on
 `"<Section> <RowLetter><Seat>"` in `packages/common`; existing snapshotted labels keep their
 old value.

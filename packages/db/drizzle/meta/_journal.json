@@ -50,6 +50,20 @@
       "when": 1785333444485,
       "tag": "0006_orders_show_created_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785400000000,
+      "tag": "0007_price_bands",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785400100000,
+      "tag": "0008_tickets_schema",
+      "breakpoints": true
     }
   ]
 }

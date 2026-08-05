@@ -6,6 +6,11 @@ import { seatTierSchema, showSummarySchema } from '../schema';
 // route that reached for `UpdateShowDto` would have to import across the audience boundary, which
 // is the point — that import is the thing a reviewer notices.
 
+// The organizer account itself, served by `apps/shows` alongside the shows it owns. The name is
+// what buyers see on the organizer's show pages; the role flip needs nothing but the caller's JWT.
+export const becomeOrganizerSchema = z.object({ name: z.string().min(1) });
+export type BecomeOrganizerDto = z.infer<typeof becomeOrganizerSchema>;
+
 export const createShowSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
@@ -61,7 +66,7 @@ export type OrganizerShowsQuery = z.infer<typeof organizerShowsQuerySchema>;
  * stale the moment anything else changes the show.
  */
 export const publishChecklistSchema = z.object({
-  hasTicketTypes: z.boolean(),
+  hasPriceBands: z.boolean(),
   hasPricedSections: z.boolean(),
   startsInFuture: z.boolean(),
   pricedSectionCount: z.number().int(),
@@ -77,10 +82,10 @@ export type PublishChecklist = z.infer<typeof publishChecklistSchema>;
  * because that 404s a draft, on purpose.
  *
  * Dearest band first, the order the public show page lists them in. Assignments carry
- * `ticketTypeId`, not the write side's `key`: keys are client handles the server never persists.
+ * `bandId`, not the write side's `key`: keys are client handles the server never persists.
  */
 export const showPricingSchema = z.object({
-  ticketTypes: z.array(
+  priceBands: z.array(
     z.object({
       id: z.string().uuid(),
       name: z.string(),
@@ -88,7 +93,7 @@ export const showPricingSchema = z.object({
       priceCents: z.number().int(),
     }),
   ),
-  assignments: z.array(z.object({ sectionId: z.string().uuid(), ticketTypeId: z.string().uuid() })),
+  assignments: z.array(z.object({ sectionId: z.string().uuid(), bandId: z.string().uuid() })),
 });
 export type ShowPricing = z.infer<typeof showPricingSchema>;
 
@@ -98,7 +103,7 @@ export type ShowPricing = z.infer<typeof showPricingSchema>;
  * server maps it to the inserted id and never persists it.
  */
 export const putPricingSchema = z.object({
-  ticketTypes: z.array(
+  priceBands: z.array(
     z.object({
       key: z.string().min(1),
       name: z.string().min(1),
@@ -109,7 +114,7 @@ export const putPricingSchema = z.object({
   assignments: z.array(
     z.object({
       sectionId: z.string().uuid(),
-      ticketTypeKey: z.string().min(1),
+      bandKey: z.string().min(1),
     }),
   ),
 });

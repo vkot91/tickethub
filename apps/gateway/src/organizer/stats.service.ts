@@ -12,8 +12,8 @@ import {
   type ShowStats,
   type ShowStatsQuery,
 } from '@tickethub/contracts';
-import { OrganizerShowsService } from './shows.service';
-import { ShowContextService } from '../shared/show-context.service';
+import { GatewayOrganizerOwnershipService } from './ownership.service';
+import { withShowContext, UNKNOWN_SHOW_TITLE, type ShowContext } from '../shared/show-context';
 
 /**
  * A day before the show went on sale is a zero nobody could have bought — real, but padding. The
@@ -38,9 +38,9 @@ function withNames(
   names: Map<string, { name: string; tier: SeatTier }>,
 ): ShowStats['byTier'] {
   return byTier.map((tier) => ({
-    ticketTypeId: tier.ticketTypeId,
-    name: names.get(tier.ticketTypeId)?.name ?? '',
-    tier: names.get(tier.ticketTypeId)?.tier ?? 'standard',
+    bandId: tier.bandId,
+    name: names.get(tier.bandId)?.name ?? '',
+    tier: names.get(tier.bandId)?.tier ?? 'standard',
     soldCount: tier.soldCount,
   }));
 }
@@ -57,22 +57,47 @@ const ZERO_STATS: ShowStats = {
 
 /**
  * The dashboard's fan-out. Ownership is resolved here, once, and every downstream service is
- * handed a **resolved** `showIds[]` — so `apps/orders` and `apps/fulfillment` never learn who owns
+ * handed a **resolved** `showIds[]` — so `apps/orders` and `apps/tickets` never learn who owns
  * what, and an organizer with no shows gets zeros rather than the platform's aggregate.
  *
  * A service rather than controller code because the merge is the interesting part and deserves
  * tests without HTTP. Passthrough routes stay inline in their controllers.
  */
 @Injectable()
-export class OrganizerStatsService {
+export class GatewayOrganizerStatsService {
   constructor(
     private readonly amqp: AmqpConnection,
-    private readonly myShows: OrganizerShowsService,
-    private readonly showContext: ShowContextService,
+    private readonly ownership: GatewayOrganizerOwnershipService,
   ) {}
 
+  /**
+   * The console's half of the show-context merge. Not the buyer's `detail` + `seatMap`: that pair
+   * 404s a draft and hauls back a whole venue's geometry for a handful of labels. These two keys
+   * answer for the shows this caller owns, drafts included, and ask for exactly the labels needed.
+   *
+   * Titles arrive pre-fetched: `SUMMARIES` is batched, and calling it per show ran its whole
+   * capacity aggregate (four left joins, `count(seats.id)`) once per row of the page just to read
+   * a title. Only the labels are per-show, because that key takes one `showId`.
+   */
+  private readonly fetchShow =
+    (seatIdsByShow: Map<string, string[]>, titles: Map<string, string>) =>
+    async (showId: string): Promise<ShowContext> => {
+      const labels = await rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.SEAT_LABELS, {
+        showId,
+        seatIds: seatIdsByShow.get(showId) ?? [],
+      });
+
+      // A successful `SUMMARIES` answers for every id it was asked about, so a miss here means the
+      // batch itself failed — the same "Shows could not name it" the per-show fan-out used to
+      // report, and the same fallback.
+      return {
+        title: titles.get(showId) ?? UNKNOWN_SHOW_TITLE,
+        labels: new Map(Object.entries(labels)),
+      };
+    };
+
   async stats(userId: string, query: ShowStatsQuery): Promise<ShowStats> {
-    const owned = await this.myShows.showIds(userId);
+    const owned = await this.ownership.showIds(userId);
 
     // 404, not 403, and *before* the empty short-circuit: an organizer must not be able to probe
     // for a competitor's show by id, and owning nothing is not a licence to ask about anything.
@@ -84,7 +109,7 @@ export class OrganizerStatsService {
     const showIds = query.showId ? [query.showId] : owned;
 
     // One wave, one call per service — orders owns the money, shows the seats and the sale start,
-    // fulfillment the check-ins. The tier names are fetched alongside rather than after: they
+    // tickets the check-ins. The tier names are fetched alongside rather than after: they
     // only need the `showId`, so awaiting them on `orders.byTier` bought nothing but a round trip.
     const [orders, capacities, checkedInCount, tierNames] = await Promise.all([
       rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS, {
@@ -92,7 +117,7 @@ export class OrganizerStatsService {
         from: query.from,
         to: query.to,
       }),
-      rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, { showIds }),
+      rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES, { showIds }),
       rpcRequest(this.amqp, ORGANIZER_TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
       this.tierNames(query.showId),
     ]);
@@ -114,11 +139,11 @@ export class OrganizerStatsService {
   }
 
   async recentOrders(userId: string, limit: number): Promise<RecentOrders> {
-    const showIds = await this.myShows.showIds(userId);
+    const showIds = await this.ownership.showIds(userId);
 
     if (showIds.length === 0) return { items: [] };
 
-    const rows = await rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT, {
+    const rows = await rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.LATEST, {
       showIds,
       limit,
     });
@@ -127,14 +152,28 @@ export class OrganizerStatsService {
 
     // One call for the page, not one per row — the same reason the show context is resolved per
     // distinct show rather than per order.
-    const [buyers, withShow] = await Promise.all([
+    const seatIdsByShow = new Map<string, string[]>();
+
+    for (const row of rows)
+      seatIdsByShow.set(row.showId, [...(seatIdsByShow.get(row.showId) ?? []), ...row.seatIds]);
+
+    const [buyers, summaries] = await Promise.all([
       rpcRequest(this.amqp, AUTH_MESSAGE_PATTERNS.GET_USERS_BY_IDS, {
         ids: [...new Set(rows.map((row) => row.userId))],
       }),
-      this.showContext.withShowContext(
-        rows.map((row) => ({ ...row, seats: row.seatIds.map((seatId) => ({ seatId })) })),
-      ),
+      // Batched, and tolerant for the same reason the per-show fan-out was: an unreachable Shows
+      // costs the page its titles, not the page.
+      rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES, {
+        showIds: [...seatIdsByShow.keys()],
+      }).catch(() => []),
     ]);
+
+    const titles = new Map(summaries.map((show) => [show.showId, show.title]));
+
+    const withShow = await withShowContext(
+      rows.map((row) => ({ ...row, seats: row.seatIds.map((seatId) => ({ seatId })) })),
+      this.fetchShow(seatIdsByShow, titles),
+    );
 
     const emails = new Map(buyers.map((buyer) => [buyer.id, buyer.email]));
 
@@ -153,7 +192,7 @@ export class OrganizerStatsService {
   }
 
   /**
-   * Orders knows the ticket type id but not its name — that lives in Shows. Only the single-show
+   * Orders knows the price band id but not its name — that lives in Shows. Only the single-show
    * view asks: "sales by band" across several shows would be adding up bands that are different
    * rows with the same name. An unreachable show leaves the names blank rather than failing the
    * whole dashboard.
@@ -166,7 +205,7 @@ export class OrganizerStatsService {
     if (!showId) return names;
 
     try {
-      const bands = await rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.TIER_NAMES, {
+      const bands = await rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.BANDS, {
         showId,
       });
 
@@ -174,7 +213,7 @@ export class OrganizerStatsService {
         names.set(band.id, { name: band.name, tier: band.tier });
       }
     } catch {
-      // fall through to unnamed
+      // no-op
     }
 
     return names;

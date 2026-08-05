@@ -2,7 +2,7 @@ import type { Rpc } from '../shape';
 import type { CreatePaymentIntentDto, PaymentIntentResponse } from './schema';
 
 export const PAYMENTS_MESSAGE_PATTERNS = {
-  CREATE_INTENT: 'payments.createIntent',
+  CREATE_INTENT: 'user.payments.createIntent',
   WEBHOOK: 'payments.webhook',
 } as const;
 

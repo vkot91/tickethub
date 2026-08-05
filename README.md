@@ -31,6 +31,6 @@ Event ticketing platform. Pet project for training skills: microservices, queues
 ## Conventions worth knowing before you "fix" them
 
 - **Seat labels** are one format everywhere — `"<Section> <RowLetter><Seat>"`, e.g. `"Parterre A2"`,
-  from `seatLabel()` in `packages/common`. `fulfillment.tickets.seat_label` is a **snapshot of what
+  from `seatLabel()` in `packages/common`. `tickets.tickets.seat_label` is a **snapshot of what
   was sold**, not a cache of the current geometry — a reshuffled seat map does not rewrite issued
   tickets (unlike the show title and start time, which are read live).

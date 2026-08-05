@@ -3,8 +3,8 @@ import type { TicketList, TicketPdfUrl } from './schema';
 
 /** A buyer reading their own tickets. */
 export const TICKETS_MESSAGE_PATTERNS = {
-  LIST: 'tickets.list',
-  PDF_URL: 'tickets.pdfUrl',
+  LIST: 'user.tickets.list',
+  PDF_URL: 'user.tickets.pdfUrl',
 } as const;
 
 export interface TicketsRpcContracts {

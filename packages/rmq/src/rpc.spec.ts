@@ -61,11 +61,11 @@ describe('rpcRequest', () => {
     const request = jest.fn().mockResolvedValue({ id: 'o1' });
     const amqp = { request } as unknown as AmqpConnection;
 
-    const res = await rpcRequest(amqp, 'orders.get', { userId: 'u1', orderId: 'o1' });
+    const res = await rpcRequest(amqp, 'user.orders.get', { userId: 'u1', orderId: 'o1' });
 
     expect(res).toEqual({ id: 'o1' });
     expect(request).toHaveBeenCalledWith(
-      expect.objectContaining({ exchange: RPC_EXCHANGE, routingKey: 'orders.get' }),
+      expect.objectContaining({ exchange: RPC_EXCHANGE, routingKey: 'user.orders.get' }),
     );
   });
 
@@ -78,10 +78,12 @@ describe('rpcRequest', () => {
 
     const payload = { userId: 'u1', orderId: 'o1' };
 
-    await expect(rpcRequest(amqp, 'orders.get', payload)).rejects.toMatchObject({
+    await expect(rpcRequest(amqp, 'user.orders.get', payload)).rejects.toMatchObject({
       status: 404,
     });
-    await expect(rpcRequest(amqp, 'orders.get', payload)).rejects.toBeInstanceOf(HttpException);
+    await expect(rpcRequest(amqp, 'user.orders.get', payload)).rejects.toBeInstanceOf(
+      HttpException,
+    );
   });
 
   // The registry is a compile-time guarantee, so its test is a compile-time one: ts-jest
@@ -89,13 +91,13 @@ describe('rpcRequest', () => {
   it('rejects a wrong payload, an unknown routing key and a misspelled result field', async () => {
     const amqp = { request: jest.fn().mockResolvedValue([]) } as unknown as AmqpConnection;
 
-    // @ts-expect-error — CAPACITY takes { showIds }, not a number
-    await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, 123);
+    // @ts-expect-error — SUMMARIES takes { showIds }, not a number
+    await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES, 123);
 
     // @ts-expect-error — not a routing key in RpcContracts
     await rpcRequest(amqp, 'organizer.shows.capacty', { showIds: ['s1'] });
 
-    const capacities = await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, {
+    const capacities = await rpcRequest(amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES, {
       showIds: ['s1'],
     });
 

@@ -5,18 +5,18 @@ import { requireDatabaseUrl } from '../env';
 import {
   orders,
   organizers,
+  priceBands,
   rows,
   seatReservations,
   seats,
   sections,
   shows,
   showSectionPricing,
-  ticketTypes,
   users,
   venues,
 } from '../schema';
 
-// bcrypt hash of "password123" — regenerated with real bcrypt (Task 9 setup).
+// bcrypt hash of "password123".
 const PW_HASH = '$2b$10$7zJ/BFOmvCksYTw8T67EMeOhM5D9xz9EhVW9AoUT.YfenRwBk1mMa';
 
 interface SectionSpec {
@@ -40,7 +40,7 @@ interface ShowSpec {
   status: 'draft' | 'published' | 'cancelled' | 'finished';
   /** `sections` names every venue section this type prices — one band may cover several, and a
    *  section named by no type is not on sale for this show. */
-  ticketTypes: {
+  priceBands: {
     name: string;
     tier: 'vip' | 'standard' | 'economy';
     priceCents: number;
@@ -101,7 +101,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Demo Arena',
     startsAt: '2026-12-01T19:00:00Z',
     status: 'published',
-    ticketTypes: [
+    priceBands: [
       { name: 'Loge', tier: 'vip', priceCents: 8500, sections: ['Loge'] },
       { name: 'Standard', tier: 'standard', priceCents: 5000, sections: ['Parterre'] },
       { name: 'Balcony', tier: 'economy', priceCents: 3500, sections: ['Balcony'] },
@@ -109,14 +109,14 @@ const SHOWS: ShowSpec[] = [
     soldEveryNthPair: 1,
   },
   {
-    // One band across the whole building — the demo case for a ticket type shared by several
+    // One band across the whole building — the demo case for a price band shared by several
     // sections, which is what the show_section_pricing mapping buys us.
     title: 'Demo Festival (flat price)',
     description: 'One price, every section',
     venue: 'Demo Arena',
     startsAt: '2026-12-15T18:00:00Z',
     status: 'published',
-    ticketTypes: [
+    priceBands: [
       {
         name: 'Standing',
         tier: 'standard',
@@ -132,7 +132,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Grand Hall',
     startsAt: '2026-09-18T19:30:00Z',
     status: 'published',
-    ticketTypes: [
+    priceBands: [
       { name: 'VIP', tier: 'vip', priceCents: 18000, sections: ['Orchestra'] },
       { name: 'Standard', tier: 'standard', priceCents: 9000, sections: ['Mezzanine'] },
       { name: 'Balcony', tier: 'economy', priceCents: 5500, sections: ['Balcony'] },
@@ -145,7 +145,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Grand Hall',
     startsAt: '2026-10-04T20:00:00Z',
     status: 'published',
-    ticketTypes: [
+    priceBands: [
       { name: 'VIP', tier: 'vip', priceCents: 22000, sections: ['Orchestra'] },
       { name: 'Standard', tier: 'standard', priceCents: 11000, sections: ['Mezzanine', 'Balcony'] },
     ],
@@ -157,7 +157,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Warehouse 9',
     startsAt: '2026-07-05T22:00:00Z',
     status: 'finished',
-    ticketTypes: [
+    priceBands: [
       { name: 'Box', tier: 'vip', priceCents: 12000, sections: ['Box'] },
       { name: 'Floor', tier: 'economy', priceCents: 4000, sections: ['Floor'] },
     ],
@@ -169,7 +169,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Warehouse 9',
     startsAt: '2026-11-08T19:00:00Z',
     status: 'draft',
-    ticketTypes: [
+    priceBands: [
       { name: 'Standard', tier: 'standard', priceCents: 4500, sections: ['Floor', 'Box'] },
     ],
   },
@@ -179,9 +179,9 @@ const SHOWS: ShowSpec[] = [
     venue: 'Riverside Amphitheatre',
     startsAt: '2026-07-11T14:00:00Z',
     status: 'finished',
-    // "Early Bird" used to sit here naming no section, so it advertised a price no seat could be
-    // bought at. Dropped rather than mapped — a band that prices nothing is a bug in the demo.
-    ticketTypes: [
+    // A band that names no section is a bug in the demo — it would advertise a price no seat
+    // could be bought at.
+    priceBands: [
       { name: 'VIP', tier: 'vip', priceCents: 15000, sections: ['Lower Bowl'] },
       { name: 'Standard', tier: 'standard', priceCents: 6000, sections: ['Upper Bowl'] },
     ],
@@ -193,7 +193,7 @@ const SHOWS: ShowSpec[] = [
     venue: 'Riverside Amphitheatre',
     startsAt: '2026-06-20T16:00:00Z',
     status: 'cancelled',
-    ticketTypes: [
+    priceBands: [
       {
         name: 'Standard',
         tier: 'standard',
@@ -289,28 +289,28 @@ async function ensureShow(
   const venueSections = await db.select().from(sections).where(eq(sections.venueId, venueId));
   const sectionIdByName = new Map(venueSections.map((s) => [s.name, s.id]));
 
-  const existingTypes = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+  const existingTypes = await db.select().from(priceBands).where(eq(priceBands.showId, show.id));
 
   const existingIdByName = new Map(existingTypes.map((type) => [type.name, type.id]));
 
   // Upserted by name rather than skipped wholesale, so re-seeding an existing db picks up a
   // changed price or band instead of leaving stale rows in place. The id is stable, which
   // matters — orders reference it.
-  for (const { sections: sectionNames, ...type } of spec.ticketTypes) {
+  for (const { sections: sectionNames, ...type } of spec.priceBands) {
     const values = { ...type, showId: show.id };
 
     const existingId = existingIdByName.get(type.name);
 
-    let ticketTypeId = existingId;
+    let bandId = existingId;
 
-    if (ticketTypeId) {
-      await db.update(ticketTypes).set(values).where(eq(ticketTypes.id, ticketTypeId));
+    if (bandId) {
+      await db.update(priceBands).set(values).where(eq(priceBands.id, bandId));
     } else {
       const [inserted] = await db
-        .insert(ticketTypes)
+        .insert(priceBands)
         .values(values)
-        .returning({ id: ticketTypes.id });
-      ticketTypeId = inserted.id;
+        .returning({ id: priceBands.id });
+      bandId = inserted.id;
     }
 
     // The PK is (show, section), so re-seeding a section onto a different band has to be an
@@ -322,12 +322,12 @@ async function ensureShow(
           showId: show.id,
           sectionId: sectionIdByName.get(name) as string,
           venueId,
-          ticketTypeId,
+          bandId,
         })),
       )
       .onConflictDoUpdate({
         target: [showSectionPricing.showId, showSectionPricing.sectionId],
-        set: { ticketTypeId },
+        set: { bandId },
       });
   }
 
@@ -337,7 +337,7 @@ async function ensureShow(
 /**
  * Marks part of a show's map as taken: paid orders with confirmed reservations, which is what
  * the oversell index and (once the endpoint exposes availability) the seat map read.
- * Each seat is priced through the ticket type covering its section, exactly as the seat-map
+ * Each seat is priced through the price band covering its section, exactly as the seat-map
  * endpoint resolves it, so a seeded order's total matches what the UI quotes for those seats.
  */
 async function sellSeats(
@@ -358,12 +358,12 @@ async function sellSeats(
   const sold = await db
     .select({
       sectionId: showSectionPricing.sectionId,
-      id: ticketTypes.id,
-      priceCents: ticketTypes.priceCents,
-      currency: ticketTypes.currency,
+      id: priceBands.id,
+      priceCents: priceBands.priceCents,
+      currency: priceBands.currency,
     })
     .from(showSectionPricing)
-    .innerJoin(ticketTypes, eq(showSectionPricing.ticketTypeId, ticketTypes.id))
+    .innerJoin(priceBands, eq(showSectionPricing.bandId, priceBands.id))
     .where(eq(showSectionPricing.showId, showId));
 
   if (sold.length === 0) return;
@@ -383,7 +383,7 @@ async function sellSeats(
   for (let pair = 0; pair * 2 + 1 < venueSeats.length; pair += everyNthPair) {
     const pairSeats = venueSeats.slice(pair * 2, pair * 2 + 2);
 
-    // A section no ticket type covers is not on sale, so it cannot be seeded as sold either.
+    // A section no price band covers is not on sale, so it cannot be seeded as sold either.
     if (pairSeats.every((seat) => typeForSeat(seat))) soldPairs.push(pairSeats);
   }
 
@@ -412,7 +412,7 @@ async function sellSeats(
         orderId: order.id,
         showId,
         seatId: seat.id,
-        ticketTypeId: typeForSeat(seat)!.id,
+        bandId: typeForSeat(seat)!.id,
         status: 'confirmed' as const,
       })),
     ),
@@ -423,7 +423,7 @@ export async function seed(db: Db): Promise<{
   showId: string;
   flashShowId: string;
   flashSeatId: string;
-  flashTicketTypeId: string;
+  flashBandId: string;
 }> {
   await db
     .insert(users)
@@ -489,19 +489,16 @@ export async function seed(db: Db): Promise<{
     venue: 'Flash Arena',
     startsAt: '2026-12-20T20:00:00Z',
     status: 'published',
-    ticketTypes: [{ name: 'Flash', tier: 'standard', priceCents: 5000, sections: ['Pit'] }],
+    priceBands: [{ name: 'Flash', tier: 'standard', priceCents: 5000, sections: ['Pit'] }],
   });
 
-  const [flashType] = await db
-    .select()
-    .from(ticketTypes)
-    .where(eq(ticketTypes.showId, flashShowId));
+  const [flashType] = await db.select().from(priceBands).where(eq(priceBands.showId, flashShowId));
 
   return {
     showId: showIds.get('Demo Concert (seated)') as string,
     flashShowId,
     flashSeatId: flashSeatRow.id,
-    flashTicketTypeId: flashType.id,
+    flashBandId: flashType.id,
   };
 }
 

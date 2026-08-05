@@ -9,12 +9,12 @@ import { OrganizerVenuesService } from './venues.service';
 export class OrganizerVenuesController {
   constructor(private readonly venuesService: OrganizerVenuesService) {}
 
-  @RabbitRPC(rpcSub(VENUES_MESSAGE_PATTERNS.GET_LIST))
+  @RabbitRPC(rpcSub(VENUES_MESSAGE_PATTERNS.LIST))
   getList() {
     return this.venuesService.getList();
   }
 
-  @RabbitRPC(rpcSub(VENUES_MESSAGE_PATTERNS.GET_ONE))
+  @RabbitRPC(rpcSub(VENUES_MESSAGE_PATTERNS.GET))
   getOne(params: { venueId: string }) {
     return this.venuesService.getOne(params.venueId);
   }

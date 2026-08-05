@@ -29,7 +29,7 @@ export function TicketCard({ ticket }: { ticket: Ticket }) {
 
         <div className="flex gap-4 p-5">
           <div className="rounded-control bg-white p-2">
-            {/* The QR carries the fulfillment service's HMAC token — the scanner reads this,
+            {/* The QR carries the tickets service's HMAC token — the scanner reads this,
                 not the ticket id, so a guessed id cannot get anyone through the gate. */}
             <QRCodeSVG
               value={ticket.qrToken}

@@ -6,7 +6,7 @@ const UUID = '11111111-1111-1111-1111-111111111111';
 describe('organizer orders wire names', () => {
   it('mirrors each key onto its wire value', () => {
     expect(ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS).toBe('organizer.orders.stats');
-    expect(ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT).toBe('organizer.orders.recent');
+    expect(ORGANIZER_ORDERS_MESSAGE_PATTERNS.LATEST).toBe('organizer.orders.latest');
   });
 });
 
@@ -17,7 +17,7 @@ describe('orderStatsSchema', () => {
       revenueCents: 24_000,
       refundedCents: 0,
       byDay: [{ date: '2026-07-01', revenueCents: 24_000, count: 12 }],
-      byTier: [{ ticketTypeId: UUID, soldCount: 12 }],
+      byTier: [{ bandId: UUID, soldCount: 12 }],
     };
 
     expect(orderStatsSchema.parse(stats)).toEqual(stats);

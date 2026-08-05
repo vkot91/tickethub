@@ -7,9 +7,9 @@ import { ORGANIZER_SHOWS_MESSAGE_PATTERNS } from './shows/organizer/wire';
 // exist to pin the keys to their routing keys; `rpcRequest`'s own spec covers the call side.
 describe('RpcContracts', () => {
   it('is keyed by the literal routing key', () => {
-    const key: RpcKey = ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY;
+    const key: RpcKey = ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES;
 
-    expect(key).toBe('organizer.shows.capacity');
+    expect(key).toBe('organizer.shows.summaries');
   });
 
   it('rejects a routing key that is not an RPC', () => {
@@ -37,7 +37,7 @@ describe('RpcContracts', () => {
   it('no longer accepts the un-namespaced organizer keys', () => {
     // @ts-expect-error — renamed to 'organizer.orders.stats'
     const stats: RpcKey = 'orders.stats';
-    // @ts-expect-error — renamed to 'organizer.shows.myShows'
+    // @ts-expect-error — renamed to 'organizer.shows.list'
     const myShows: RpcKey = 'organizer.myShows';
 
     expect([stats, myShows]).toHaveLength(2);

@@ -7,9 +7,9 @@ import {
   orders,
   ordersOutbox,
   ordersProcessedMessages,
+  priceBands,
   seatReservations,
   seats,
-  ticketTypes,
   type Db,
 } from '@tickethub/db';
 import { seed } from '@tickethub/db/seed';
@@ -37,7 +37,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     const ids = await seed(db);
     showId = ids.flashShowId;
     seatId = ids.flashSeatId;
-    ttId = ids.flashTicketTypeId;
+    ttId = ids.flashBandId;
     const orderRepository = new OrderRepository(
       new RedisService(redis),
       new OutboxRepository(db, ordersOutbox),
@@ -68,22 +68,22 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     await redis.flushall();
   });
 
-  const dtoFor = () => ({ showId, seats: [{ seatId, ticketTypeId: ttId }] });
+  const dtoFor = () => ({ showId, seats: [{ seatId, bandId: ttId }] });
 
   // The price a buyer pays comes from the seat's section via show_section_pricing, never from the
-  // ticketTypeId they posted. Trusting that field let anyone send a cheap band's id for an
+  // bandId they posted. Trusting that field let anyone send a cheap band's id for an
   // expensive seat and be charged the cheap price.
-  it('ignores a forged ticketTypeId and charges the seat’s own section price', async () => {
+  it('ignores a forged bandId and charges the seat’s own section price', async () => {
     const [cheapest] = await db
-      .select({ id: ticketTypes.id, priceCents: ticketTypes.priceCents })
-      .from(ticketTypes)
-      .orderBy(asc(ticketTypes.priceCents))
+      .select({ id: priceBands.id, priceCents: priceBands.priceCents })
+      .from(priceBands)
+      .orderBy(asc(priceBands.priceCents))
       .limit(1);
 
     const [real] = await db
-      .select({ priceCents: ticketTypes.priceCents })
-      .from(ticketTypes)
-      .where(eq(ticketTypes.id, ttId));
+      .select({ priceCents: priceBands.priceCents })
+      .from(priceBands)
+      .where(eq(priceBands.id, ttId));
 
     // Guard the premise: the forged type must actually be cheaper, or this proves nothing.
     expect(cheapest.id).not.toBe(ttId);
@@ -91,17 +91,17 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
 
     const order = await svc.create('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'forge', {
       showId,
-      seats: [{ seatId, ticketTypeId: cheapest.id }],
+      seats: [{ seatId, bandId: cheapest.id }],
     } as never);
 
     expect(order.totalCents).toBe(real.priceCents);
     // The reservation records the resolved band too, so tickets snapshot the right tier.
-    expect(order.seats).toEqual([{ seatId, ticketTypeId: ttId }]);
+    expect(order.seats).toEqual([{ seatId, bandId: ttId }]);
     const [reservation] = await db
-      .select({ ticketTypeId: seatReservations.ticketTypeId })
+      .select({ bandId: seatReservations.bandId })
       .from(seatReservations)
       .where(eq(seatReservations.seatId, seatId));
-    expect(reservation.ticketTypeId).toBe(ttId);
+    expect(reservation.bandId).toBe(ttId);
   });
 
   it('refuses a seat the show does not sell', async () => {
@@ -115,7 +115,7 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
     await expect(
       svc.create('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'foreign', {
         showId,
-        seats: [{ seatId: foreign.id, ticketTypeId: ttId }],
+        seats: [{ seatId: foreign.id, bandId: ttId }],
       } as never),
     ).rejects.toThrow(BadRequestException);
   });
@@ -177,13 +177,13 @@ describe('Orders concurrency (integration: real Postgres + Redis)', () => {
       orderId: order.id,
       showId,
       seatId: confirmedSeatId,
-      ticketTypeId: ttId,
+      bandId: ttId,
       status: 'confirmed',
     });
 
     const response = await svc.get(userId, order.id);
 
-    expect(response.seats).toEqual([{ seatId: confirmedSeatId, ticketTypeId: ttId }]);
+    expect(response.seats).toEqual([{ seatId: confirmedSeatId, bandId: ttId }]);
   });
 
   // The keyset is a Postgres row comparison — only a real database proves it orders and

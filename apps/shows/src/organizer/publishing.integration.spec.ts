@@ -3,13 +3,13 @@ import { eq, sql } from 'drizzle-orm';
 import {
   createDb,
   organizers,
+  priceBands,
   rows,
   seats,
   sections,
   shows,
   showSectionPricing,
   showsOutbox,
-  ticketTypes,
   users,
   venues,
   type Db,
@@ -44,7 +44,7 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
   // per-process counter, so leftovers from a previous run collide on the second one.
   beforeEach(async () => {
     await db.execute(
-      sql`truncate ${sql.raw('"shows"."outbox"')}, ${showSectionPricing}, ${ticketTypes}, ${shows}, ${seats}, ${rows}, ${sections}, ${venues}, ${organizers}, ${users} restart identity cascade`,
+      sql`truncate ${sql.raw('"shows"."outbox"')}, ${showSectionPricing}, ${priceBands}, ${shows}, ${seats}, ${rows}, ${sections}, ${venues}, ${organizers}, ${users} restart identity cascade`,
     );
   });
 
@@ -56,17 +56,17 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
         { name: 'Stalls', rows: 1, seatsPerRow: 2 },
         { name: 'Balcony', rows: 1, seatsPerRow: 2 },
       ],
-      ticketType: false,
+      priceBand: false,
     });
 
   it('publishes once and republishes never — exactly one show.published message', async () => {
     const { show, organizer, sections: built } = await seedDraft();
 
     await svc.putPricing(organizer.userId, show.id, {
-      ticketTypes: [{ key: 'flat', name: 'Flat', tier: 'standard', priceCents: 2500 }],
+      priceBands: [{ key: 'flat', name: 'Flat', tier: 'standard', priceCents: 2500 }],
       assignments: built.map(({ section }) => ({
         sectionId: section.id,
-        ticketTypeKey: 'flat',
+        bandKey: 'flat',
       })),
     });
 
@@ -82,19 +82,18 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
     expect(messages[0].payload).toMatchObject({ showId: show.id });
   });
 
-  // The end-to-end proof that the console and the buyer path agree on what is on sale.
   it('hands the buyer’s seat map exactly the tiers and prices the organizer set', async () => {
     const { show, organizer, sections: built } = await seedDraft();
     const [stalls, balcony] = built;
 
     await svc.putPricing(organizer.userId, show.id, {
-      ticketTypes: [
+      priceBands: [
         { key: 'vip', name: 'VIP', tier: 'vip', priceCents: 9000 },
         { key: 'cheap', name: 'Rear', tier: 'economy', priceCents: 1500 },
       ],
       // Balcony is left unpriced on purpose: an unpriced section is not on sale, and must not
       // appear on the seat map at all.
-      assignments: [{ sectionId: stalls.section.id, ticketTypeKey: 'vip' }],
+      assignments: [{ sectionId: stalls.section.id, bandKey: 'vip' }],
     });
 
     // The buyer's read is a public permalink, and a draft 404s there — publishing is what makes
@@ -108,11 +107,11 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
 
     // Scoped to the show: the integration db is shared, so a bare name lookup would find another
     // test's band.
-    const [band] = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+    const [band] = await db.select().from(priceBands).where(eq(priceBands.showId, show.id));
     const offered = map.sections[0].rows.flatMap((row) => row.seats);
 
     expect(offered).toHaveLength(2);
-    expect(offered.every((seat) => seat.ticketTypeId === band.id)).toBe(true);
+    expect(offered.every((seat) => seat.bandId === band.id)).toBe(true);
     expect(offered.every((seat) => seat.priceCents === 9000 && seat.tier === 'vip')).toBe(true);
   });
 
@@ -120,12 +119,12 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
     const { show, organizer, sections: built } = await seedDraft();
 
     await svc.putPricing(organizer.userId, show.id, {
-      ticketTypes: [{ key: 'old', name: 'Old', tier: 'standard', priceCents: 100 }],
-      assignments: built.map(({ section }) => ({ sectionId: section.id, ticketTypeKey: 'old' })),
+      priceBands: [{ key: 'old', name: 'Old', tier: 'standard', priceCents: 100 }],
+      assignments: built.map(({ section }) => ({ sectionId: section.id, bandKey: 'old' })),
     });
     await svc.putPricing(organizer.userId, show.id, {
-      ticketTypes: [{ key: 'new', name: 'New', tier: 'vip', priceCents: 7000 }],
-      assignments: [{ sectionId: built[0].section.id, ticketTypeKey: 'new' }],
+      priceBands: [{ key: 'new', name: 'New', tier: 'vip', priceCents: 7000 }],
+      assignments: [{ sectionId: built[0].section.id, bandKey: 'new' }],
     });
     await svc.publishShow(organizer.userId, show.id);
 
@@ -150,7 +149,7 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
       .returning();
 
     const [band] = await db
-      .insert(ticketTypes)
+      .insert(priceBands)
       .values({ showId: show.id, name: 'Flat', priceCents: 1000 })
       .returning();
 
@@ -160,7 +159,7 @@ describe('Organizer pricing and publishing (integration: real Postgres)', () => 
         sectionId: foreign.id,
         // The show's venue, as the service would copy it — the section is the mismatch.
         venueId: built[0].section.venueId,
-        ticketTypeId: band.id,
+        bandId: band.id,
       }),
     ).rejects.toThrow();
   });

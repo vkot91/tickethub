@@ -21,7 +21,7 @@ const day = (iso: string) => new Date(`${iso}T12:00:00.000Z`);
 /** One order with one confirmed-or-otherwise reservation, on a given day. */
 async function seedOrder(opts: {
   showId: string;
-  ticketTypeId: string;
+  bandId: string;
   status: 'paid' | 'refunded' | 'awaiting_payment';
   totalCents: number;
   createdAt: Date;
@@ -47,7 +47,7 @@ async function seedOrder(opts: {
     orderId: order.id,
     showId: opts.showId,
     seatId: opts.seatId,
-    ticketTypeId: opts.ticketTypeId,
+    bandId: opts.bandId,
     status: opts.seatStatus ?? 'confirmed',
   });
 
@@ -58,10 +58,10 @@ describe('OrganizerStatsService.stats', () => {
   // The rule the whole slice hangs on: no shows must never fall through to an unfiltered
   // aggregate that hands one organizer the whole platform's revenue.
   it('returns zeros for an empty showIds, without reading anything', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 5000,
       createdAt: day('2026-07-10'),
@@ -78,11 +78,11 @@ describe('OrganizerStatsService.stats', () => {
   });
 
   it('counts a refunded order in refundedCents and not in revenueCents', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
 
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 5000,
       createdAt: day('2026-07-10'),
@@ -90,7 +90,7 @@ describe('OrganizerStatsService.stats', () => {
     });
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'refunded',
       totalCents: 3000,
       createdAt: day('2026-07-10'),
@@ -107,11 +107,11 @@ describe('OrganizerStatsService.stats', () => {
   });
 
   it('fills zero days across the whole window', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
 
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 5000,
       createdAt: day('2026-07-02'),
@@ -131,12 +131,12 @@ describe('OrganizerStatsService.stats', () => {
     ]);
   });
 
-  it('groups confirmed reservations by ticket type', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+  it('groups confirmed reservations by price band', async () => {
+    const { show, priceBand } = await seedShowGraph(db);
 
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 5000,
       createdAt: day('2026-07-02'),
@@ -145,7 +145,7 @@ describe('OrganizerStatsService.stats', () => {
 
     const stats = await svc.stats({ showIds: [show.id] });
 
-    expect(stats.byTier).toEqual([{ ticketTypeId: ticketType!.id, soldCount: 1 }]);
+    expect(stats.byTier).toEqual([{ bandId: priceBand!.id, soldCount: 1 }]);
   });
 
   it('ignores shows the caller does not own', async () => {
@@ -154,7 +154,7 @@ describe('OrganizerStatsService.stats', () => {
 
     await seedOrder({
       showId: theirs.show.id,
-      ticketTypeId: theirs.ticketType!.id,
+      bandId: theirs.priceBand!.id,
       status: 'paid',
       totalCents: 9900,
       createdAt: day('2026-07-02'),
@@ -185,7 +185,7 @@ describe('OrganizerStatsService.salesByShow', () => {
 
     await seedOrder({
       showId: sold.show.id,
-      ticketTypeId: sold.ticketType!.id,
+      bandId: sold.priceBand!.id,
       status: 'paid',
       totalCents: 4500,
       createdAt: day('2026-07-10'),
@@ -200,11 +200,11 @@ describe('OrganizerStatsService.salesByShow', () => {
 
   // The test that catches `stats` and `salesByShow` drifting apart on what "revenue" means.
   it('excludes a refunded order from revenueCents', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
 
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 2000,
       createdAt: day('2026-07-10'),
@@ -212,7 +212,7 @@ describe('OrganizerStatsService.salesByShow', () => {
     });
     await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'refunded',
       totalCents: 9000,
       createdAt: day('2026-07-11'),
@@ -227,11 +227,11 @@ describe('OrganizerStatsService.salesByShow', () => {
 
 describe('OrganizerStatsService.recent', () => {
   it('returns the newest orders for those shows, with their seat ids and buyer', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
 
     const older = await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'paid',
       totalCents: 5000,
       createdAt: day('2026-07-01'),
@@ -239,7 +239,7 @@ describe('OrganizerStatsService.recent', () => {
     });
     const newer = await seedOrder({
       showId: show.id,
-      ticketTypeId: ticketType!.id,
+      bandId: priceBand!.id,
       status: 'refunded',
       totalCents: 7000,
       createdAt: day('2026-07-05'),
@@ -263,12 +263,12 @@ describe('OrganizerStatsService.recent', () => {
   });
 
   it('honours the limit', async () => {
-    const { show, ticketType } = await seedShowGraph(db);
+    const { show, priceBand } = await seedShowGraph(db);
 
     for (const n of [1, 2, 3]) {
       await seedOrder({
         showId: show.id,
-        ticketTypeId: ticketType!.id,
+        bandId: priceBand!.id,
         status: 'paid',
         totalCents: 1000 * n,
         createdAt: day(`2026-07-0${n}`),

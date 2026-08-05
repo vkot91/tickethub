@@ -1,12 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { ShowContextService } from '../shared/show-context.service';
 import { GatewayUserOrdersController } from './orders.controller';
 
-// The merge moved into ShowContextService in the audience reshuffle; the controller now
-// composes it. Same amqp double, same assertions — only the wiring changed.
-const controller = (amqp: unknown) =>
-  new GatewayUserOrdersController(amqp as never, new ShowContextService(amqp as never));
+// The merge itself lives in `shared/show-context.ts` and takes the fetch as an argument; this
+// controller supplies the buyer's keys. Same amqp double, same assertions.
+const controller = (amqp: unknown) => new GatewayUserOrdersController(amqp as never);
 
 const amqp = { request: jest.fn().mockResolvedValue({ id: 'ord1' }) };
 
@@ -15,7 +13,7 @@ const dto = {
   seats: [
     {
       seatId: '00000000-0000-0000-0000-000000000002',
-      ticketTypeId: '00000000-0000-0000-0000-000000000003',
+      bandId: '00000000-0000-0000-0000-000000000003',
     },
   ],
 };
@@ -27,7 +25,7 @@ describe('GatewayUserOrdersController', () => {
     await ctrl.create(req as never, dto as never);
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'orders.create',
+        routingKey: 'user.orders.create',
         payload: { userId: 'u1', idempotencyKey: 'k1', dto },
       }),
     );
@@ -44,7 +42,7 @@ describe('GatewayUserOrdersController', () => {
     await ctrl.get({ user: { id: 'u1' } } as never, 'ord1');
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'orders.get',
+        routingKey: 'user.orders.get',
         payload: { userId: 'u1', orderId: 'ord1' },
       }),
     );
@@ -62,8 +60,8 @@ describe('GatewayUserOrdersController', () => {
       expiresAt: '2026-08-01T00:00:00.000Z',
       createdAt: '2026-07-01T00:00:00.000Z',
       seats: [
-        { seatId: 'seat1', ticketTypeId: 'tt1' },
-        { seatId: 'seat2', ticketTypeId: 'tt1' },
+        { seatId: 'seat1', bandId: 'tt1' },
+        { seatId: 'seat2', bandId: 'tt1' },
       ],
     };
 
@@ -78,8 +76,8 @@ describe('GatewayUserOrdersController', () => {
               id: 'row1',
               number: 1,
               seats: [
-                { id: 'seat1', number: 1, ticketTypeId: 'tt1', priceCents: 5000 },
-                { id: 'seat2', number: 2, ticketTypeId: 'tt1', priceCents: 5000 },
+                { id: 'seat1', number: 1, bandId: 'tt1', priceCents: 5000 },
+                { id: 'seat2', number: 2, bandId: 'tt1', priceCents: 5000 },
               ],
             },
           ],
@@ -87,17 +85,16 @@ describe('GatewayUserOrdersController', () => {
       ],
     };
 
-    /** Answers each routing key the list path fans out to. */
     function gateway(page: unknown, showsReply: (routingKey: string) => unknown) {
       return {
         request: jest.fn(({ routingKey }: { routingKey: string }) =>
-          routingKey === 'orders.list' ? Promise.resolve(page) : showsReply(routingKey),
+          routingKey === 'user.orders.list' ? Promise.resolve(page) : showsReply(routingKey),
         ),
       };
     }
 
     const shows = (routingKey: string) =>
-      Promise.resolve(routingKey === 'shows.detail' ? { title: 'Demo Concert' } : seatMap);
+      Promise.resolve(routingKey === 'user.shows.detail' ? { title: 'Demo Concert' } : seatMap);
 
     it('adds the show title and seat labels from Shows', async () => {
       const amqpList = gateway({ items: [summary], nextCursor: null }, shows);
@@ -114,7 +111,7 @@ describe('GatewayUserOrdersController', () => {
       });
       expect(amqpList.request).toHaveBeenCalledWith(
         expect.objectContaining({
-          routingKey: 'orders.list',
+          routingKey: 'user.orders.list',
           payload: { userId: 'u1', query: { limit: 20 } },
         }),
       );
@@ -128,7 +125,7 @@ describe('GatewayUserOrdersController', () => {
       await ctrl.list({ user: { id: 'u1' } } as never, {});
 
       const detailCalls = amqpList.request.mock.calls.filter(
-        ([{ routingKey }]: [{ routingKey: string }]) => routingKey === 'shows.detail',
+        ([{ routingKey }]: [{ routingKey: string }]) => routingKey === 'user.shows.detail',
       );
 
       expect(detailCalls).toHaveLength(1);
@@ -158,7 +155,7 @@ describe('GatewayUserOrdersController', () => {
     await ctrl.requestRefund({ user: { id: 'u1' } } as never, 'ord1');
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'orders.requestRefund',
+        routingKey: 'user.orders.requestRefund',
         payload: { userId: 'u1', orderId: 'ord1' },
       }),
     );

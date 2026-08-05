@@ -26,7 +26,7 @@ export function newBand(): BandDraft {
 /** Saved pricing → form state. The band's server id becomes its local key: a fresh handle for
  *  the next PUT, which is all a key ever is. */
 export function seedBands(pricing: ShowPricing): BandDraft[] {
-  return pricing.ticketTypes.map((band) => ({
+  return pricing.priceBands.map((band) => ({
     key: band.id,
     name: band.name,
     priceCents: band.priceCents,
@@ -36,7 +36,7 @@ export function seedBands(pricing: ShowPricing): BandDraft[] {
 
 export function seedAssignments(pricing: ShowPricing): SectionAssignments {
   return Object.fromEntries(
-    pricing.assignments.map(({ sectionId, ticketTypeId }) => [sectionId, ticketTypeId]),
+    pricing.assignments.map(({ sectionId, bandId }) => [sectionId, bandId]),
   );
 }
 
@@ -47,7 +47,7 @@ export function bandUsage(assignments: SectionAssignments, key: string): number 
 
 /**
  * Removing a band takes its sections off sale with it. Not a nicety: an assignment left pointing
- * at a removed key makes the whole `PUT` a 400 (`No ticket type with key …`), and the organizer
+ * at a removed key makes the whole `PUT` a 400 (`No price band with key …`), and the organizer
  * would be looking at a screen that says nothing about why.
  */
 export function removeBand(
@@ -87,10 +87,10 @@ export function toPutPricingBody(
   const keys = new Set(bands.map((band) => band.key));
 
   return {
-    ticketTypes: bands.map(({ key, name, tier, priceCents }) => ({ key, name, tier, priceCents })),
+    priceBands: bands.map(({ key, name, tier, priceCents }) => ({ key, name, tier, priceCents })),
     assignments: Object.entries(assignments)
       .filter(([, key]) => keys.has(key))
-      .map(([sectionId, ticketTypeKey]) => ({ sectionId, ticketTypeKey })),
+      .map(([sectionId, bandKey]) => ({ sectionId, bandKey })),
   };
 }
 

@@ -1,7 +1,6 @@
 import { Controller } from '@nestjs/common';
 import { RabbitRPC } from '@golevelup/nestjs-rabbitmq';
 import {
-  ORGANIZER_PROFILE_MESSAGE_PATTERNS,
   ORGANIZER_SHOWS_MESSAGE_PATTERNS,
   type CreateShowDto,
   type OrganizerShowsQuery,
@@ -23,27 +22,32 @@ export class OrganizerShowsController {
     private readonly posterService: OrganizerPosterService,
   ) {}
 
-  @RabbitRPC(rpcSub(ORGANIZER_PROFILE_MESSAGE_PATTERNS.SHOW_IDS))
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.IDS))
   showIds(params: { userId: string }) {
     return this.showsService.showIds(params.userId);
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY))
-  capacity(params: { showIds: string[] }) {
-    return this.showsService.capacity(params.showIds);
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.SUMMARIES))
+  summaries(params: { showIds: string[] }) {
+    return this.showsService.summaries(params.showIds);
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.TIER_NAMES))
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.SEAT_LABELS))
+  seatLabels(params: { showId: string; seatIds: string[] }) {
+    return this.showsService.seatLabels(params.showId, params.seatIds);
+  }
+
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.BANDS))
   tierNames(params: { showId: string }) {
     return this.showsService.tierNames(params.showId);
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS))
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.LIST))
   myShows(params: { userId: string } & OrganizerShowsQuery) {
     return this.showsService.myShows(params.userId, { status: params.status });
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.NAMES))
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.TITLES))
   showNames(params: { userId: string }) {
     return this.showsService.showNames(params.userId);
   }
@@ -68,7 +72,7 @@ export class OrganizerShowsController {
     return this.showsService.deleteShow(params.userId, params.showId);
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.PUT_PRICING))
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.UPDATE_PRICING))
   putPricing(params: { userId: string; showId: string; dto: PutPricingDto }) {
     return this.publishingService.putPricing(params.userId, params.showId, params.dto);
   }

@@ -15,7 +15,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/** Every stats request the screen made — the range and the scope only exist on the wire. */
 function statsCalls(fetchMock: ReturnType<typeof mockGateway>): string[] {
   return fetchMock.mock.calls
     .map(([url]) => String(url))
@@ -49,7 +48,6 @@ describe('Dashboard', () => {
     expect(within(checkedInCard).getByText('64')).toBeInTheDocument();
     expect(within(checkedInCard).getByText('of 120 sold')).toBeInTheDocument();
 
-    // No `showId` — the default scope is every show the organizer owns.
     expect(statsCalls(fetchMock)[0]).not.toContain('showId');
   });
 
@@ -131,19 +129,19 @@ describe('Dashboard', () => {
     expect(screen.getByRole('combobox', { name: 'Range' })).toHaveTextContent('Last 7 days');
   });
 
-  it('hides the ticket-types card across all shows and shows it for one', async () => {
+  it('hides the price-bands card across all shows and shows it for one', async () => {
     mockGateway();
     const { unmount } = renderWithQuery(<Dashboard />);
 
     await screen.findByText('TICKETS SOLD');
 
-    expect(screen.queryByRole('heading', { name: 'Ticket types' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Price bands' })).not.toBeInTheDocument();
 
     unmount();
 
     renderWithQuery(<Dashboard showId={SHOW_ID} />);
 
-    expect(await screen.findByRole('heading', { name: 'Ticket types' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Price bands' })).toBeInTheDocument();
     expect(
       screen.getByRole('progressbar', { name: 'Front VIP — 90 of 120 sold' }),
     ).toBeInTheDocument();

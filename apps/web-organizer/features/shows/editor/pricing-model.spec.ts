@@ -46,23 +46,23 @@ describe('toPutPricingBody', () => {
     const fresh = newBand();
     const body = toPutPricingBody([fresh], assignSection({}, SECTION_A, fresh.key));
 
-    expect(body.ticketTypes).toEqual([
+    expect(body.priceBands).toEqual([
       { key: fresh.key, name: '', tier: 'standard', priceCents: 0 },
     ]);
-    expect(body.assignments).toEqual([{ sectionId: SECTION_A, ticketTypeKey: fresh.key }]);
+    expect(body.assignments).toEqual([{ sectionId: SECTION_A, bandKey: fresh.key }]);
   });
 
   it('drops an assignment whose band is gone rather than sending a dangling key', () => {
     const body = toPutPricingBody([band('kept')], { [SECTION_A]: 'kept', [SECTION_B]: 'vanished' });
 
-    expect(body.assignments).toEqual([{ sectionId: SECTION_A, ticketTypeKey: 'kept' }]);
+    expect(body.assignments).toEqual([{ sectionId: SECTION_A, bandKey: 'kept' }]);
   });
 
   it('lets two sections share one band', () => {
     const body = toPutPricingBody([band('flat')], { [SECTION_A]: 'flat', [SECTION_B]: 'flat' });
 
     expect(body.assignments).toHaveLength(2);
-    expect(new Set(body.assignments.map((a) => a.ticketTypeKey)).size).toBe(1);
+    expect(new Set(body.assignments.map((a) => a.bandKey)).size).toBe(1);
   });
 });
 
@@ -76,7 +76,7 @@ describe('removeBand', () => {
     expect(next.bands.map((b) => b.key)).toEqual(['cheap']);
     expect(next.assignments).toEqual({ [SECTION_B]: 'cheap' });
     expect(toPutPricingBody(next.bands, next.assignments).assignments).toEqual([
-      { sectionId: SECTION_B, ticketTypeKey: 'cheap' },
+      { sectionId: SECTION_B, bandKey: 'cheap' },
     ]);
   });
 
@@ -108,8 +108,8 @@ describe('assignSection', () => {
 
 describe('seeding from saved pricing', () => {
   const saved: ShowPricing = {
-    ticketTypes: [{ id: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 }],
-    assignments: [{ sectionId: SECTION_A, ticketTypeId: BAND_ID }],
+    priceBands: [{ id: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 }],
+    assignments: [{ sectionId: SECTION_A, bandId: BAND_ID }],
   };
 
   // The saved band's id becomes the local key, so the seeded state can be PUT straight back
@@ -117,15 +117,15 @@ describe('seeding from saved pricing', () => {
   it('round-trips saved pricing into a body that means the same thing', () => {
     const body = toPutPricingBody(seedBands(saved), seedAssignments(saved));
 
-    expect(body.ticketTypes).toEqual([
+    expect(body.priceBands).toEqual([
       { key: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 },
     ]);
-    expect(body.assignments).toEqual([{ sectionId: SECTION_A, ticketTypeKey: BAND_ID }]);
+    expect(body.assignments).toEqual([{ sectionId: SECTION_A, bandKey: BAND_ID }]);
   });
 
   it('seeds an unpriced show as an empty form', () => {
-    expect(seedBands({ ticketTypes: [], assignments: [] })).toEqual([]);
-    expect(seedAssignments({ ticketTypes: [], assignments: [] })).toEqual({});
+    expect(seedBands({ priceBands: [], assignments: [] })).toEqual([]);
+    expect(seedAssignments({ priceBands: [], assignments: [] })).toEqual({});
   });
 });
 

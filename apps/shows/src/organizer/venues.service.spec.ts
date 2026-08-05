@@ -16,7 +16,6 @@ beforeEach(async () => {
 
 describe('OrganizerVenuesService.getList', () => {
   it('returns every venue by name — the catalogue is shared, not owned', async () => {
-    // Two organizers, two halls. Both organizers see both, which is the amendment in one test.
     await seedShowGraph(db, { sections: [] });
     await seedShowGraph(db, { sections: [] });
     await db.insert(venues).values([
@@ -82,7 +81,7 @@ describe('OrganizerVenuesService.getOne', () => {
     const orchestra = detail.sections[1];
     expect(orchestra.rows.map((row) => row.number)).toEqual([1, 2]);
     expect(orchestra.rows[0].seats.map((seat) => seat.number)).toEqual([1, 2, 3]);
-    // Ids are the ones orders and fulfillment reference by value — they must be the real rows.
+    // Ids are the ones orders and tickets reference by value — they must be the real rows.
     expect(orchestra.rows[0].seats[0].id).toBe(sections[0].rows[0].seats[0].id);
   });
 
@@ -91,7 +90,7 @@ describe('OrganizerVenuesService.getOne', () => {
   it('includes sections no show sells', async () => {
     const { venue } = await seedShowGraph(db, {
       sections: [{ name: 'Unsold', rows: 1, seatsPerRow: 1 }],
-      ticketType: false,
+      priceBand: false,
     });
 
     const detail = await svc.getOne(venue.id);

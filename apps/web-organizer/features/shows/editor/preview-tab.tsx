@@ -40,7 +40,7 @@ export function PreviewTab({ show }: { show: OrganizerShow }) {
     );
   }
 
-  const bandById = new Map(pricing.data.ticketTypes.map((band) => [band.id, band]));
+  const bandById = new Map(pricing.data.priceBands.map((band) => [band.id, band]));
   const assignments = seedAssignments(pricing.data);
   const pricedSections = venue.data.sections.filter((section) => assignments[section.id]);
 
@@ -103,7 +103,7 @@ export function PreviewTab({ show }: { show: OrganizerShow }) {
 
       {/* The public show page's price rows. Dearest first — the order the read route returns. */}
       <div className="flex max-w-105 flex-col gap-2">
-        {pricing.data.ticketTypes.map((band) => (
+        {pricing.data.priceBands.map((band) => (
           <div
             key={band.id}
             className="flex justify-between rounded-control border border-line bg-surface px-4 py-3 text-sm"

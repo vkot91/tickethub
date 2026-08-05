@@ -7,7 +7,7 @@ describe('GatewayUserShowsController', () => {
   it('parses the query and forwards catalog over RPC', async () => {
     await controller.catalog({ limit: '5' });
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'shows.catalog', payload: { limit: 5 } }),
+      expect.objectContaining({ routingKey: 'user.shows.catalog', payload: { limit: 5 } }),
     );
   });
 
@@ -19,10 +19,10 @@ describe('GatewayUserShowsController', () => {
     await controller.detail('e1');
     await controller.seatMap('e1');
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'shows.detail', payload: { id: 'e1' } }),
+      expect.objectContaining({ routingKey: 'user.shows.detail', payload: { id: 'e1' } }),
     );
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'shows.seatMap', payload: { id: 'e1' } }),
+      expect.objectContaining({ routingKey: 'user.shows.seatMap', payload: { id: 'e1' } }),
     );
   });
 });
