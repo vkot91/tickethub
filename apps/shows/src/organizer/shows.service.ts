@@ -46,8 +46,10 @@ const toOrganizerShow = (show: ShowRow): OrganizerShow => ({
   ...show,
   startsAt: show.startsAt.toISOString(),
   saleStartsAt: show.saleStartsAt?.toISOString() ?? null,
-  // Sales live in `apps/orders`; the gateway merges the real numbers in from slice 6. Zero rather
-  // than omitted, so the contract is the same shape before and after.
+  // Sales live in `apps/orders` and capacity behind this service's own batched `capacity()`, so
+  // the gateway merges the real numbers onto the list (`OrganizerShowsService.listWithSales`).
+  // Zero rather than omitted: the shape is the same before and after the merge, and anyone
+  // calling this RPC directly gets an honest "this service does not know" rather than a hole.
   soldCount: 0,
   capacity: 0,
   revenueCents: 0,

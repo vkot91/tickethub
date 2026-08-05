@@ -3,6 +3,7 @@ import { OrganizerStatsController } from './stats.controller';
 describe('OrganizerStatsController', () => {
   const statsService = {
     stats: jest.fn().mockResolvedValue({}),
+    salesByShow: jest.fn().mockResolvedValue([]),
     recent: jest.fn().mockResolvedValue([]),
   };
   const controller = new OrganizerStatsController(statsService as never);
@@ -14,6 +15,12 @@ describe('OrganizerStatsController', () => {
       showIds: ['s1'],
       from: '2026-07-01T00:00:00.000Z',
     });
+  });
+
+  it('forwards salesByShow to the service', () => {
+    controller.salesByShow({ showIds: ['s1', 's2'] });
+
+    expect(statsService.salesByShow).toHaveBeenCalledWith({ showIds: ['s1', 's2'] });
   });
 
   it('forwards recent to the service', () => {

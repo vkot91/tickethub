@@ -33,6 +33,16 @@ export const orderStatsSchema = z.object({
 });
 export type OrderStats = z.infer<typeof orderStatsSchema>;
 
+// Sales for one show, for the console's show *list*. A sibling of `orderStatsSchema` rather than a
+// `byShow` on it: the dashboard asks one aggregate question, the list asks a per-row one, and
+// widening the aggregate would make every dashboard call carry a group-by it discards.
+export const showSalesSchema = z.object({
+  showId: z.string().uuid(),
+  soldCount: z.number().int(),
+  revenueCents: z.number().int(),
+});
+export type ShowSales = z.infer<typeof showSalesSchema>;
+
 // A raw order row as Orders knows it — seat *ids*, not labels, and no buyer email. The gateway
 // resolves both before this becomes the `RecentOrder` the console renders.
 export const recentOrderRowSchema = z.object({
