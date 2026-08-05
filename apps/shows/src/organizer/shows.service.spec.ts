@@ -64,6 +64,37 @@ describe('OrganizerShowsService.showIds', () => {
   });
 });
 
+describe('OrganizerShowsService.showNames', () => {
+  it('returns id and title only, newest first, whatever the status', async () => {
+    const { organizerId, userId, venueId } = await seedOrganizer();
+    const [older, newer] = await db
+      .insert(shows)
+      .values([
+        {
+          organizerId,
+          venueId,
+          title: 'Older Show',
+          startsAt: new Date('2026-01-01T20:00:00Z'),
+          status: 'draft',
+        },
+        { organizerId, venueId, title: 'Newer Show', startsAt: new Date('2026-06-01T20:00:00Z') },
+      ])
+      .returning();
+    await seedShowGraph(db, { sections: [] }); // someone else's
+
+    await expect(svc.showNames(userId)).resolves.toEqual([
+      { id: newer.id, title: 'Newer Show' },
+      { id: older.id, title: 'Older Show' },
+    ]);
+  });
+
+  it('returns an empty list for a user who is not an organizer', async () => {
+    const user = await seedUser(db);
+
+    await expect(svc.showNames(user.id)).resolves.toEqual([]);
+  });
+});
+
 describe('OrganizerShowsService.myShows', () => {
   it('returns the show with its venue, and sales numbers zeroed for now', async () => {
     const { show, organizer, venue } = await seedShowGraph(db, { sections: [] });
@@ -516,7 +547,9 @@ describe('OrganizerShowsService.capacity', () => {
 
     expect(ticketType).toBeDefined();
     expect(venue).toBeDefined();
-    await expect(svc.capacity([show.id])).resolves.toEqual([{ showId: show.id, capacity: 6 }]);
+    await expect(svc.capacity([show.id])).resolves.toEqual([
+      { showId: show.id, capacity: 6, saleStartsAt: null },
+    ]);
   });
 
   it('returns a row per requested show, zero included, batched in one call', async () => {
@@ -529,12 +562,61 @@ describe('OrganizerShowsService.capacity', () => {
     const capacities = await svc.capacity([priced.show.id, unpriced.show.id]);
 
     expect(capacities).toEqual([
-      { showId: priced.show.id, capacity: 2 },
-      { showId: unpriced.show.id, capacity: 0 },
+      { showId: priced.show.id, capacity: 2, saleStartsAt: null },
+      { showId: unpriced.show.id, capacity: 0, saleStartsAt: null },
+    ]);
+  });
+
+  // Rides along on this call rather than costing the dashboard its own round trip for one
+  // nullable timestamp — the gateway clips the revenue graph to it.
+  it('carries the sale start alongside the count, as an ISO string', async () => {
+    const saleStartsAt = new Date('2026-07-01T09:00:00.000Z');
+    const { show } = await seedShowGraph(db, {
+      sections: [{ rows: 1, seatsPerRow: 2 }],
+      show: { saleStartsAt },
+    });
+
+    await expect(svc.capacity([show.id])).resolves.toEqual([
+      { showId: show.id, capacity: 2, saleStartsAt: '2026-07-01T09:00:00.000Z' },
     ]);
   });
 
   it('returns nothing for an empty list', async () => {
     await expect(svc.capacity([])).resolves.toEqual([]);
+  });
+});
+
+describe('OrganizerShowsService.tierNames', () => {
+  it('labels a show’s bands, dearest first', async () => {
+    const { show } = await seedShowGraph(db, {
+      sections: [],
+      ticketType: { name: 'Standard', priceCents: 5000 },
+    });
+    await db
+      .insert(ticketTypes)
+      .values({ showId: show.id, name: 'Front VIP', tier: 'vip', priceCents: 9000 });
+
+    await expect(svc.tierNames(show.id)).resolves.toEqual([
+      { id: expect.any(String), name: 'Front VIP', tier: 'vip' },
+      { id: expect.any(String), name: 'Standard', tier: 'standard' },
+    ]);
+  });
+
+  // Unlike the buyer's `detail`, which 404s a draft — the console authors drafts, and a draft
+  // that somehow sold still owes the dashboard its labels.
+  it('names a draft’s bands rather than refusing the show', async () => {
+    const { show } = await seedShowGraph(db, {
+      sections: [],
+      show: { status: 'draft' },
+      ticketType: { name: 'Early Bird', priceCents: 3000 },
+    });
+
+    await expect(svc.tierNames(show.id)).resolves.toEqual([
+      { id: expect.any(String), name: 'Early Bird', tier: 'standard' },
+    ]);
+  });
+
+  it('returns nothing for a show that no longer exists', async () => {
+    await expect(svc.tierNames(UNKNOWN_ID)).resolves.toEqual([]);
   });
 });

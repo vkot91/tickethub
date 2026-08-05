@@ -33,9 +33,19 @@ export class OrganizerShowsController {
     return this.showsService.capacity(params.showIds);
   }
 
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.TIER_NAMES))
+  tierNames(params: { showId: string }) {
+    return this.showsService.tierNames(params.showId);
+  }
+
   @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS))
   myShows(params: { userId: string } & OrganizerShowsQuery) {
     return this.showsService.myShows(params.userId, { status: params.status });
+  }
+
+  @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.NAMES))
+  showNames(params: { userId: string }) {
+    return this.showsService.showNames(params.userId);
   }
 
   @RabbitRPC(rpcSub(ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET))

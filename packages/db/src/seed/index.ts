@@ -106,7 +106,7 @@ const SHOWS: ShowSpec[] = [
       { name: 'Standard', tier: 'standard', priceCents: 5000, sections: ['Parterre'] },
       { name: 'Balcony', tier: 'economy', priceCents: 3500, sections: ['Balcony'] },
     ],
-    soldEveryNthPair: 4,
+    soldEveryNthPair: 1,
   },
   {
     // One band across the whole building — the demo case for a ticket type shared by several
@@ -124,6 +124,7 @@ const SHOWS: ShowSpec[] = [
         sections: ['Parterre', 'Loge', 'Balcony'],
       },
     ],
+    soldEveryNthPair: 1,
   },
   {
     title: 'Symphony No. 9',
@@ -136,7 +137,7 @@ const SHOWS: ShowSpec[] = [
       { name: 'Standard', tier: 'standard', priceCents: 9000, sections: ['Mezzanine'] },
       { name: 'Balcony', tier: 'economy', priceCents: 5500, sections: ['Balcony'] },
     ],
-    soldEveryNthPair: 3,
+    soldEveryNthPair: 1,
   },
   {
     title: 'Nightfall: Live in Concert',
@@ -148,20 +149,19 @@ const SHOWS: ShowSpec[] = [
       { name: 'VIP', tier: 'vip', priceCents: 22000, sections: ['Orchestra'] },
       { name: 'Standard', tier: 'standard', priceCents: 11000, sections: ['Mezzanine', 'Balcony'] },
     ],
-    // Half gone — the demo case for a densely booked map.
-    soldEveryNthPair: 2,
+    soldEveryNthPair: 1,
   },
   {
     title: 'Neon Nights',
     description: 'Six DJs, two rooms, doors at 22:00.',
     venue: 'Warehouse 9',
-    startsAt: '2026-08-22T22:00:00Z',
-    status: 'published',
+    startsAt: '2026-07-05T22:00:00Z',
+    status: 'finished',
     ticketTypes: [
       { name: 'Box', tier: 'vip', priceCents: 12000, sections: ['Box'] },
       { name: 'Floor', tier: 'economy', priceCents: 4000, sections: ['Floor'] },
     ],
-    soldEveryNthPair: 5,
+    soldEveryNthPair: 1,
   },
   {
     title: 'Stand-Up Marathon',
@@ -178,14 +178,14 @@ const SHOWS: ShowSpec[] = [
     description: 'Open-air, all day, rain or shine.',
     venue: 'Riverside Amphitheatre',
     startsAt: '2026-07-11T14:00:00Z',
-    status: 'published',
+    status: 'finished',
     // "Early Bird" used to sit here naming no section, so it advertised a price no seat could be
     // bought at. Dropped rather than mapped — a band that prices nothing is a bug in the demo.
     ticketTypes: [
       { name: 'VIP', tier: 'vip', priceCents: 15000, sections: ['Lower Bowl'] },
       { name: 'Standard', tier: 'standard', priceCents: 6000, sections: ['Upper Bowl'] },
     ],
-    soldEveryNthPair: 6,
+    soldEveryNthPair: 1,
   },
   {
     title: 'Rained Out Festival',
@@ -209,6 +209,16 @@ const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i + 1
 /** Stable fake buyers for the sold seats, so re-seeding a wiped db reproduces the same orders. */
 const buyerId = (index: number): string =>
   `0000${String(index % 10000).padStart(4, '0')}-0000-4000-8000-000000000000`;
+
+/** Spreads orders over the last N days instead of all landing "now" — otherwise every order
+ *  shares one timestamp and the dashboard's revenue-by-day chart is a single spike. Deterministic
+ *  (index-derived), so a reseed reproduces the same daily shape. */
+const ORDER_SPREAD_DAYS = 45;
+const orderCreatedAt = (index: number): Date => {
+  const daysAgo = index % ORDER_SPREAD_DAYS;
+  const hoursAgo = (index * 7) % 24;
+  return new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000 - hoursAgo * 60 * 60 * 1000);
+};
 
 async function ensureVenue(db: Db, spec: VenueSpec): Promise<string> {
   const [existing] = await db.select().from(venues).where(eq(venues.name, spec.name));
@@ -258,7 +268,9 @@ async function ensureShow(
   venueId: string,
   spec: ShowSpec,
 ): Promise<string> {
-  const [inserted] = await db
+  // Upserted on the (venue, title, slot) UNIQUE — not onConflictDoNothing — so re-seeding after a
+  // spec's status or description changes (e.g. a show moved to "finished") actually applies it.
+  const [show] = await db
     .insert(shows)
     .values({
       organizerId,
@@ -268,25 +280,11 @@ async function ensureShow(
       startsAt: new Date(spec.startsAt),
       status: spec.status,
     })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: [shows.venueId, shows.title, shows.startsAt],
+      set: { description: spec.description, status: spec.status },
+    })
     .returning();
-
-  // Re-select by the same key the UNIQUE now uses. Title alone would pick the wrong row — and
-  // silently — the day the same title runs in a second venue or a second slot.
-  const show =
-    inserted ??
-    (
-      await db
-        .select()
-        .from(shows)
-        .where(
-          and(
-            eq(shows.venueId, venueId),
-            eq(shows.title, spec.title),
-            eq(shows.startsAt, new Date(spec.startsAt)),
-          ),
-        )
-    )[0];
 
   const venueSections = await db.select().from(sections).where(eq(sections.venueId, venueId));
   const sectionIdByName = new Map(venueSections.map((s) => [s.name, s.id]));
@@ -402,6 +400,7 @@ async function sellSeats(
         idempotencyKey: `seed-${showId}-${index}`,
         totalCents: pairSeats.reduce((sum, seat) => sum + (typeForSeat(seat)?.priceCents ?? 0), 0),
         currency: typeForSeat(pairSeats[0])?.currency ?? 'usd',
+        createdAt: orderCreatedAt(index),
         expiresAt: new Date('2026-01-01T00:00:00Z'),
       })),
     )

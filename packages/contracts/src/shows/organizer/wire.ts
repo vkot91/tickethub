@@ -1,4 +1,5 @@
 import type { Rpc } from '../../shape';
+import type { SeatTier } from '../schema';
 import type {
   CreateShowDto,
   OrganizerShow,
@@ -7,6 +8,7 @@ import type {
   PosterUploadUrl,
   PublishChecklist,
   PutPricingDto,
+  ShowName,
   ShowPricing,
   UpdateShowDto,
 } from './schema';
@@ -21,6 +23,9 @@ import type {
  */
 export const ORGANIZER_SHOWS_MESSAGE_PATTERNS = {
   MY_SHOWS: 'organizer.shows.myShows',
+  // `id`/`title` only, for the dashboard's show picker — never the sales/capacity fan-out
+  // `MY_SHOWS` feeds the list screen with.
+  NAMES: 'organizer.shows.names',
   GET: 'organizer.shows.get',
   CREATE: 'organizer.shows.create',
   UPDATE: 'organizer.shows.update',
@@ -34,14 +39,24 @@ export const ORGANIZER_SHOWS_MESSAGE_PATTERNS = {
   PUBLISH_CHECKLIST: 'organizer.shows.publishChecklist',
   PUBLISH: 'organizer.shows.publish',
   POSTER_UPLOAD_URL: 'organizer.shows.posterUploadUrl',
-  // Seats on sale per show, batched. Organizer-only — the buyer catalog never asks.
+  // Per-show facts the console's numbers need, batched: seats on sale, and the date the show
+  // went on sale. Organizer-only — the buyer catalog never asks. `saleStartsAt` rides along
+  // rather than costing its own round trip, since it comes off the same row scan.
   CAPACITY: 'organizer.shows.capacity',
+  // What to label a band in the dashboard's "sales by band" card. Deliberately not the buyer's
+  // `shows.detail`: that reads the whole show row to drive a 404 the console does not need, and
+  // it is the wrong audience — a draft 404s there, and the console authors drafts.
+  TIER_NAMES: 'organizer.shows.tierNames',
 } as const;
 
 export interface OrganizerShowsRpcContracts {
   [ORGANIZER_SHOWS_MESSAGE_PATTERNS.MY_SHOWS]: Rpc<{
     payload: { userId: string } & OrganizerShowsQuery;
     result: OrganizerShow[];
+  }>;
+  [ORGANIZER_SHOWS_MESSAGE_PATTERNS.NAMES]: Rpc<{
+    payload: { userId: string };
+    result: ShowName[];
   }>;
   [ORGANIZER_SHOWS_MESSAGE_PATTERNS.GET]: Rpc<{
     payload: { userId: string; showId: string };
@@ -81,6 +96,10 @@ export interface OrganizerShowsRpcContracts {
   }>;
   [ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY]: Rpc<{
     payload: { showIds: string[] };
-    result: { showId: string; capacity: number }[];
+    result: { showId: string; capacity: number; saleStartsAt: string | null }[];
+  }>;
+  [ORGANIZER_SHOWS_MESSAGE_PATTERNS.TIER_NAMES]: Rpc<{
+    payload: { showId: string };
+    result: { id: string; name: string; tier: SeatTier }[];
   }>;
 }

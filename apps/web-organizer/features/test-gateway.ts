@@ -110,7 +110,9 @@ export const stats = {
   revenueCents: 2_400_000,
   refundedCents: 100_000,
   checkedInCount: 64,
-  byTier: [],
+  // Named and tiered, as the gateway resolves them for a single show. Empty across "All shows" —
+  // the card is hidden there rather than adding up different shows' bands that share a name.
+  byTier: [{ ticketTypeId: BAND_ID, name: 'Front VIP', tier: 'vip' as const, soldCount: 90 }],
   byDay: [
     { date: '2026-08-01', revenueCents: 100_000, count: 4 },
     { date: '2026-08-02', revenueCents: 300_000, count: 11 },
@@ -167,7 +169,7 @@ export function mockGateway(overrides: Record<string, { status: number; body?: u
                     ? { status: 200, body: venues }
                     : path.startsWith('/organizer/shows')
                       ? { status: 200, body: organizerShows }
-                      : path.startsWith('/shows/')
+                      : path.startsWith('/organizer/stats')
                         ? { status: 200, body: stats }
                         : { status: 200, body: recentOrders });
 

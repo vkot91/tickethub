@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Button, Form, FormError, FormField } from '@tickethub/ui';
@@ -20,26 +19,6 @@ export function BecomeForm({ email }: { email: string }) {
     mode: 'onTouched',
     defaultValues: { name: email },
   });
-
-  // RHF never validates on mount, so `formState.isValid` starts `false` even though the prefilled
-  // `email` is already a valid name — it only starts reflecting reality once the field is dirty
-  // (RHF revalidates on every change once `isValid` is read, regardless of `mode`).
-  //
-  // An earlier fix called `form.trigger()` from a mount effect to settle `isValid` early, but
-  // that is itself async: React StrictMode's double-invoked effects fire two concurrent
-  // `trigger()` calls from one mount, and any real interaction landing before either settles
-  // (autofill, a fast paste) can have its own, current validation result overwritten by one of
-  // theirs resolving later with a stale, pre-interaction snapshot — whichever call resolves last
-  // wins, and RHF's `trigger()` has no built-in way to discard a call once superseded. A second
-  // `trigger()` call to "correct" the first has the same problem one level down.
-  //
-  // Parsing the prefilled value with the same schema synchronously sidesteps the whole class of
-  // races — there is no promise for anything to interleave with. `isDirty` is the handoff point:
-  // false until the user's first change event, which is also the first moment RHF's own `isValid`
-  // starts being trustworthy.
-  const [isPrefillValid] = useState(() => becomeFormSchema.safeParse({ name: email }).success);
-
-  const isNameValid = form.formState.isDirty ? form.formState.isValid : isPrefillValid;
 
   async function submit({ name }: BecomeFormValues) {
     try {
@@ -67,7 +46,9 @@ export function BecomeForm({ email }: { email: string }) {
 
       <FormError />
 
-      <Button type="submit" disabled={form.formState.isSubmitting || !isNameValid}>
+      {/* ponytail: not disabled on validity — handleSubmit already blocks an invalid submit and
+          shows the field error. Disable here only if a blocked click turns out to confuse people. */}
+      <Button type="submit" disabled={form.formState.isSubmitting}>
         {form.formState.isSubmitting ? 'Setting you up…' : 'Become an organizer'}
       </Button>
 

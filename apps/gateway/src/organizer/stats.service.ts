@@ -6,7 +6,6 @@ import {
   ORGANIZER_ORDERS_MESSAGE_PATTERNS,
   ORGANIZER_SHOWS_MESSAGE_PATTERNS,
   ORGANIZER_TICKETS_MESSAGE_PATTERNS,
-  SHOWS_MESSAGE_PATTERNS,
   type OrderStats,
   type RecentOrders,
   type SeatTier,
@@ -15,6 +14,36 @@ import {
 } from '@tickethub/contracts';
 import { OrganizerShowsService } from './shows.service';
 import { ShowContextService } from '../shared/show-context.service';
+
+/**
+ * A day before the show went on sale is a zero nobody could have bought — real, but padding. The
+ * range picker's window still applies; this only tightens it to whichever start is later.
+ * `null` for "no explicit sale start" (on sale since publish) and for "every show" (no single
+ * date to anchor several shows' graphs to) — both leave the picker's window alone.
+ */
+function clipToSaleStart(
+  byDay: OrderStats['byDay'],
+  saleStartsAt: string | null,
+): OrderStats['byDay'] {
+  if (!saleStartsAt) return byDay;
+
+  const saleStartDate = saleStartsAt.slice(0, 10);
+
+  return byDay.filter((day) => day.date >= saleStartDate);
+}
+
+/** A band Shows could not name — a cancelled or purged show — still shows its sales. */
+function withNames(
+  byTier: OrderStats['byTier'],
+  names: Map<string, { name: string; tier: SeatTier }>,
+): ShowStats['byTier'] {
+  return byTier.map((tier) => ({
+    ticketTypeId: tier.ticketTypeId,
+    name: names.get(tier.ticketTypeId)?.name ?? '',
+    tier: names.get(tier.ticketTypeId)?.tier ?? 'standard',
+    soldCount: tier.soldCount,
+  }));
+}
 
 const ZERO_STATS: ShowStats = {
   soldCount: 0,
@@ -54,7 +83,10 @@ export class OrganizerStatsService {
 
     const showIds = query.showId ? [query.showId] : owned;
 
-    const [orders, capacities, checkedInCount] = await Promise.all([
+    // One wave, one call per service — orders owns the money, shows the seats and the sale start,
+    // fulfillment the check-ins. The tier names are fetched alongside rather than after: they
+    // only need the `showId`, so awaiting them on `orders.byTier` bought nothing but a round trip.
+    const [orders, capacities, checkedInCount, tierNames] = await Promise.all([
       rpcRequest(this.amqp, ORGANIZER_ORDERS_MESSAGE_PATTERNS.STATS, {
         showIds,
         from: query.from,
@@ -62,7 +94,13 @@ export class OrganizerStatsService {
       }),
       rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.CAPACITY, { showIds }),
       rpcRequest(this.amqp, ORGANIZER_TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT, { showIds }),
+      this.tierNames(query.showId),
     ]);
+
+    // Only the single-show scope clips: several shows have no one sale start to anchor a graph to.
+    const saleStartsAt = query.showId
+      ? (capacities.find((show) => show.showId === query.showId)?.saleStartsAt ?? null)
+      : null;
 
     return {
       soldCount: orders.soldCount,
@@ -70,8 +108,8 @@ export class OrganizerStatsService {
       revenueCents: orders.revenueCents,
       refundedCents: orders.refundedCents,
       checkedInCount,
-      byDay: orders.byDay,
-      byTier: await this.namedTiers(query.showId, orders.byTier),
+      byDay: clipToSaleStart(orders.byDay, saleStartsAt),
+      byTier: withNames(orders.byTier, tierNames),
     };
   }
 
@@ -117,36 +155,28 @@ export class OrganizerStatsService {
   /**
    * Orders knows the ticket type id but not its name — that lives in Shows. Only the single-show
    * view asks: "sales by band" across several shows would be adding up bands that are different
-   * rows with the same name. An unreachable show (cancelled, purged) leaves the names blank rather
-   * than failing the whole dashboard.
+   * rows with the same name. An unreachable show leaves the names blank rather than failing the
+   * whole dashboard.
    */
-  private async namedTiers(
+  private async tierNames(
     showId: string | undefined,
-    byTier: OrderStats['byTier'],
-  ): Promise<ShowStats['byTier']> {
-    if (byTier.length === 0) return [];
-
+  ): Promise<Map<string, { name: string; tier: SeatTier }>> {
     const names = new Map<string, { name: string; tier: SeatTier }>();
 
-    if (showId) {
-      try {
-        const detail = await rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, {
-          id: showId,
-        });
+    if (!showId) return names;
 
-        for (const band of detail.priceTiers) {
-          names.set(band.id, { name: band.name, tier: band.tier });
-        }
-      } catch {
-        // fall through to unnamed
+    try {
+      const bands = await rpcRequest(this.amqp, ORGANIZER_SHOWS_MESSAGE_PATTERNS.TIER_NAMES, {
+        showId,
+      });
+
+      for (const band of bands) {
+        names.set(band.id, { name: band.name, tier: band.tier });
       }
+    } catch {
+      // fall through to unnamed
     }
 
-    return byTier.map((tier) => ({
-      ticketTypeId: tier.ticketTypeId,
-      name: names.get(tier.ticketTypeId)?.name ?? '',
-      tier: names.get(tier.ticketTypeId)?.tier ?? 'standard',
-      soldCount: tier.soldCount,
-    }));
+    return names;
   }
 }

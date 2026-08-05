@@ -21,9 +21,10 @@ function makeService(overrides: Record<string, unknown> = {}, showIds = [SHOW_A]
   const replies: Record<string, unknown> = {
     'organizer.orders.stats': ORDERS_STATS,
     'organizer.orders.recent': [],
-    'organizer.shows.capacity': [{ showId: SHOW_A, capacity: 10 }],
+    'organizer.shows.capacity': [{ showId: SHOW_A, capacity: 10, saleStartsAt: null }],
     'organizer.tickets.checkedInCount': 4,
     'auth.getUsersByIds': [{ id: BUYER, email: 'buyer@x.com' }],
+    'organizer.shows.tierNames': [{ id: TIER, name: 'VIP', tier: 'vip' }],
     'shows.detail': {
       title: 'Neon Nights',
       priceTiers: [{ id: TIER, name: 'VIP', tier: 'vip', priceCents: 6000, currency: 'usd' }],
@@ -89,8 +90,8 @@ describe('OrganizerStatsService.stats', () => {
     const { svc } = makeService(
       {
         'organizer.shows.capacity': [
-          { showId: SHOW_A, capacity: 10 },
-          { showId: SHOW_B, capacity: 5 },
+          { showId: SHOW_A, capacity: 10, saleStartsAt: null },
+          { showId: SHOW_B, capacity: 5, saleStartsAt: null },
         ],
       },
       [SHOW_A, SHOW_B],
@@ -113,7 +114,7 @@ describe('OrganizerStatsService.stats', () => {
     await expect(svc.stats('u1', { showId: SHOW_B })).rejects.toThrow(NotFoundException);
   });
 
-  it('names the tiers from the show detail for a single show', async () => {
+  it('names the tiers for a single show', async () => {
     const { svc } = makeService();
 
     const stats = await svc.stats('u1', { showId: SHOW_A });
@@ -121,14 +122,91 @@ describe('OrganizerStatsService.stats', () => {
     expect(stats.byTier).toEqual([{ ticketTypeId: TIER, name: 'VIP', tier: 'vip', soldCount: 2 }]);
   });
 
-  it('degrades to an unnamed tier when the show detail is unavailable', async () => {
-    const { svc } = makeService({ 'shows.detail': new Error('gone') });
+  // The console reads the organizer surface, never the buyer catalog: `shows.detail` reads a
+  // whole show row to drive a 404 this caller has no use for, and 404s the drafts it authors.
+  it('names them off the organizer surface, never the buyer catalog', async () => {
+    const { svc, amqp } = makeService();
+
+    await svc.stats('u1', { showId: SHOW_A });
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.shows.tierNames',
+        payload: { showId: SHOW_A },
+      }),
+    );
+    expect(amqp.request).not.toHaveBeenCalledWith(
+      expect.objectContaining({ routingKey: 'shows.detail' }),
+    );
+  });
+
+  it('degrades to an unnamed tier when the band names are unavailable', async () => {
+    const { svc } = makeService({ 'organizer.shows.tierNames': new Error('gone') });
 
     const stats = await svc.stats('u1', { showId: SHOW_A });
 
     expect(stats.byTier).toEqual([
       { ticketTypeId: TIER, name: '', tier: 'standard', soldCount: 2 },
     ]);
+  });
+
+  // A day before the show went on sale is a zero nobody could have bought — real, but padding.
+  it('clips days before a single show went on sale off its graph', async () => {
+    const { svc } = makeService({
+      'organizer.orders.stats': {
+        ...ORDERS_STATS,
+        byDay: [
+          { date: '2026-06-28', revenueCents: 500, count: 1 },
+          { date: '2026-06-29', revenueCents: 700, count: 1 },
+          { date: '2026-06-30', revenueCents: 12000, count: 2 },
+        ],
+      },
+      'organizer.shows.capacity': [
+        { showId: SHOW_A, capacity: 10, saleStartsAt: '2026-06-30T00:00:00.000Z' },
+      ],
+    });
+
+    const stats = await svc.stats('u1', { showId: SHOW_A });
+
+    expect(stats.byDay).toEqual([{ date: '2026-06-30', revenueCents: 12000, count: 2 }]);
+  });
+
+  it('leaves a single show’s graph untouched when it has no explicit sale start', async () => {
+    const { svc } = makeService();
+
+    const stats = await svc.stats('u1', { showId: SHOW_A });
+
+    expect(stats.byDay).toEqual(ORDERS_STATS.byDay);
+  });
+
+  // No single sale-start date to anchor several shows to, so the scope that reports one is
+  // ignored across every show rather than clipping the graph to whichever show sold first.
+  it('leaves the graph untouched across every show, whatever their sale starts', async () => {
+    const { svc } = makeService(
+      {
+        'organizer.shows.capacity': [
+          { showId: SHOW_A, capacity: 10, saleStartsAt: '2030-01-01T00:00:00.000Z' },
+          { showId: SHOW_B, capacity: 5, saleStartsAt: null },
+        ],
+      },
+      [SHOW_A, SHOW_B],
+    );
+
+    const stats = await svc.stats('u1', {});
+
+    expect(stats.byDay).toEqual(ORDERS_STATS.byDay);
+  });
+
+  // The sale start rides along on the batched capacity call — reading one nullable timestamp
+  // must not cost its own round trip into Shows.
+  it('never asks Shows for the show a second time to learn its sale start', async () => {
+    const { svc, amqp } = makeService();
+
+    await svc.stats('u1', { showId: SHOW_A });
+
+    expect(amqp.request).not.toHaveBeenCalledWith(
+      expect.objectContaining({ routingKey: 'organizer.shows.get' }),
+    );
   });
 });
 
