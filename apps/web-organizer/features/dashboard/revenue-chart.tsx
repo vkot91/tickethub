@@ -3,14 +3,6 @@ import { Card, formatPrice } from '@tickethub/ui';
 
 const weekday = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
 
-/**
- * ponytail: seven bars, no chart library. The design's revenue chart is a bar per day with a
- * value above and a label below — CSS grid does that in a dozen lines. Reach for Recharts if
- * this ever needs axes, tooltips or a second series.
- */
-/** ponytail: the tail, not the whole window. "All time" sends a 2020 floor and the backend
- *  zero-fills every day since, which is thousands of bars three pixels wide. Widen this the day
- *  the chart gets an axis that can carry them. */
 const MAX_BARS = 30;
 
 export function RevenueChart({ byDay: window }: { byDay: ShowStats['byDay'] }) {
@@ -28,16 +20,7 @@ export function RevenueChart({ byDay: window }: { byDay: ShowStats['byDay'] }) {
         {byDay.length === 0 ? (
           <p className="text-sm text-fg-muted">No sales in this window yet.</p>
         ) : (
-          // `overflow-x-auto` rather than shrinking the bars to fit: past a handful of bars a
-          // fixed per-bar width stays readable, a squeezed one does not. Scrolls inside its own
-          // box, never the page — the grid track this card sits in is `minmax(0, …)` so it can
-          // shrink to make room for the scrollbar instead of blowing out the page width.
           <div className="overflow-x-auto">
-            {/* `items-stretch`, not `items-end`: a bar's `height: n%` needs an ancestor with a
-                real pixel height to be a percentage *of*, and a shrink-to-fit `<li>` never gives
-                it one — the bars silently render at 0 height. Stretching the `<li>` to the row's
-                `h-47.5` and pushing the bar to the bottom with its own `items-end` wrapper is what
-                actually gives the percentage something to resolve against. */}
             <ul className="flex h-47.5 items-stretch gap-3">
               {byDay.map((day) => (
                 <li key={day.date} className="flex w-11 shrink-0 flex-col items-center gap-2">
