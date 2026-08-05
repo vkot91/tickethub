@@ -12,13 +12,11 @@ export const ORGANIZER_TICKETS_MESSAGE_PATTERNS = {
 } as const;
 
 /**
- * What a scan looks like *inside* the wire, before the gateway finishes it.
- *
- * Fulfillment owns the ticket, so it owns the verdict, the snapshotted seat label and the gate's
- * counter. It does not own the show: `showTitle` and `capacity` live in Shows, so the gateway
- * merges those two in.
+ * A scan on the wire. Identical to what the gateway answers: Fulfillment owns the ticket, so it
+ * owns the whole verdict, and the gateway adds nothing but the ownership check in front of it.
+ * The alias stays because it is what the RPC contract below is written in terms of.
  */
-export type CheckInScan = Omit<CheckInResult, 'showTitle' | 'capacity'>;
+export type CheckInScan = CheckInResult;
 
 export interface OrganizerTicketsRpcContracts {
   [ORGANIZER_TICKETS_MESSAGE_PATTERNS.CHECKED_IN_COUNT]: Rpc<{

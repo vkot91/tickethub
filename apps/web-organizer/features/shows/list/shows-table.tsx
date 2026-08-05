@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type MouseEvent } from 'react';
 
@@ -140,6 +141,13 @@ function ShowRow({ show, onOpen, onCancel, onDelete }: ShowRowProps) {
               >
                 View public page
               </a>
+              {/* The gate an organizer actually walks to — from the show they are running it for. */}
+              <Link
+                href={`/scanner?showId=${show.id}`}
+                className={buttonVariants({ variant: 'secondary', size: 'xs' })}
+              >
+                Scan tickets
+              </Link>
               <Button type="button" onClick={onCancel} variant="secondary" size="xs">
                 Cancel show
               </Button>

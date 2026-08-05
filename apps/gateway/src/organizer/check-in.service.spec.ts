@@ -19,39 +19,35 @@ describe('OrganizerCheckInService', () => {
   const myShows = { assertOwnsShow: jest.fn() };
   const service = new OrganizerCheckInService(amqp as never, myShows as never);
 
-  /** One entry per routing key the merge may reach for, so call order never matters. */
+  /** One entry per routing key, so a second one turning up here is a failure, not a stub miss. */
   const answer = (byKey: Record<string, unknown>) =>
     amqp.request.mockImplementation(({ routingKey }: { routingKey: string }) =>
       routingKey in byKey ? byKey[routingKey] : Promise.reject(new Error(`no stub: ${routingKey}`)),
     );
-
-  const allUp = () =>
-    answer({
-      'organizer.tickets.checkIn': scan,
-      'shows.detail': { title: 'Radiohead Live' },
-      'organizer.shows.capacity': [{ showId: SHOW_ID, capacity: 120 }],
-    });
 
   beforeEach(() => {
     amqp.request.mockReset();
     myShows.assertOwnsShow.mockReset().mockResolvedValue([SHOW_ID]);
   });
 
-  it('merges the gate’s title and capacity into the verdict', async () => {
-    allUp();
+  it('answers Fulfillment’s verdict as it stands', async () => {
+    answer({ 'organizer.tickets.checkIn': scan });
 
-    await expect(service.checkIn('u1', dto)).resolves.toEqual({
-      result: 'valid',
-      seatLabel: 'Parterre A2',
-      showTitle: 'Radiohead Live',
-      checkedInAt: '2026-07-30T18:00:00.000Z',
-      checkedInCount: 41,
-      capacity: 120,
-    });
+    await expect(service.checkIn('u1', dto)).resolves.toEqual(scan);
+  });
+
+  // The title and the seat count are gate constants the scanner already holds from the show it
+  // picked. Fetching them per scan was two RPCs a scan to re-send a number that cannot change.
+  it('asks Shows nothing — one scan is one RPC behind the ownership check', async () => {
+    answer({ 'organizer.tickets.checkIn': scan });
+
+    await service.checkIn('u1', dto);
+
+    expect(amqp.request).toHaveBeenCalledTimes(1);
   });
 
   it('hands Fulfillment the one gate, never the user and never a list', async () => {
-    allUp();
+    answer({ 'organizer.tickets.checkIn': scan });
 
     await service.checkIn('u1', dto);
 
@@ -76,54 +72,24 @@ describe('OrganizerCheckInService', () => {
   });
 
   it('proves ownership of the show being scanned, not merely of something', async () => {
-    allUp();
+    answer({ 'organizer.tickets.checkIn': scan });
 
     await service.checkIn('u1', dto);
 
     expect(myShows.assertOwnsShow).toHaveBeenCalledWith('u1', SHOW_ID);
   });
 
-  // The gate is already open by the time we get here; a broken Shows must not swallow the verdict.
-  it('still reports the verdict when the show lookup fails', async () => {
-    answer({ 'organizer.tickets.checkIn': scan });
-
-    await expect(service.checkIn('u1', dto)).resolves.toEqual(
-      expect.objectContaining({ result: 'valid', showTitle: null, capacity: 0 }),
-    );
-  });
-
-  // Both numbers describe the gate, so a rejection carries them exactly like an admission.
-  it('reports the gate’s capacity even when the ticket is for another show', async () => {
-    answer({
-      'organizer.tickets.checkIn': {
-        result: 'wrongShow',
-        seatLabel: null,
-        checkedInAt: null,
-        checkedInCount: 41,
-      },
-      'shows.detail': { title: 'Radiohead Live' },
-      'organizer.shows.capacity': [{ showId: SHOW_ID, capacity: 120 }],
-    });
-
-    await expect(service.checkIn('u1', dto)).resolves.toEqual({
-      result: 'wrongShow',
+  // The counter describes the gate, so a rejection carries it exactly like an admission.
+  it('passes a rejection through with the gate’s counter intact', async () => {
+    const rejected = {
+      result: 'wrongShow' as const,
       seatLabel: null,
-      showTitle: 'Radiohead Live',
       checkedInAt: null,
       checkedInCount: 41,
-      capacity: 120,
-    });
-  });
+    };
 
-  it('falls back to zero capacity when Shows knows nothing of the gate', async () => {
-    answer({
-      'organizer.tickets.checkIn': scan,
-      'shows.detail': { title: 'Radiohead Live' },
-      'organizer.shows.capacity': [],
-    });
+    answer({ 'organizer.tickets.checkIn': rejected });
 
-    await expect(service.checkIn('u1', dto)).resolves.toEqual(
-      expect.objectContaining({ capacity: 0 }),
-    );
+    await expect(service.checkIn('u1', dto)).resolves.toEqual(rejected);
   });
 });

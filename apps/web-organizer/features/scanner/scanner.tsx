@@ -1,10 +1,12 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-import { Button, Card, Field, Input, Progress } from '@tickethub/ui';
+import { Button, Card, Field, Input, Progress, Select } from '@tickethub/ui';
 
+import { fetchOrganizerShows, showKeys } from '../shows/api';
 import { checkIn, type CheckInResult } from './api';
 import { CheckInPanel } from './check-in-result';
 import { useQrScanner } from './use-qr-scanner';
@@ -25,11 +27,26 @@ interface RecentScan {
 }
 
 /**
- * `showId` is the gate this scanner is standing at. Required, not inferred: a scan scoped to every
- * show the organizer owns would admit next week's ticket tonight.
+ * `showId` is the gate this scanner is standing at — seeded from `?showId=` and otherwise picked
+ * here. Never inferred: a scan scoped to every show the organizer owns would admit next week's
+ * ticket tonight.
  */
-export function Scanner({ showId }: { showId: string }) {
+export function Scanner({ showId: initialShowId }: { showId?: string }) {
+  const router = useRouter();
+
+  const [showId, setShowId] = useState(initialShowId);
   const [recent, setRecent] = useState<RecentScan[]>([]);
+
+  // Published-only, filtered by the gateway: a draft has sold no tickets and a cancelled show has
+  // no gate, so scoping the request is both correct and one fewer thing to filter here.
+  const { data: shows, isPending: isLoadingShows } = useQuery({
+    queryKey: showKeys.list('published'),
+    queryFn: () => fetchOrganizerShows('published'),
+  });
+
+  // The gate's denominator, off the row the picker rendered — it is the same number on the first
+  // scan and the four-hundredth, so the scan response does not carry it.
+  const capacity = shows?.find((show) => show.id === showId)?.capacity ?? 0;
 
   const check = useMutation({
     mutationFn: checkIn,
@@ -45,128 +62,161 @@ export function Scanner({ showId }: { showId: string }) {
   // Stable identity: the scan loop holds on to this between frames.
   const onScan = useCallback(
     (code: string) => {
-      if (!check.isPending) check.mutate({ code, showId });
+      if (showId && !check.isPending) check.mutate({ code, showId });
     },
     [check, showId],
   );
 
   const camera = useQrScanner(onScan);
 
+  // The gate can switch shows without leaving the screen, so the picker stays on top of the
+  // viewport rather than in the page shell. `router.replace` keeps a reload and a bookmark on the
+  // same gate — same reasoning as the editor's `?tab=`.
+  function select(nextShowId: string) {
+    setShowId(nextShowId);
+    camera.stop();
+    router.replace(`/scanner?showId=${nextShowId}`, { scroll: false });
+  }
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card padding="lg" radius="panel">
-        <div className="relative mb-4 h-60 overflow-hidden rounded-control bg-deep">
-          <video ref={camera.videoRef} muted playsInline className="size-full object-cover" />
+    <>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-[32px] font-semibold tracking-[-0.02em]">Scanner</h1>
 
-          {/* Corner brackets and the sweeping line, straight from the design. */}
-          <span className="pointer-events-none absolute inset-4">
-            {[
-              'top-0 left-0 border-t-2 border-l-2',
-              'top-0 right-0 border-t-2 border-r-2',
-              'bottom-0 left-0 border-b-2 border-l-2',
-              'bottom-0 right-0 border-b-2 border-r-2',
-            ].map((corner) => (
-              <span key={corner} className={`absolute size-6 border-accent ${corner}`} />
-            ))}
-          </span>
+        <Select
+          // `''` rather than `undefined`, which would have Radix start uncontrolled: the picker is
+          // empty until a gate is chosen, and no option carries an empty value.
+          value={showId ?? ''}
+          ariaLabel="Show"
+          placeholder="Pick a show"
+          disabled={isLoadingShows}
+          onValueChange={select}
+          options={(shows ?? []).map((show) => ({ value: show.id, label: show.title }))}
+        />
+      </div>
 
-          {camera.state === 'running' ? (
-            <span
-              aria-hidden
-              className="pointer-events-none absolute inset-x-6 top-4 h-0.5 animate-scan bg-accent shadow-[0_0_12px_var(--color-accent)]"
-            />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card padding="lg" radius="panel">
+          <div className="relative mb-4 h-60 overflow-hidden rounded-control bg-deep">
+            <video ref={camera.videoRef} muted playsInline className="size-full object-cover" />
+
+            {!showId && (
+              <p className="absolute inset-0 grid place-items-center text-sm text-fg-muted">
+                Pick a show to start scanning
+              </p>
+            )}
+
+            {/* Corner brackets and the sweeping line, straight from the design. */}
+            <span className="pointer-events-none absolute inset-4">
+              {[
+                'top-0 left-0 border-t-2 border-l-2',
+                'top-0 right-0 border-t-2 border-r-2',
+                'bottom-0 left-0 border-b-2 border-l-2',
+                'bottom-0 right-0 border-b-2 border-r-2',
+              ].map((corner) => (
+                <span key={corner} className={`absolute size-6 border-accent ${corner}`} />
+              ))}
+            </span>
+
+            {camera.state === 'running' ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-6 top-4 h-0.5 animate-scan bg-accent shadow-[0_0_12px_var(--color-accent)]"
+              />
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-mono text-[11px] tracking-[0.1em] text-fg-faint uppercase">
+              {cameraCopy[camera.state]}
+            </p>
+
+            <Button
+              size="sm"
+              disabled={!showId}
+              variant={camera.state === 'running' ? 'secondary' : 'primary'}
+              onClick={camera.state === 'running' ? camera.stop : camera.start}
+            >
+              {camera.state === 'running' ? 'Stop camera' : 'Start camera'}
+            </Button>
+          </div>
+
+          <form
+            className="mt-5 flex items-end gap-3"
+            onSubmit={(submitEvent) => {
+              submitEvent.preventDefault();
+
+              const code = new FormData(submitEvent.currentTarget).get('code');
+
+              if (code && showId) check.mutate({ code: String(code), showId });
+            }}
+          >
+            <Field label="Ticket code" htmlFor="code" className="flex-1">
+              <Input id="code" name="code" placeholder="TH-…" required />
+            </Field>
+            <Button type="submit" size="sm" disabled={check.isPending || !showId}>
+              Check in
+            </Button>
+          </form>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          {check.data ? <CheckInPanel result={check.data} /> : null}
+
+          {check.isError ? (
+            <p role="alert" className="text-[13px] text-danger">
+              {check.error.message}
+            </p>
+          ) : null}
+
+          {check.data ? (
+            <Card padding="lg">
+              <div className="mb-3 flex items-baseline justify-between">
+                <span className="font-mono text-[10px] tracking-[0.1em] text-fg-faint uppercase">
+                  Checked in
+                </span>
+                <span className="font-mono text-sm">
+                  {check.data.checkedInCount} / {capacity}
+                </span>
+              </div>
+
+              <Progress
+                value={check.data.checkedInCount}
+                max={capacity}
+                label="Checked in"
+                className="h-1.5 w-full bg-white/5"
+                indicatorClassName="bg-success"
+              />
+            </Card>
+          ) : null}
+
+          {recent.length > 0 ? (
+            <Card padding="lg">
+              <h2 className="mb-4 font-mono text-[10px] tracking-[0.1em] text-fg-faint uppercase">
+                Recent scans
+              </h2>
+              <ul className="flex flex-col gap-2.5">
+                {recent.map((scan) => (
+                  <li key={scan.key} className="flex items-center gap-3 font-mono text-xs">
+                    <span
+                      aria-hidden
+                      className={`size-2 rounded-pill ${
+                        scan.result === 'valid'
+                          ? 'bg-success'
+                          : scan.result === 'used'
+                            ? 'bg-warn'
+                            : 'bg-danger'
+                      }`}
+                    />
+                    <span className="flex-1 truncate text-fg-secondary">{scan.code}</span>
+                    <span className="text-fg-faint">{scan.result}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
           ) : null}
         </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-mono text-[11px] tracking-[0.1em] text-fg-faint uppercase">
-            {cameraCopy[camera.state]}
-          </p>
-
-          <Button
-            size="sm"
-            variant={camera.state === 'running' ? 'secondary' : 'primary'}
-            onClick={camera.state === 'running' ? camera.stop : camera.start}
-          >
-            {camera.state === 'running' ? 'Stop camera' : 'Start camera'}
-          </Button>
-        </div>
-
-        <form
-          className="mt-5 flex items-end gap-3"
-          onSubmit={(submitEvent) => {
-            submitEvent.preventDefault();
-
-            const code = new FormData(submitEvent.currentTarget).get('code');
-
-            if (code) check.mutate({ code: String(code), showId });
-          }}
-        >
-          <Field label="Ticket code" htmlFor="code" className="flex-1">
-            <Input id="code" name="code" placeholder="TH-…" required />
-          </Field>
-          <Button type="submit" size="sm" disabled={check.isPending}>
-            Check in
-          </Button>
-        </form>
-      </Card>
-
-      <div className="flex flex-col gap-6">
-        {check.data ? <CheckInPanel result={check.data} /> : null}
-
-        {check.isError ? (
-          <p role="alert" className="text-[13px] text-danger">
-            {check.error.message}
-          </p>
-        ) : null}
-
-        {check.data ? (
-          <Card padding="lg">
-            <div className="mb-3 flex items-baseline justify-between">
-              <span className="font-mono text-[10px] tracking-[0.1em] text-fg-faint uppercase">
-                Checked in
-              </span>
-              <span className="font-mono text-sm">
-                {check.data.checkedInCount} / {check.data.capacity}
-              </span>
-            </div>
-
-            <Progress
-              value={check.data.checkedInCount}
-              max={check.data.capacity}
-              label="Checked in"
-              className="h-1.5 w-full bg-white/5"
-              indicatorClassName="bg-success"
-            />
-          </Card>
-        ) : null}
-
-        {recent.length > 0 ? (
-          <Card padding="lg">
-            <h2 className="mb-4 font-mono text-[10px] tracking-[0.1em] text-fg-faint uppercase">
-              Recent scans
-            </h2>
-            <ul className="flex flex-col gap-2.5">
-              {recent.map((scan) => (
-                <li key={scan.key} className="flex items-center gap-3 font-mono text-xs">
-                  <span
-                    aria-hidden
-                    className={`size-2 rounded-pill ${
-                      scan.result === 'valid'
-                        ? 'bg-success'
-                        : scan.result === 'used'
-                          ? 'bg-warn'
-                          : 'bg-danger'
-                    }`}
-                  />
-                  <span className="flex-1 truncate text-fg-secondary">{scan.code}</span>
-                  <span className="text-fg-faint">{scan.result}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : null}
       </div>
-    </div>
+    </>
   );
 }
