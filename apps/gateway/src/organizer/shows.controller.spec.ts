@@ -42,6 +42,18 @@ describe('GatewayOrganizerShowsController', () => {
     expect(shows.listWithSales).not.toHaveBeenCalled();
   });
 
+  it('forwards the show picker names request', async () => {
+    await controller.getNames(req);
+
+    expect(amqp.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routingKey: 'organizer.shows.names',
+        payload: { userId: 'u1' },
+      }),
+    );
+    expect(shows.listWithSales).not.toHaveBeenCalled();
+  });
+
   it('forwards a single show read by id', async () => {
     await controller.getOne(req, 's1');
 

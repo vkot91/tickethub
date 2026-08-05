@@ -39,6 +39,17 @@ export const organizerShowSchema = showSummarySchema.extend({
 });
 export type OrganizerShow = z.infer<typeof organizerShowSchema>;
 
+/**
+ * One row of the organizer's show picker — `id` and `title` only. `myShows`/`listWithSales`
+ * carry venue joins and a sales fan-out that a `<Select>` never renders; a screen that only needs
+ * a name to put next to an id should not pay for either.
+ */
+export const showNameSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+});
+export type ShowName = z.infer<typeof showNameSchema>;
+
 export const organizerShowsQuerySchema = z.object({
   status: z.enum(['draft', 'published', 'cancelled', 'finished']).optional(),
 });
