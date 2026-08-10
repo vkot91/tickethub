@@ -5,7 +5,20 @@ import { PAYMENT_ROUTING_KEYS, type EventKey, type EventPayload } from '@ticketh
 import { OutboxRepository } from '@tickethub/outbox';
 import { StripeClient } from '../stripe.client';
 
-type StripeObject = { id: string; amount?: number; metadata?: { orderId?: string } };
+// `payment_intent.*` deliver a PaymentIntent; `charge.refunded` delivers a Charge, whose `id` is
+// a `ch_` and whose `amount` is the original charge — hence the two Charge-only fields.
+type StripeObject = {
+  id: string;
+  amount?: number;
+  amount_refunded?: number;
+  payment_intent?: string | { id: string } | null;
+  metadata?: { orderId?: string };
+};
+
+const paymentIntentIdOf = (charge: StripeObject): string =>
+  typeof charge.payment_intent === 'string'
+    ? charge.payment_intent
+    : (charge.payment_intent?.id ?? '');
 type PaymentStatus = (typeof payments.$inferInsert)['status'];
 
 /** One event onto the outbox, bound to the caller's transaction. */
@@ -51,8 +64,8 @@ const WEBHOOK_EFFECTS: Record<string, WebhookEffect> = {
     publish: (emit, orderId, object) =>
       emit(PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED, {
         orderId,
-        paymentIntentId: object.id,
-        amountCents: object.amount ?? 0,
+        paymentIntentId: paymentIntentIdOf(object),
+        amountCents: object.amount_refunded ?? 0,
       }),
   },
 };

@@ -6,6 +6,7 @@ function deps(
   duplicate = false,
   type = 'payment_intent.succeeded',
   metadata = { orderId: 'ord1' },
+  object: Record<string, unknown> = { id: 'pi_1', amount: 5000 },
 ) {
   const enqueued: Array<{ routingKey: string; payload: Record<string, unknown> }> = [];
   const outbox = {
@@ -19,7 +20,7 @@ function deps(
     constructEvent: jest.fn().mockReturnValue({
       id: 'evt_1',
       type,
-      data: { object: { id: 'pi_1', amount: 5000, metadata } },
+      data: { object: { ...object, metadata } },
     }),
   };
   const statuses: string[] = [];
@@ -88,6 +89,24 @@ describe('WebhookService.handleWebhook', () => {
 
     expect(d.enqueued[0].routingKey).toBe(PAYMENT_ROUTING_KEYS.REFUND_SUCCEEDED);
     expect(d.statuses).toEqual(['refunded']);
+  });
+
+  it('reads the intent id and the refunded amount off a charge.refunded', async () => {
+    const d = deps(
+      false,
+      'charge.refunded',
+      { orderId: 'ord1' },
+      {
+        id: 'ch_1',
+        amount: 5000,
+        amount_refunded: 2000,
+        payment_intent: 'pi_1',
+      },
+    );
+
+    await d.service.handleWebhook(Buffer.from('{}'), 'sig');
+
+    expect(d.enqueued[0].payload).toMatchObject({ paymentIntentId: 'pi_1', amountCents: 2000 });
   });
 
   it('ignores unrelated event types (no update, no outbox)', async () => {
