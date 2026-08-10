@@ -25,11 +25,11 @@ describe('RpcToHttpExceptionFilter', () => {
   it('passes an object body through untouched', () => {
     const { res, host } = mockHost();
 
-    filter.catch(new BadRequestException('Unknown ticketTypeId abc'), host);
+    filter.catch(new BadRequestException('Unknown bandId abc'), host);
 
     expect(res.status).toHaveBeenCalledWith(HttpStatus.BAD_REQUEST);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'Unknown ticketTypeId abc' }),
+      expect.objectContaining({ message: 'Unknown bandId abc' }),
     );
   });
 

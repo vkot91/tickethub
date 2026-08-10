@@ -10,7 +10,7 @@ const uuid = z.string().uuid();
 export const createOrderSchema = z.object({
   showId: uuid,
   seats: z
-    .array(z.object({ seatId: uuid, ticketTypeId: uuid }))
+    .array(z.object({ seatId: uuid, bandId: uuid }))
     .min(1)
     .max(10),
 });
@@ -22,7 +22,7 @@ export const orderResponseSchema = z.object({
   totalCents: z.number().int(),
   currency: z.string(),
   expiresAt: z.string(),
-  seats: z.array(z.object({ seatId: uuid, ticketTypeId: uuid })),
+  seats: z.array(z.object({ seatId: uuid, bandId: uuid })),
 });
 export type OrderResponse = z.infer<typeof orderResponseSchema>;
 

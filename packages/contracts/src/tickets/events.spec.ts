@@ -2,7 +2,7 @@ import { TICKET_ROUTING_KEYS, ticketPdfReadySchema } from './events';
 
 describe('tickets events', () => {
   it('routing key is stable', () => {
-    expect(TICKET_ROUTING_KEYS.TICKET_PDF_READY).toBe('ticket.pdf_ready');
+    expect(TICKET_ROUTING_KEYS.TICKET_PDF_READY).toBe('ticket.pdfReady');
   });
 
   it('parses a ticket.pdf_ready event', () => {

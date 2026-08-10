@@ -187,5 +187,3 @@ export function createServerSession({ accessCookie, refreshCookie, gatewayUrl }:
     gatewayRoute,
   };
 }
-
-export type ServerSession = ReturnType<typeof createServerSession>;

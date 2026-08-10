@@ -6,7 +6,7 @@ import { configModuleFor, ConfigService } from '@tickethub/config';
 import { AppLoggerModule } from '@tickethub/common';
 import { RedisModule, bullConnection } from '@tickethub/redis';
 import { rmqRootModule, OutboxModule } from '@tickethub/rmq';
-import { OrdersController } from './orders.controller';
+import { OrdersController } from './user/orders.controller';
 import { OrdersService } from './orders.service';
 import { OrderSagaController } from './saga/saga.controller';
 import { OrderSagaService } from './saga/saga.service';

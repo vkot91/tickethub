@@ -20,6 +20,6 @@ describe('seed (integration, idempotent)', () => {
     const second = await seed(db);
     expect(first.flashSeatId).toBe(second.flashSeatId);
     expect(first.flashShowId).toBeDefined();
-    expect(first.flashTicketTypeId).toBeDefined();
+    expect(first.flashBandId).toBeDefined();
   });
 });

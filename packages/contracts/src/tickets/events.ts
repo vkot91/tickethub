@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// What Fulfillment publishes. Audience-free — the consumer is another service.
+// What Tickets publishes. Audience-free — the consumer is another service.
 // Payloads carry domain fields only; `messageId` is stamped by the transport and reaches consumers
 // as `EventEnvelope<K>`. See `../registry`.
 
@@ -11,7 +11,7 @@ export const ticketPdfReadySchema = z.object({
 export type TicketPdfReadyEvent = z.infer<typeof ticketPdfReadySchema>;
 
 export const TICKET_ROUTING_KEYS = {
-  TICKET_PDF_READY: 'ticket.pdf_ready',
+  TICKET_PDF_READY: 'ticket.pdfReady',
 } as const;
 
 export interface TicketsEventContracts {

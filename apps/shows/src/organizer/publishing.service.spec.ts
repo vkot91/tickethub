@@ -3,11 +3,11 @@ import { eq } from 'drizzle-orm';
 
 import type { PutPricingDto } from '@tickethub/contracts';
 import {
+  priceBands,
   sections,
   shows,
   showSectionPricing,
   showsOutbox,
-  ticketTypes,
   venues,
 } from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
@@ -35,7 +35,7 @@ async function seedDraft(sectionCount = 2) {
       rows: 1,
       seatsPerRow: 2,
     })),
-    ticketType: false,
+    priceBand: false,
   });
 
   return {
@@ -45,7 +45,7 @@ async function seedDraft(sectionCount = 2) {
   };
 }
 
-const band = (key: string, priceCents: number): PutPricingDto['ticketTypes'][number] => ({
+const band = (key: string, priceCents: number): PutPricingDto['priceBands'][number] => ({
   key,
   name: key,
   tier: 'standard',
@@ -57,10 +57,10 @@ describe('OrganizerPublishingService.putPricing', () => {
     const { show, userId, sectionIds, venue } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('vip', 9000), band('cheap', 1000)],
+      priceBands: [band('vip', 9000), band('cheap', 1000)],
       assignments: [
-        { sectionId: sectionIds[0], ticketTypeKey: 'vip' },
-        { sectionId: sectionIds[1], ticketTypeKey: 'cheap' },
+        { sectionId: sectionIds[0], bandKey: 'vip' },
+        { sectionId: sectionIds[1], bandKey: 'cheap' },
       ],
     });
 
@@ -68,11 +68,11 @@ describe('OrganizerPublishingService.putPricing', () => {
       .select({
         sectionId: showSectionPricing.sectionId,
         venueId: showSectionPricing.venueId,
-        name: ticketTypes.name,
-        priceCents: ticketTypes.priceCents,
+        name: priceBands.name,
+        priceCents: priceBands.priceCents,
       })
       .from(showSectionPricing)
-      .innerJoin(ticketTypes, eq(ticketTypes.id, showSectionPricing.ticketTypeId))
+      .innerJoin(priceBands, eq(priceBands.id, showSectionPricing.bandId))
       .where(eq(showSectionPricing.showId, show.id));
 
     expect(priced).toHaveLength(2);
@@ -90,8 +90,8 @@ describe('OrganizerPublishingService.putPricing', () => {
     const { show, userId, sectionIds } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('flat', 2500)],
-      assignments: sectionIds.map((sectionId) => ({ sectionId, ticketTypeKey: 'flat' })),
+      priceBands: [band('flat', 2500)],
+      assignments: sectionIds.map((sectionId) => ({ sectionId, bandKey: 'flat' })),
     });
 
     const priced = await db
@@ -100,22 +100,22 @@ describe('OrganizerPublishingService.putPricing', () => {
       .where(eq(showSectionPricing.showId, show.id));
 
     expect(priced).toHaveLength(2);
-    expect(new Set(priced.map((row) => row.ticketTypeId)).size).toBe(1);
+    expect(new Set(priced.map((row) => row.bandId)).size).toBe(1);
   });
 
   it('drops the previous bands and mapping rather than adding to them', async () => {
     const { show, userId, sectionIds } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('old', 100)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'old' }],
+      priceBands: [band('old', 100)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'old' }],
     });
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('new', 200)],
-      assignments: [{ sectionId: sectionIds[1], ticketTypeKey: 'new' }],
+      priceBands: [band('new', 200)],
+      assignments: [{ sectionId: sectionIds[1], bandKey: 'new' }],
     });
 
-    const bands = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+    const bands = await db.select().from(priceBands).where(eq(priceBands.showId, show.id));
     const priced = await db
       .select()
       .from(showSectionPricing)
@@ -129,12 +129,12 @@ describe('OrganizerPublishingService.putPricing', () => {
     const { show, userId, sectionIds } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('old', 100)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'old' }],
+      priceBands: [band('old', 100)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'old' }],
     });
-    await svc.putPricing(userId, show.id, { ticketTypes: [], assignments: [] });
+    await svc.putPricing(userId, show.id, { priceBands: [], assignments: [] });
 
-    expect(await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id))).toEqual([]);
+    expect(await db.select().from(priceBands).where(eq(priceBands.showId, show.id))).toEqual([]);
   });
 
   it.each(['published', 'cancelled', 'finished'] as const)(
@@ -145,8 +145,8 @@ describe('OrganizerPublishingService.putPricing', () => {
 
       await expect(
         svc.putPricing(userId, show.id, {
-          ticketTypes: [band('vip', 100)],
-          assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'vip' }],
+          priceBands: [band('vip', 100)],
+          assignments: [{ sectionId: sectionIds[0], bandKey: 'vip' }],
         }),
       ).rejects.toThrow(ConflictException);
     },
@@ -162,8 +162,8 @@ describe('OrganizerPublishingService.putPricing', () => {
 
     await expect(
       svc.putPricing(userId, show.id, {
-        ticketTypes: [band('vip', 100)],
-        assignments: [{ sectionId: foreign.id, ticketTypeKey: 'vip' }],
+        priceBands: [band('vip', 100)],
+        assignments: [{ sectionId: foreign.id, bandKey: 'vip' }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -173,10 +173,10 @@ describe('OrganizerPublishingService.putPricing', () => {
 
     await expect(
       svc.putPricing(userId, show.id, {
-        ticketTypes: [band('a', 100), band('b', 200)],
+        priceBands: [band('a', 100), band('b', 200)],
         assignments: [
-          { sectionId: sectionIds[0], ticketTypeKey: 'a' },
-          { sectionId: sectionIds[0], ticketTypeKey: 'b' },
+          { sectionId: sectionIds[0], bandKey: 'a' },
+          { sectionId: sectionIds[0], bandKey: 'b' },
         ],
       }),
     ).rejects.toThrow(BadRequestException);
@@ -187,8 +187,8 @@ describe('OrganizerPublishingService.putPricing', () => {
 
     await expect(
       svc.putPricing(userId, show.id, {
-        ticketTypes: [band('vip', 100)],
-        assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'nope' }],
+        priceBands: [band('vip', 100)],
+        assignments: [{ sectionId: sectionIds[0], bandKey: 'nope' }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -198,8 +198,8 @@ describe('OrganizerPublishingService.putPricing', () => {
 
     await expect(
       svc.putPricing(userId, show.id, {
-        ticketTypes: [band('vip', 100), band('vip', 200)],
-        assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'vip' }],
+        priceBands: [band('vip', 100), band('vip', 200)],
+        assignments: [{ sectionId: sectionIds[0], bandKey: 'vip' }],
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -207,18 +207,18 @@ describe('OrganizerPublishingService.putPricing', () => {
   it('leaves the existing pricing untouched when a later assignment is invalid', async () => {
     const { show, userId, sectionIds } = await seedDraft();
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('keep', 500)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'keep' }],
+      priceBands: [band('keep', 500)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'keep' }],
     });
 
     await expect(
       svc.putPricing(userId, show.id, {
-        ticketTypes: [band('vip', 100)],
-        assignments: [{ sectionId: UNKNOWN_ID, ticketTypeKey: 'vip' }],
+        priceBands: [band('vip', 100)],
+        assignments: [{ sectionId: UNKNOWN_ID, bandKey: 'vip' }],
       }),
     ).rejects.toThrow(BadRequestException);
 
-    const bands = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+    const bands = await db.select().from(priceBands).where(eq(priceBands.showId, show.id));
     expect(bands.map((row) => row.name)).toEqual(['keep']);
   });
 });
@@ -227,12 +227,12 @@ describe('OrganizerPublishingService.publishChecklist', () => {
   it('reports a fully priced future show as ready, with its counts', async () => {
     const { show, userId, sectionIds } = await seedDraft();
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('flat', 2500)],
-      assignments: sectionIds.map((sectionId) => ({ sectionId, ticketTypeKey: 'flat' })),
+      priceBands: [band('flat', 2500)],
+      assignments: sectionIds.map((sectionId) => ({ sectionId, bandKey: 'flat' })),
     });
 
     await expect(svc.publishChecklist(userId, show.id)).resolves.toEqual({
-      hasTicketTypes: true,
+      hasPriceBands: true,
       hasPricedSections: true,
       startsInFuture: true,
       pricedSectionCount: 2,
@@ -246,7 +246,7 @@ describe('OrganizerPublishingService.publishChecklist', () => {
     const { show, userId } = await seedDraft();
 
     await expect(svc.publishChecklist(userId, show.id)).resolves.toMatchObject({
-      hasTicketTypes: false,
+      hasPriceBands: false,
       hasPricedSections: false,
       startsInFuture: true,
       pricedSectionCount: 0,
@@ -258,8 +258,8 @@ describe('OrganizerPublishingService.publishChecklist', () => {
   it('counts only the sections actually on sale', async () => {
     const { show, userId, sectionIds } = await seedDraft();
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('flat', 2500)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'flat' }],
+      priceBands: [band('flat', 2500)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'flat' }],
     });
 
     await expect(svc.publishChecklist(userId, show.id)).resolves.toMatchObject({
@@ -287,8 +287,8 @@ async function seedPublishable() {
   const draft = await seedDraft();
 
   await svc.putPricing(draft.userId, draft.show.id, {
-    ticketTypes: [band('flat', 2500)],
-    assignments: draft.sectionIds.map((sectionId) => ({ sectionId, ticketTypeKey: 'flat' })),
+    priceBands: [band('flat', 2500)],
+    assignments: draft.sectionIds.map((sectionId) => ({ sectionId, bandKey: 'flat' })),
   });
 
   return draft;
@@ -321,16 +321,16 @@ describe('OrganizerPublishingService.publishShow', () => {
     expect(await outboxFor('show.published')).toHaveLength(1);
   });
 
-  it('refuses a show with no ticket types, naming that reason', async () => {
+  it('refuses a show with no price bands, naming that reason', async () => {
     const { show, userId } = await seedDraft();
 
-    await expect(svc.publishShow(userId, show.id)).rejects.toThrow(/ticket type/i);
+    await expect(svc.publishShow(userId, show.id)).rejects.toThrow(/price band/i);
   });
 
   it('refuses a show whose bands price no section', async () => {
     const { show, userId } = await seedDraft();
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('orphan', 100)],
+      priceBands: [band('orphan', 100)],
       assignments: [],
     });
 
@@ -389,42 +389,42 @@ describe('OrganizerPublishingService.getPricing', () => {
     const { show, userId, sectionIds } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('cheap', 1000), band('vip', 9000)],
+      priceBands: [band('cheap', 1000), band('vip', 9000)],
       assignments: [
-        { sectionId: sectionIds[0], ticketTypeKey: 'cheap' },
-        { sectionId: sectionIds[1], ticketTypeKey: 'vip' },
+        { sectionId: sectionIds[0], bandKey: 'cheap' },
+        { sectionId: sectionIds[1], bandKey: 'vip' },
       ],
     });
 
     const pricing = await svc.getPricing(userId, show.id);
 
-    expect(pricing.ticketTypes.map((b) => [b.name, b.priceCents])).toEqual([
+    expect(pricing.priceBands.map((b) => [b.name, b.priceCents])).toEqual([
       ['vip', 9000],
       ['cheap', 1000],
     ]);
 
     // The assignment points at the band's real id — the write side's `key` is never persisted,
     // so a client that held one across this read would be holding a dead handle.
-    const vip = pricing.ticketTypes.find((b) => b.name === 'vip');
-    expect(pricing.assignments).toContainEqual({ sectionId: sectionIds[1], ticketTypeId: vip?.id });
+    const vip = pricing.priceBands.find((b) => b.name === 'vip');
+    expect(pricing.assignments).toContainEqual({ sectionId: sectionIds[1], bandId: vip?.id });
   });
 
   it('returns empty arrays for a show nothing has priced yet', async () => {
     const { show, userId } = await seedDraft();
 
-    expect(await svc.getPricing(userId, show.id)).toEqual({ ticketTypes: [], assignments: [] });
+    expect(await svc.getPricing(userId, show.id)).toEqual({ priceBands: [], assignments: [] });
   });
 
   it('reads a published show too — the preview tab outlives the draft', async () => {
     const { show, userId, sectionIds } = await seedDraft();
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('vip', 9000)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'vip' }],
+      priceBands: [band('vip', 9000)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'vip' }],
     });
     await db.update(shows).set({ status: 'published' }).where(eq(shows.id, show.id));
 
-    expect((await svc.getPricing(userId, show.id)).ticketTypes).toHaveLength(1);
+    expect((await svc.getPricing(userId, show.id)).priceBands).toHaveLength(1);
   });
 
   it('does not leak another show’s bands', async () => {
@@ -432,21 +432,21 @@ describe('OrganizerPublishingService.getPricing', () => {
     const other = await seedShowGraph(db, {
       show: { status: 'draft', startsAt: FUTURE },
       sections: [{ name: 'Only', rows: 1, seatsPerRow: 2 }],
-      ticketType: false,
+      priceBand: false,
     });
 
     await svc.putPricing(userId, show.id, {
-      ticketTypes: [band('mine', 100)],
-      assignments: [{ sectionId: sectionIds[0], ticketTypeKey: 'mine' }],
+      priceBands: [band('mine', 100)],
+      assignments: [{ sectionId: sectionIds[0], bandKey: 'mine' }],
     });
     await svc.putPricing(other.organizer.userId, other.show.id, {
-      ticketTypes: [band('theirs', 200)],
-      assignments: [{ sectionId: other.sections[0].section.id, ticketTypeKey: 'theirs' }],
+      priceBands: [band('theirs', 200)],
+      assignments: [{ sectionId: other.sections[0].section.id, bandKey: 'theirs' }],
     });
 
     const pricing = await svc.getPricing(userId, show.id);
 
-    expect(pricing.ticketTypes.map((b) => b.name)).toEqual(['mine']);
+    expect(pricing.priceBands.map((b) => b.name)).toEqual(['mine']);
     expect(pricing.assignments).toHaveLength(1);
   });
 });
@@ -458,7 +458,7 @@ describe('ownership is a 404, never a 403', () => {
     [
       'putPricing',
       (userId: string, showId: string) =>
-        svc.putPricing(userId, showId, { ticketTypes: [], assignments: [] }),
+        svc.putPricing(userId, showId, { priceBands: [], assignments: [] }),
     ],
     ['getPricing', (userId: string, showId: string) => svc.getPricing(userId, showId)],
     ['publishChecklist', (userId: string, showId: string) => svc.publishChecklist(userId, showId)],

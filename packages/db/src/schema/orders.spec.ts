@@ -17,7 +17,7 @@ describe('orders schema', () => {
 
   it('seat_reservations exposes seat + status columns', () => {
     expect(Object.keys(seatReservations)).toEqual(
-      expect.arrayContaining(['id', 'orderId', 'showId', 'seatId', 'ticketTypeId', 'status']),
+      expect.arrayContaining(['id', 'orderId', 'showId', 'seatId', 'bandId', 'status']),
     );
   });
 

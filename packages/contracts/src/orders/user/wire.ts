@@ -3,10 +3,10 @@ import type { CreateOrderDto, OrderListQuery, OrderResponse, OrderSummaryPage } 
 
 /** A buyer acting on their own orders. Every payload carries the `userId` the service scopes to. */
 export const ORDERS_MESSAGE_PATTERNS = {
-  CREATE: 'orders.create',
-  GET: 'orders.get',
-  LIST: 'orders.list',
-  REQUEST_REFUND: 'orders.requestRefund',
+  CREATE: 'user.orders.create',
+  GET: 'user.orders.get',
+  LIST: 'user.orders.list',
+  REQUEST_REFUND: 'user.orders.requestRefund',
 } as const;
 
 export interface OrdersRpcContracts {

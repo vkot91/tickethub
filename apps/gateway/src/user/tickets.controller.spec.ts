@@ -15,7 +15,7 @@ const responseSpy = () => ({
 
 describe('GatewayUserTicketsController', () => {
   describe('list', () => {
-    it('asks fulfillment for the authenticated caller’s tickets', async () => {
+    it('asks tickets for the authenticated caller’s tickets', async () => {
       const list = { items: [] };
       const amqp = amqpReturning(list);
       const controller = new GatewayUserTicketsController(amqp as never);
@@ -69,7 +69,7 @@ describe('GatewayUserTicketsController', () => {
       expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     });
 
-    it('does not redirect when fulfillment refuses the ticket', async () => {
+    it('does not redirect when tickets refuses the ticket', async () => {
       const amqp = { request: jest.fn().mockRejectedValue(new Error('Ticket not found')) };
       const res = responseSpy();
 

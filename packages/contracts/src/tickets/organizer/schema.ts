@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// The console's own shapes for Fulfillment. The check-in *count* stays a bare number in `wire.ts`;
+// The console's own shapes for Tickets. The check-in *count* stays a bare number in `wire.ts`;
 // a scan has a result worth naming, so it lives here.
 
 /**

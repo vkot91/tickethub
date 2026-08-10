@@ -13,7 +13,7 @@ import {
   seatReservations,
   seats,
   showSectionPricing,
-  ticketTypes,
+  priceBands,
   type Db,
 } from '@tickethub/db';
 import { RedisService } from '@tickethub/redis';
@@ -69,7 +69,7 @@ export class OrdersService {
 
     try {
       return await this.db.transaction(async (tx) => {
-        // Server-resolved seats from here on — the client's ticketTypeIds are not trusted.
+        // Server-resolved seats from here on — the client's bandIds are not trusted.
         const {
           totalCents,
           currency,
@@ -100,7 +100,7 @@ export class OrdersService {
             orderId: order.id,
             showId: dto.showId,
             seatId: seat.seatId,
-            ticketTypeId: seat.ticketTypeId,
+            bandId: seat.bandId,
             status: 'held' as const,
           })),
         );
@@ -231,7 +231,7 @@ export class OrdersService {
       .select({
         orderId: seatReservations.orderId,
         seatId: seatReservations.seatId,
-        ticketTypeId: seatReservations.ticketTypeId,
+        bandId: seatReservations.bandId,
       })
       .from(seatReservations)
       .where(inArray(seatReservations.orderId, orderIds));
@@ -246,7 +246,7 @@ export class OrdersService {
   // Every response carries the order's seats; `status` narrows to the confirmed ones once paid.
   private async withSeats(order: Order, status?: 'confirmed'): Promise<OrderResponse> {
     const seats = await this.db
-      .select({ seatId: seatReservations.seatId, ticketTypeId: seatReservations.ticketTypeId })
+      .select({ seatId: seatReservations.seatId, bandId: seatReservations.bandId })
       .from(seatReservations)
       .where(
         status
@@ -257,10 +257,9 @@ export class OrdersService {
     return toResponse(order, seats);
   }
 
-  // Prices the requested seats off ticket_types (the source of truth, never the client).
   /**
    * What the seats actually cost, resolved from the seat's own section — never from the
-   * `ticketTypeId` the client sent. That field is a hint for the UI's running total only: trusting
+   * `bandId` the client sent. That field is a hint for the UI's running total only: trusting
    * it let a buyer post a VIP seat with the cheap band's id and pay the cheap price, because the
    * old lookup checked merely that the id existed *somewhere* — not that it belonged to this show,
    * let alone to this seat's section. `show_section_pricing` is the single authority, so the returned
@@ -276,9 +275,9 @@ export class OrdersService {
     const priced = await tx
       .select({
         seatId: seats.id,
-        ticketTypeId: ticketTypes.id,
-        priceCents: ticketTypes.priceCents,
-        currency: ticketTypes.currency,
+        bandId: priceBands.id,
+        priceCents: priceBands.priceCents,
+        currency: priceBands.currency,
       })
       .from(seats)
       .innerJoin(rows, eq(seats.rowId, rows.id))
@@ -289,7 +288,7 @@ export class OrdersService {
           eq(showSectionPricing.showId, showId),
         ),
       )
-      .innerJoin(ticketTypes, eq(ticketTypes.id, showSectionPricing.ticketTypeId))
+      .innerJoin(priceBands, eq(priceBands.id, showSectionPricing.bandId))
       .where(inArray(seats.id, seatIds));
 
     const bySeatId = new Map(priced.map((seat) => [seat.seatId, seat]));
@@ -303,7 +302,7 @@ export class OrdersService {
     return {
       totalCents: resolved.reduce((sum, seat) => sum + seat.priceCents, 0),
       currency: resolved[0].currency,
-      seats: resolved.map((seat) => ({ seatId: seat.seatId, ticketTypeId: seat.ticketTypeId })),
+      seats: resolved.map((seat) => ({ seatId: seat.seatId, bandId: seat.bandId })),
     };
   }
 }

@@ -13,14 +13,14 @@ describe('GatewayOrganizerVenuesController', () => {
   it('forwards getList over RPC', async () => {
     await controller.getList();
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'venues.getList', payload: {} }),
+      expect.objectContaining({ routingKey: 'venues.list', payload: {} }),
     );
   });
 
   it('forwards getOne by venue id', async () => {
     await controller.getOne('v1');
     expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'venues.getOne', payload: { venueId: 'v1' } }),
+      expect.objectContaining({ routingKey: 'venues.get', payload: { venueId: 'v1' } }),
     );
   });
 

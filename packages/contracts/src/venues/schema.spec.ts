@@ -3,8 +3,8 @@ import { VENUES_MESSAGE_PATTERNS } from './wire';
 
 describe('venues wire names', () => {
   it('mirrors each key onto its wire value', () => {
-    expect(VENUES_MESSAGE_PATTERNS.GET_LIST).toBe('venues.getList');
-    expect(VENUES_MESSAGE_PATTERNS.GET_ONE).toBe('venues.getOne');
+    expect(VENUES_MESSAGE_PATTERNS.LIST).toBe('venues.list');
+    expect(VENUES_MESSAGE_PATTERNS.GET).toBe('venues.get');
   });
 });
 

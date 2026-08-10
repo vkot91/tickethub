@@ -34,7 +34,7 @@ export const refundRequestedSchema = z.object({
 export type RefundRequestedEvent = z.infer<typeof refundRequestedSchema>;
 
 export const ORDER_ROUTING_KEYS = {
-  ORDER_AWAITING_PAYMENT: 'order.awaiting_payment',
+  ORDER_AWAITING_PAYMENT: 'order.awaitingPayment',
   ORDER_PAID: 'order.paid',
   ORDER_EXPIRED: 'order.expired',
   ORDER_CANCELLED: 'order.cancelled',

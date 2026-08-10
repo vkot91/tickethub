@@ -13,7 +13,7 @@ export const showSummarySchema = z.object({
 });
 export type ShowSummary = z.infer<typeof showSummarySchema>;
 
-// The three price bands a ticket type can belong to. Purely how a tier is presented — its
+// The three price bands a price band can belong to. Purely how a tier is presented — its
 // colour on the seat map and the dot on the show page. The money is always `priceCents`.
 export const SEAT_TIERS = ['vip', 'standard', 'economy'] as const;
 export const seatTierSchema = z.enum(SEAT_TIERS);
@@ -28,4 +28,3 @@ export const priceTierSchema = z.object({
   priceCents: z.number().int(),
   currency: z.string(),
 });
-export type PriceTier = z.infer<typeof priceTierSchema>;

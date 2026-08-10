@@ -19,7 +19,7 @@ tiers). `src/index.ts` is the only entry point; consumers never deep-import.
 @import '@tickethub/ui/styles.css';
 ```
 
-`styles.css` carries the `@theme` token block from `design/README.md` plus a `@source "./"`, so
+`styles.css` carries the design system's `@theme` token block plus a `@source "./"`, so
 Tailwind scans this package's own components — node_modules is not crawled by default.
 
 Presentational only. Nothing here reads a cookie, calls the gateway or imports `next/headers`;

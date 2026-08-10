@@ -24,8 +24,8 @@ function selectFake(rows: unknown[], seats: unknown[] = []) {
 
 function deps(overrides: Record<string, unknown> = {}, seats: unknown[] = []) {
   // What price() resolves for the dto's seat s1 from show_section_pricing — the server's own answer,
-  // which is deliberately independent of whatever ticketTypeId the dto carries.
-  const pricedSeats = [{ seatId: 's1', ticketTypeId: 'tt1', priceCents: 5000, currency: 'usd' }];
+  // which is deliberately independent of whatever bandId the dto carries.
+  const pricedSeats = [{ seatId: 's1', bandId: 'tt1', priceCents: 5000, currency: 'usd' }];
 
   const redis = {
     acquireSeatLocks: jest.fn().mockResolvedValue(true),
@@ -46,7 +46,7 @@ function deps(overrides: Record<string, unknown> = {}, seats: unknown[] = []) {
     transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         insert: () => ({ values: () => ({ returning: async () => [order] }) }),
-        // price() walks seats → rows → show_section_pricing → ticket_types, so the fake has to be
+        // price() walks seats → rows → show_section_pricing → price_bands, so the fake has to be
         // chainable on innerJoin and resolve at .where(). Seat ids come from the dto under test.
         select: () => {
           const chain = {
@@ -72,7 +72,7 @@ function deps(overrides: Record<string, unknown> = {}, seats: unknown[] = []) {
 }
 
 describe('OrdersService.create', () => {
-  const dto = { showId: 'e1', seats: [{ seatId: 's1', ticketTypeId: 'tt1' }] };
+  const dto = { showId: 'e1', seats: [{ seatId: 's1', bandId: 'tt1' }] };
 
   it('returns a 409 when seat locks cannot be acquired', async () => {
     const d = deps();
@@ -107,7 +107,7 @@ describe('OrdersService.create', () => {
       currency: 'usd',
       expiresAt: new Date('2030-01-01'),
     };
-    const held = [{ seatId: 's1', ticketTypeId: 'tt1' }];
+    const held = [{ seatId: 's1', bandId: 'tt1' }];
     const d = deps({ select: selectFake([existing], held) });
 
     const res = await d.service.create('u1', 'idem1', dto as never);
@@ -186,7 +186,7 @@ describe('OrdersService.get', () => {
   });
 
   it('returns the confirmed seats for the order', async () => {
-    const seats = [{ seatId: 's1', ticketTypeId: 'tt1' }];
+    const seats = [{ seatId: 's1', bandId: 'tt1' }];
     const d = deps({ select: selectFake([order], seats) });
 
     expect((await d.service.get('u1', 'ord1')).seats).toEqual(seats);
@@ -273,9 +273,9 @@ describe('OrdersService.list', () => {
     const service = listService(
       [orderRow('ord1', '2026-07-02'), orderRow('ord2', '2026-07-01')],
       [
-        { orderId: 'ord1', seatId: 'seat1', ticketTypeId: 'tt1' },
-        { orderId: 'ord1', seatId: 'seat2', ticketTypeId: 'tt1' },
-        { orderId: 'ord2', seatId: 'seat3', ticketTypeId: 'tt1' },
+        { orderId: 'ord1', seatId: 'seat1', bandId: 'tt1' },
+        { orderId: 'ord1', seatId: 'seat2', bandId: 'tt1' },
+        { orderId: 'ord2', seatId: 'seat3', bandId: 'tt1' },
       ],
     );
 
@@ -285,8 +285,8 @@ describe('OrdersService.list', () => {
     expect(page.items.map((item) => item.id)).toEqual(['ord1', 'ord2']);
     expect(page.items[0].showId).toBe('show1');
     expect(page.items[0].seats).toEqual([
-      { seatId: 'seat1', ticketTypeId: 'tt1' },
-      { seatId: 'seat2', ticketTypeId: 'tt1' },
+      { seatId: 'seat1', bandId: 'tt1' },
+      { seatId: 'seat2', bandId: 'tt1' },
     ]);
     // Held seats count here: an awaiting_payment order still has seats worth showing.
     expect(page.items[1].seats).toHaveLength(1);

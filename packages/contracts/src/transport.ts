@@ -26,8 +26,8 @@ export const EVENTS_QUEUES = {
   ORDERS_SHOW_CANCELLED: 'orders.show-cancelled',
   PAYMENTS_REFUND_REQUESTED: 'payments.refund-requested',
   PAYMENTS_ORDER_EXPIRED: 'payments.order-expired',
-  FULFILLMENT_ORDER_PAID: 'fulfillment.order-paid',
-  FULFILLMENT_TICKET_PDF_READY: 'fulfillment.ticket-pdf-ready',
+  TICKETS_ORDER_PAID: 'tickets.order-paid',
+  TICKETS_PDF_READY: 'tickets.pdf-ready',
 } as const;
 
 /** The name of any event queue — what `eventSub` accepts as its queue argument. */

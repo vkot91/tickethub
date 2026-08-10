@@ -12,7 +12,7 @@ export const ORGANIZER_ORDERS_MESSAGE_PATTERNS = {
   // than a mode of it: STATS answers "how is the whole account doing", this answers "how is each
   // of these shows doing". One round trip for the page instead of one per row.
   SALES_BY_SHOW: 'organizer.orders.salesByShow',
-  RECENT: 'organizer.orders.recent',
+  LATEST: 'organizer.orders.latest',
 } as const;
 
 export interface OrganizerOrdersRpcContracts {
@@ -24,7 +24,7 @@ export interface OrganizerOrdersRpcContracts {
     payload: { showIds: string[] };
     result: ShowSales[];
   }>;
-  [ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT]: Rpc<{
+  [ORGANIZER_ORDERS_MESSAGE_PATTERNS.LATEST]: Rpc<{
     payload: { showIds: string[]; limit?: number };
     result: RecentOrderRow[];
   }>;

@@ -38,7 +38,6 @@ export function SeatMap({ showId }: { showId: string }) {
     onSuccess: (created) => router.push(`/orders/${created.id}/checkout`),
     onError: (error) => {
       if (error instanceof ApiError && error.kind === 'conflict') {
-        // Roll the optimistic pick back and show the map as it actually is now.
         setSelectedIds([]);
         queryClient.invalidateQueries({ queryKey: seatMapKeys.byShow(showId) });
 
@@ -61,9 +60,9 @@ export function SeatMap({ showId }: { showId: string }) {
   // Hoisted, so the mutation above can call it once a seat map has actually rendered.
   function orderSeats(): OrderSeat[] {
     return selectedSeats.map((seat) => {
-      if (!seat.ticketTypeId) throw new Error(`Seat ${seat.label} is not on sale`);
+      if (!seat.bandId) throw new Error(`Seat ${seat.label} is not on sale`);
 
-      return { seatId: seat.id, ticketTypeId: seat.ticketTypeId };
+      return { seatId: seat.id, bandId: seat.bandId };
     });
   }
 

@@ -88,15 +88,15 @@ export const venueDetail: VenueDetail = {
 };
 
 /** A show with nothing priced — the state a fresh draft is actually in. */
-export const emptyPricing: ShowPricing = { ticketTypes: [], assignments: [] };
+export const emptyPricing: ShowPricing = { priceBands: [], assignments: [] };
 
 export const savedPricing: ShowPricing = {
-  ticketTypes: [{ id: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 }],
-  assignments: [{ sectionId: SECTION_A_ID, ticketTypeId: BAND_ID }],
+  priceBands: [{ id: BAND_ID, name: 'Front VIP', tier: 'vip', priceCents: 9000 }],
+  assignments: [{ sectionId: SECTION_A_ID, bandId: BAND_ID }],
 };
 
 export const readyChecklist: PublishChecklist = {
-  hasTicketTypes: true,
+  hasPriceBands: true,
   hasPricedSections: true,
   startsInFuture: true,
   pricedSectionCount: 1,
@@ -112,7 +112,7 @@ export const stats = {
   checkedInCount: 64,
   // Named and tiered, as the gateway resolves them for a single show. Empty across "All shows" —
   // the card is hidden there rather than adding up different shows' bands that share a name.
-  byTier: [{ ticketTypeId: BAND_ID, name: 'Front VIP', tier: 'vip' as const, soldCount: 90 }],
+  byTier: [{ bandId: BAND_ID, name: 'Front VIP', tier: 'vip' as const, soldCount: 90 }],
   byDay: [
     { date: '2026-08-01', revenueCents: 100_000, count: 4 },
     { date: '2026-08-02', revenueCents: 300_000, count: 11 },

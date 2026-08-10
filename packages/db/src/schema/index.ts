@@ -3,4 +3,4 @@ export * from './shows';
 export * from './outbox';
 export * from './orders';
 export * from './payments';
-export * from './fulfillment';
+export * from './tickets';

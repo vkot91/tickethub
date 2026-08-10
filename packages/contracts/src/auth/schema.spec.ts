@@ -1,4 +1,4 @@
-import { getUserRequestSchema, getUserResponseSchema, registerSchema } from './schema';
+import { getUserResponseSchema, registerSchema } from './schema';
 import { AUTH_MESSAGE_PATTERNS } from './wire';
 
 describe('registerSchema', () => {
@@ -13,17 +13,6 @@ describe('registerSchema', () => {
     expect(registerSchema.parse({ email: 'A@B.com', password: 'password123' }).email).toBe(
       'a@b.com',
     );
-  });
-});
-
-describe('getUserRequestSchema', () => {
-  it('accepts a valid userId', () => {
-    const userId = '11111111-1111-1111-1111-111111111111';
-    expect(getUserRequestSchema.parse({ userId })).toEqual({ userId });
-  });
-
-  it('rejects a non-uuid userId', () => {
-    expect(() => getUserRequestSchema.parse({ userId: 'not-a-uuid' })).toThrow();
   });
 });
 

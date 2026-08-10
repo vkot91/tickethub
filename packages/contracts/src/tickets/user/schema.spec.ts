@@ -19,8 +19,8 @@ const ticket = {
 
 describe('buyer tickets wire names', () => {
   it('mirrors each key onto its wire value', () => {
-    expect(TICKETS_MESSAGE_PATTERNS.LIST).toBe('tickets.list');
-    expect(TICKETS_MESSAGE_PATTERNS.PDF_URL).toBe('tickets.pdfUrl');
+    expect(TICKETS_MESSAGE_PATTERNS.LIST).toBe('user.tickets.list');
+    expect(TICKETS_MESSAGE_PATTERNS.PDF_URL).toBe('user.tickets.pdfUrl');
   });
 });
 

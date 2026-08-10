@@ -15,21 +15,32 @@ import { ZodValidationPipe } from '@tickethub/common';
 import { rpcRequest } from '@tickethub/rmq';
 import {
   ORDERS_MESSAGE_PATTERNS,
+  SHOWS_MESSAGE_PATTERNS,
   createOrderSchema,
   orderListQuerySchema,
   type CreateOrderDto,
   type OrderList,
 } from '@tickethub/contracts';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { ShowContextService } from '../shared/show-context.service';
+import { labelsFromSeatMap, withShowContext, type ShowContext } from '../shared/show-context';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class GatewayUserOrdersController {
-  constructor(
-    private readonly amqp: AmqpConnection,
-    private readonly showContext: ShowContextService,
-  ) {}
+  constructor(private readonly amqp: AmqpConnection) {}
+
+  /**
+   * The buyer's half of the show-context merge: the catalog's own two reads. `shared/` holds the
+   * merge and knows no routing key, so this is where the audience is named.
+   */
+  private readonly fetchShow = async (showId: string): Promise<ShowContext> => {
+    const [detail, seatMap] = await Promise.all([
+      rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.DETAIL, { id: showId }),
+      rpcRequest(this.amqp, SHOWS_MESSAGE_PATTERNS.SEAT_MAP, { id: showId }),
+    ]);
+
+    return { title: detail.title, labels: labelsFromSeatMap(seatMap.sections) };
+  };
 
   @Post()
   @UsePipes(new ZodValidationPipe(createOrderSchema))
@@ -54,7 +65,7 @@ export class GatewayUserOrdersController {
     });
 
     return {
-      items: await this.showContext.withShowContext(page.items),
+      items: await withShowContext(page.items, this.fetchShow),
       nextCursor: page.nextCursor,
     };
   }

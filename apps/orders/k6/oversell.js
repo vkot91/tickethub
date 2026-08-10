@@ -21,7 +21,7 @@ const TT_ID = __ENV.TT_ID;
 export default function () {
   const res = http.post(
     `${BASE}/orders`,
-    JSON.stringify({ eventId: EVENT_ID, seats: [{ seatId: SEAT_ID, ticketTypeId: TT_ID }] }),
+    JSON.stringify({ eventId: EVENT_ID, seats: [{ seatId: SEAT_ID, bandId: TT_ID }] }),
     {
       headers: {
         'Content-Type': 'application/json',

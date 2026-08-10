@@ -23,7 +23,7 @@ function seatMapWith(
           seats: Array.from({ length: seatsPerRow }, (_, index) => ({
             id: `seat-${number}-${index + 1}`,
             number: index + 1,
-            ticketTypeId: 'ticket-type-1',
+            bandId: 'band-1',
             priceCents,
             tier,
           })),
@@ -40,8 +40,7 @@ describe('rowLetter', () => {
 });
 
 describe('tier and price', () => {
-  // Both come from the ticket type covering the section. Deriving either from the row number
-  // is what this replaced, and it put row 1 of the Balcony in the VIP band.
+  // Both come from the price band covering the section, never from the row number.
   it('carries the seat map tier and price straight through', () => {
     const [section] = toSeatMapView(seatMapWith([1, 6], 1, { tier: 'economy', priceCents: 3500 }));
 
@@ -54,10 +53,9 @@ describe('tier and price', () => {
   it('does not band a row by its position', () => {
     const [section] = toSeatMapView(seatMapWith([1], 1, { tier: 'economy' }));
 
-    expect(section.rows[0].tier).toBe('economy'); // row A, and still not VIP
+    expect(section.rows[0].tier).toBe('economy');
   });
 
-  // A seat no ticket type covers: neutral colour, and nothing added to the running total.
   it('falls back to the neutral band and a zero price when no type covers the seat', () => {
     const [section] = toSeatMapView(seatMapWith([1], 1, { tier: null, priceCents: null }));
 
@@ -111,7 +109,7 @@ describe('findSeats and totalCents', () => {
     const found = findSeats(sections, ['seat-1-1', 'seat-6-2']);
 
     expect(found.map((seat) => seat.label)).toEqual(['A1', 'F2']);
-    expect(totalCents(found)).toBe(10_000); // two seats at the ticket type's 5000
+    expect(totalCents(found)).toBe(10_000);
   });
 
   it('ignores ids that are not on the map', () => {

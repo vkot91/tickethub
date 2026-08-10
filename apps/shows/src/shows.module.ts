@@ -8,8 +8,8 @@ import { OutboxRepository } from '@tickethub/outbox';
 import { StorageClient, StorageModule } from '@tickethub/storage';
 import { UserShowsController } from './user/shows.controller';
 import { UserShowsService } from './user/shows.service';
-import { OrganizerController } from './organizer/organizer.controller';
-import { OrganizerService } from './organizer/organizer.service';
+import { OrganizerProfileController } from './organizer/profile.controller';
+import { OrganizerProfileService } from './organizer/profile.service';
 import { OrganizerShowsController } from './organizer/shows.controller';
 import { OrganizerShowsService } from './organizer/shows.service';
 import { OrganizerPublishingService } from './organizer/publishing.service';
@@ -31,13 +31,17 @@ import { schema } from './config';
   ],
   controllers: [
     UserShowsController,
-    OrganizerController,
+    OrganizerProfileController,
     OrganizerShowsController,
     OrganizerVenuesController,
   ],
   providers: [
     { provide: UserShowsService, inject: ['DB'], useFactory: (db) => new UserShowsService(db) },
-    { provide: OrganizerService, inject: ['DB'], useFactory: (db) => new OrganizerService(db) },
+    {
+      provide: OrganizerProfileService,
+      inject: ['DB'],
+      useFactory: (db) => new OrganizerProfileService(db),
+    },
     {
       provide: OrganizerPublishingService,
       inject: ['DB', OutboxRepository],

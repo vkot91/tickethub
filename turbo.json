@@ -14,6 +14,7 @@
       "persistent": true,
       "env": [
         "DATABASE_URL",
+        "DB_LOG",
         "REDIS_URL",
         "RABBITMQ_URL",
         "JWT_ACCESS_SECRET",

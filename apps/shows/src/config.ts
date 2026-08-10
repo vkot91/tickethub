@@ -8,7 +8,7 @@ export const schema = z.object({
   // The storage package owns the env contract for what it reads, so this spreads its shape
   // instead of re-declaring S3_* and drifting from it.
   ...storageEnvSchema.shape,
-  // This service's own bucket — public-read, unlike fulfillment's `tickets`.
+  // This service's own bucket — public-read, unlike tickets's `tickets`.
   S3_BUCKET_POSTERS: z.string(),
 });
 

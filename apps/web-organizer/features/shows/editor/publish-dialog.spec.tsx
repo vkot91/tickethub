@@ -48,7 +48,7 @@ describe('PublishDialog', () => {
   });
 
   it.each([
-    ['hasTicketTypes', 'No bands yet'],
+    ['hasPriceBands', 'No bands yet'],
     ['hasPricedSections', '0 of 2 sections, 0 seats'],
     ['startsInFuture', /which has passed/],
   ] as const)('disables Publish show while %s is false', async (flag, detail) => {
@@ -66,7 +66,7 @@ describe('PublishDialog', () => {
   });
 
   it('counts every failing line', async () => {
-    withChecklist({ ...readyChecklist, hasTicketTypes: false, hasPricedSections: false });
+    withChecklist({ ...readyChecklist, hasPriceBands: false, hasPricedSections: false });
 
     renderWithQuery(<PublishDialog show={draftShow} />);
 
@@ -89,7 +89,7 @@ describe('PublishDialog', () => {
             statusText: 'Conflict',
             text: () =>
               Promise.resolve(
-                JSON.stringify({ message: 'Assign at least one section to a ticket type' }),
+                JSON.stringify({ message: 'Assign at least one section to a price band' }),
               ),
           } as unknown as Response)
         : reads!(url, init),
@@ -100,7 +100,7 @@ describe('PublishDialog', () => {
     await userEvent.click(await openDialog());
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Assign at least one section to a ticket type');
+    expect(alert).toHaveTextContent('Assign at least one section to a price band');
 
     // Not a toast behind a dialog that is still open.
     expect(screen.getByRole('button', { name: 'Publish show' })).toBeInTheDocument();

@@ -3,15 +3,13 @@ import { ORDERS_MESSAGE_PATTERNS } from './wire';
 
 describe('buyer orders wire names', () => {
   it('mirrors each key onto its wire value', () => {
-    expect(ORDERS_MESSAGE_PATTERNS.CREATE).toBe('orders.create');
-    expect(ORDERS_MESSAGE_PATTERNS.REQUEST_REFUND).toBe('orders.requestRefund');
+    expect(ORDERS_MESSAGE_PATTERNS.CREATE).toBe('user.orders.create');
+    expect(ORDERS_MESSAGE_PATTERNS.REQUEST_REFUND).toBe('user.orders.requestRefund');
   });
 
-  // The regression this refactor exists for: `orders.stats` and `orders.recent` used to sit in
-  // this map behind a comment. A console key here means the buyer surface grew one again.
   it('carries no organizer key', () => {
     for (const key of Object.values(ORDERS_MESSAGE_PATTERNS)) {
-      expect(key.startsWith('orders.')).toBe(true);
+      expect(key.startsWith('user.orders.')).toBe(true);
     }
   });
 });
@@ -23,7 +21,7 @@ describe('createOrderSchema', () => {
       seats: [
         {
           seatId: '00000000-0000-0000-0000-000000000002',
-          ticketTypeId: '00000000-0000-0000-0000-000000000003',
+          bandId: '00000000-0000-0000-0000-000000000003',
         },
       ],
     });

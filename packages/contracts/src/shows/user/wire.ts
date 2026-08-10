@@ -2,14 +2,15 @@ import type { Rpc } from '../../shape';
 import type { CatalogPage, CatalogQuery, SeatMap, ShowDetail } from './schema';
 
 /**
- * The buyer-facing catalog surface. Unprefixed keys: the buyer is the default audience, so
- * `shows.catalog` reads as "the catalog" and every other audience says whose it is
- * (`organizer.shows.*`).
+ * The buyer-facing catalog surface, keyed `user.shows.*`. The buyer used to be the unprefixed
+ * default, which was defensible with two audiences and stops being so with three: `shows.catalog`
+ * no longer states who may call it, and `grep '^user\.'` is impossible while `organizer.` and
+ * `admin.` grep cleanly. Every audience says its name now.
  */
 export const SHOWS_MESSAGE_PATTERNS = {
-  CATALOG: 'shows.catalog',
-  DETAIL: 'shows.detail',
-  SEAT_MAP: 'shows.seatMap',
+  CATALOG: 'user.shows.catalog',
+  DETAIL: 'user.shows.detail',
+  SEAT_MAP: 'user.shows.seatMap',
 } as const;
 
 export interface ShowsRpcContracts {

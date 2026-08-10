@@ -20,7 +20,7 @@ export class OrganizerStatsController {
     return this.statsService.salesByShow(params);
   }
 
-  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.RECENT))
+  @RabbitRPC(rpcSub(ORGANIZER_ORDERS_MESSAGE_PATTERNS.LATEST))
   recent(params: { showIds: string[]; limit?: number }) {
     return this.statsService.recent(params);
   }

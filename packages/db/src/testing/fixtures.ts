@@ -2,12 +2,12 @@ import type { Db } from '../client';
 import { users } from '../schema/auth';
 import {
   organizers,
+  priceBands,
   rows,
   seats,
   sections,
   shows,
   showSectionPricing,
-  ticketTypes,
   venues,
 } from '../schema/shows';
 
@@ -34,10 +34,10 @@ export async function seedUser(db: Db, overrides: Insert<typeof users.$inferInse
 export interface ShowGraphSpec {
   show?: Insert<typeof shows.$inferInsert>;
   sections?: { name?: string; rows?: number; seatsPerRow?: number }[];
-  /** A seated ticket type is seeded by default and mapped onto every section above, so the
-   *  whole graph is on sale. Pass `false` to seed no ticket type and no mapping — the
+  /** A seated price band is seeded by default and mapped onto every section above, so the
+   *  whole graph is on sale. Pass `false` to seed no price band and no mapping — the
    *  show-without-pricing case, and the starting point for a test that maps sections itself. */
-  ticketType?: false | Insert<typeof ticketTypes.$inferInsert>;
+  priceBand?: false | Insert<typeof priceBands.$inferInsert>;
 }
 
 export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
@@ -92,24 +92,24 @@ export async function seedShowGraph(db: Db, spec: ShowGraphSpec = {}) {
     })
     .returning();
 
-  const [ticketType] =
-    spec.ticketType === false
+  const [priceBand] =
+    spec.priceBand === false
       ? [undefined]
       : await db
-          .insert(ticketTypes)
-          .values({ showId: show.id, name: 'Standard', priceCents: 5000, ...spec.ticketType })
+          .insert(priceBands)
+          .values({ showId: show.id, name: 'Standard', priceCents: 5000, ...spec.priceBand })
           .returning();
 
-  if (ticketType && builtSections.length > 0) {
+  if (priceBand && builtSections.length > 0) {
     await db.insert(showSectionPricing).values(
       builtSections.map(({ section }) => ({
         showId: show.id,
         sectionId: section.id,
         venueId: venue.id,
-        ticketTypeId: ticketType.id,
+        bandId: priceBand.id,
       })),
     );
   }
 
-  return { show, organizer, venue, sections: builtSections, ticketType };
+  return { show, organizer, venue, sections: builtSections, priceBand };
 }

@@ -62,7 +62,7 @@ services:
       until mc alias set local http://minio:9000 tickethub tickethub; do sleep 1; done &&
       mc mb -p local/posters local/tickets &&
       mc anonymous set download local/posters"
-  # Fake SMTP server for local email testing (apps/fulfillment sends PDF tickets here).
+  # Fake SMTP server for local email testing (apps/tickets sends PDF tickets here).
   mailpit:
     image: axllent/mailpit:latest
     ports: ['1025:1025', '8025:8025'] # 1025 SMTP, 8025 web UI

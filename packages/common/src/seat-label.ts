@@ -2,7 +2,7 @@
  * The one seat-label format in the system: `"<Section> <RowLetter><Seat>"`, so row 1 seat 2 in
  * "Parterre" is `"Parterre A2"`.
  *
- * It lives here so the gateway (buyer's order) and `apps/fulfillment` (ticket snapshot) cannot
+ * It lives here so the gateway (buyer's order) and `apps/tickets` (ticket snapshot) cannot
  * drift apart — they meet on the scanner screen, labelling the same seat.
  *
  * Rows past 26 are spreadsheet-style (`27 → AA`) rather than the `"["` that a bare

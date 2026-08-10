@@ -3,7 +3,7 @@ import { Roles, ZodValidationPipe } from '@tickethub/common';
 import { checkInSchema, type CheckInDto } from '@tickethub/contracts';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
-import { OrganizerCheckInService } from './check-in.service';
+import { GatewayOrganizerCheckInService } from './check-in.service';
 
 /**
  * The gate scanner. Guards on the class, so a route added later is guarded by default rather than
@@ -16,7 +16,7 @@ import { OrganizerCheckInService } from './check-in.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('organizer')
 export class GatewayOrganizerCheckInController {
-  constructor(private readonly checkInService: OrganizerCheckInService) {}
+  constructor(private readonly checkInService: GatewayOrganizerCheckInService) {}
 
   // 200, not Nest's POST default of 201: a scan creates no resource, and a rejected one — or a
   // second scan of the same seat — creates nothing at all. The verdict is the whole response.

@@ -20,10 +20,10 @@ export class GatewayOrganizerVenuesController {
   constructor(private readonly amqp: AmqpConnection) {}
 
   @Get() getList() {
-    return rpcRequest(this.amqp, VENUES_MESSAGE_PATTERNS.GET_LIST, {});
+    return rpcRequest(this.amqp, VENUES_MESSAGE_PATTERNS.LIST, {});
   }
 
   @Get(':id') getOne(@Param('id') id: string) {
-    return rpcRequest(this.amqp, VENUES_MESSAGE_PATTERNS.GET_ONE, { venueId: id });
+    return rpcRequest(this.amqp, VENUES_MESSAGE_PATTERNS.GET, { venueId: id });
   }
 }

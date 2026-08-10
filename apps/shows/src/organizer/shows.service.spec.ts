@@ -1,12 +1,13 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 
+import { seatLabel } from '@tickethub/common';
 import {
   organizers,
+  priceBands,
   shows,
   showSectionPricing,
   showsOutbox,
-  ticketTypes,
   venues,
 } from '@tickethub/db';
 import { getTestDb, seedShowGraph, seedUser, type TestDb } from '@tickethub/db/testing';
@@ -109,7 +110,7 @@ describe('OrganizerShowsService.myShows', () => {
       venueName: venue.name,
       city: 'Lisbon',
       status: 'published',
-      // Sales live in `apps/orders`; the gateway merges them in slice 6. Zero, never omitted.
+      // Sales live in `apps/orders`; the gateway merges them onto this list. Zero, never omitted.
       soldCount: 0,
       capacity: 0,
       revenueCents: 0,
@@ -360,20 +361,17 @@ describe('OrganizerShowsService.updateShow', () => {
     expect(pricing).toEqual([]);
   });
 
-  // The other half of the move, decided 2026-08-05: a band is a name, a tier and a price, none of
-  // which is about a building. The organizer re-assigns sections in the new hall and keeps
-  // "Front VIP · $90" rather than retyping it. Only the assignments are venue-bound.
   it('keeps the price bands when a draft moves to another venue', async () => {
     const { show, organizer } = await seedShowGraph(db, {
       show: { status: 'draft' },
       sections: [{ name: 'Stalls', rows: 1, seatsPerRow: 2 }],
-      ticketType: { name: 'Front VIP', tier: 'vip', priceCents: 9_000 },
+      priceBand: { name: 'Front VIP', tier: 'vip', priceCents: 9_000 },
     });
     const [other] = await db.insert(venues).values({ name: 'Another Hall' }).returning();
 
     await svc.updateShow(organizer.userId, show.id, { venueId: other.id });
 
-    const bands = await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id));
+    const bands = await db.select().from(priceBands).where(eq(priceBands.showId, show.id));
     expect(bands).toMatchObject([{ name: 'Front VIP', priceCents: 9_000 }]);
   });
 
@@ -438,7 +436,7 @@ describe('OrganizerShowsService.updateShow', () => {
 });
 
 describe('OrganizerShowsService.deleteShow', () => {
-  it('deletes a draft with its ticket types and pricing, in one go', async () => {
+  it('deletes a draft with its price bands and pricing, in one go', async () => {
     const { show, organizer } = await seedShowGraph(db, {
       show: { status: 'draft' },
       sections: [{ name: 'Stalls', rows: 1, seatsPerRow: 2 }],
@@ -447,7 +445,7 @@ describe('OrganizerShowsService.deleteShow', () => {
     await svc.deleteShow(organizer.userId, show.id);
 
     expect(await db.select().from(shows).where(eq(shows.id, show.id))).toEqual([]);
-    expect(await db.select().from(ticketTypes).where(eq(ticketTypes.showId, show.id))).toEqual([]);
+    expect(await db.select().from(priceBands).where(eq(priceBands.showId, show.id))).toEqual([]);
     expect(
       await db.select().from(showSectionPricing).where(eq(showSectionPricing.showId, show.id)),
     ).toEqual([]);
@@ -538,13 +536,13 @@ describe('OrganizerShowsService ownership', () => {
   });
 });
 
-describe('OrganizerShowsService.capacity', () => {
+describe('OrganizerShowsService.summaries', () => {
   it('counts the seats of priced sections only', async () => {
     const {
       show,
       venue,
       sections: built,
-      ticketType,
+      priceBand,
     } = await seedShowGraph(db, {
       sections: [
         { name: 'Stalls', rows: 2, seatsPerRow: 3 },
@@ -562,10 +560,10 @@ describe('OrganizerShowsService.capacity', () => {
         ),
       );
 
-    expect(ticketType).toBeDefined();
+    expect(priceBand).toBeDefined();
     expect(venue).toBeDefined();
-    await expect(svc.capacity([show.id])).resolves.toEqual([
-      { showId: show.id, capacity: 6, saleStartsAt: null },
+    await expect(svc.summaries([show.id])).resolves.toEqual([
+      { showId: show.id, title: show.title, capacity: 6, saleStartsAt: null },
     ]);
   });
 
@@ -573,14 +571,14 @@ describe('OrganizerShowsService.capacity', () => {
     const priced = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 2 }] });
     const unpriced = await seedShowGraph(db, {
       sections: [{ rows: 1, seatsPerRow: 2 }],
-      ticketType: false,
+      priceBand: false,
     });
 
-    const capacities = await svc.capacity([priced.show.id, unpriced.show.id]);
+    const summaries = await svc.summaries([priced.show.id, unpriced.show.id]);
 
-    expect(capacities).toEqual([
-      { showId: priced.show.id, capacity: 2, saleStartsAt: null },
-      { showId: unpriced.show.id, capacity: 0, saleStartsAt: null },
+    expect(summaries).toEqual([
+      { showId: priced.show.id, title: priced.show.title, capacity: 2, saleStartsAt: null },
+      { showId: unpriced.show.id, title: unpriced.show.title, capacity: 0, saleStartsAt: null },
     ]);
   });
 
@@ -593,13 +591,56 @@ describe('OrganizerShowsService.capacity', () => {
       show: { saleStartsAt },
     });
 
-    await expect(svc.capacity([show.id])).resolves.toEqual([
-      { showId: show.id, capacity: 2, saleStartsAt: '2026-07-01T09:00:00.000Z' },
+    await expect(svc.summaries([show.id])).resolves.toEqual([
+      { showId: show.id, title: show.title, capacity: 2, saleStartsAt: '2026-07-01T09:00:00.000Z' },
     ]);
   });
 
   it('returns nothing for an empty list', async () => {
-    await expect(svc.capacity([])).resolves.toEqual([]);
+    await expect(svc.summaries([])).resolves.toEqual([]);
+  });
+
+  // The title is here so the console never has to ask the buyer's `detail` for it — that endpoint
+  // 404s a draft, and drafts are exactly what this audience authors.
+  it('carries the title, so the console never reaches for the buyer catalog', async () => {
+    const { show } = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 1 }] });
+
+    await expect(svc.summaries([show.id])).resolves.toEqual([
+      expect.objectContaining({ showId: show.id, title: show.title }),
+    ]);
+  });
+});
+
+describe('OrganizerShowsService.seatLabels', () => {
+  it('labels exactly the seats asked about', async () => {
+    const { show, sections: built } = await seedShowGraph(db, {
+      sections: [{ name: 'Stalls', rows: 2, seatsPerRow: 2 }],
+    });
+    const [first, second] = built[0].rows[0].seats;
+
+    await expect(svc.seatLabels(show.id, [first.id])).resolves.toEqual({
+      [first.id]: seatLabel('Stalls', 1, 1),
+    });
+    await expect(svc.seatLabels(show.id, [first.id, second.id])).resolves.toEqual({
+      [first.id]: seatLabel('Stalls', 1, 1),
+      [second.id]: seatLabel('Stalls', 1, 2),
+    });
+  });
+
+  // A seat of a show the caller did not ask about must not come back through the same call.
+  it('never labels a seat outside the given show', async () => {
+    const mine = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 1 }] });
+    const other = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 1 }] });
+
+    await expect(
+      svc.seatLabels(mine.show.id, [other.sections[0].rows[0].seats[0].id]),
+    ).resolves.toEqual({});
+  });
+
+  it('returns nothing for an empty seat list', async () => {
+    const { show } = await seedShowGraph(db, { sections: [{ rows: 1, seatsPerRow: 1 }] });
+
+    await expect(svc.seatLabels(show.id, [])).resolves.toEqual({});
   });
 });
 
@@ -607,10 +648,10 @@ describe('OrganizerShowsService.tierNames', () => {
   it('labels a show’s bands, dearest first', async () => {
     const { show } = await seedShowGraph(db, {
       sections: [],
-      ticketType: { name: 'Standard', priceCents: 5000 },
+      priceBand: { name: 'Standard', priceCents: 5000 },
     });
     await db
-      .insert(ticketTypes)
+      .insert(priceBands)
       .values({ showId: show.id, name: 'Front VIP', tier: 'vip', priceCents: 9000 });
 
     await expect(svc.tierNames(show.id)).resolves.toEqual([
@@ -625,7 +666,7 @@ describe('OrganizerShowsService.tierNames', () => {
     const { show } = await seedShowGraph(db, {
       sections: [],
       show: { status: 'draft' },
-      ticketType: { name: 'Early Bird', priceCents: 3000 },
+      priceBand: { name: 'Early Bird', priceCents: 3000 },
     });
 
     await expect(svc.tierNames(show.id)).resolves.toEqual([

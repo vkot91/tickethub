@@ -19,10 +19,10 @@ import {
   RANGES,
   type Range,
 } from './api';
+import { PriceBandsCard } from './price-bands-card';
 import { RecentOrdersTable } from './recent-orders-table';
 import { RevenueChart } from './revenue-chart';
 import { StatCards } from './stat-cards';
-import { TicketTypesCard } from './ticket-types-card';
 
 /** Radix Select has no empty value, so the all-shows scope needs a sentinel rather than `''`. */
 const ALL_SHOWS = 'all';
@@ -147,7 +147,7 @@ export function Dashboard({ showId: initialShowId, range: initialRange }: Dashbo
             {/* Hidden across all shows: bands are per-show, and the gateway only resolves their
                 names for one — several shows' bands would be summed by a name they merely share. */}
             {showId && stats && (
-              <TicketTypesCard byTier={stats.byTier} soldCount={stats.soldCount} />
+              <PriceBandsCard byTier={stats.byTier} soldCount={stats.soldCount} />
             )}
           </div>
 

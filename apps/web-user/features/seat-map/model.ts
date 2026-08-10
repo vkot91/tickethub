@@ -11,8 +11,8 @@ export interface SeatView {
   status: SeatStatus;
   tier: SeatTier;
   priceCents: number;
-  /** Null when the show has no ticket type — such a seat cannot be ordered. */
-  ticketTypeId: string | null;
+  /** Null when the show has no price band — such a seat cannot be ordered. */
+  bandId: string | null;
 }
 
 export interface RowView {
@@ -41,8 +41,8 @@ export function rowLetter(rowNumber: number): string {
  * Tier and price are carried straight through from the endpoint — both come from the ticket
  * type covering the seat's section, and the UI invents neither.
  *
- * `statuses` is the live availability layer. The seat-map endpoint does not return it yet
- * (BACKEND-GAPS.md §2), so an absent entry means available — which is also exactly the
+ * `statuses` is the live availability layer. The seat-map endpoint does not return it yet,
+ * so an absent entry means available — which is also exactly the
  * behaviour we want once it does arrive and simply omits free seats.
  */
 export function toSeatMapView(
@@ -61,10 +61,10 @@ export function toSeatMapView(
         label: `${letter}${seat.number}`,
         status: statuses[seat.id] ?? 'available',
         tier: seat.tier ?? DEFAULT_TIER,
-        // What orders will charge. A seat with no ticket type is not on sale, so it adds
+        // What orders will charge. A seat with no price band is not on sale, so it adds
         // nothing to the running total — `orderSeats()` refuses to submit it either.
         priceCents: seat.priceCents ?? 0,
-        ticketTypeId: seat.ticketTypeId,
+        bandId: seat.bandId,
       }));
 
       const aisleAt = Math.ceil(seats.length / 2);
@@ -72,7 +72,7 @@ export function toSeatMapView(
       return {
         id: row.id,
         letter,
-        // The row label quotes the band and price of the seats in it — one ticket type covers
+        // The row label quotes the band and price of the seats in it — one price band covers
         // the whole section, so any seat in the row answers for all of them.
         tier: seats[0]?.tier ?? DEFAULT_TIER,
         priceCents: seats[0]?.priceCents ?? 0,

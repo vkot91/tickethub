@@ -1,7 +1,7 @@
 import { orderResponseSchema, seatMapSchema, type OrderResponse } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
-/** Polling cadence while the socket gateway does not exist yet (BACKEND-GAPS.md §3). */
+/** Polling cadence while the socket gateway does not exist yet. */
 export const SEAT_MAP_POLL_MS = 3_000;
 
 export const seatMapKeys = {
@@ -19,7 +19,7 @@ export function fetchSeatMap(showId: string) {
 
 export interface OrderSeat {
   seatId: string;
-  ticketTypeId: string;
+  bandId: string;
 }
 
 export function createOrder(showId: string, seats: OrderSeat[]): Promise<OrderResponse> {

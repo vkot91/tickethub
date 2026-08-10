@@ -6,12 +6,12 @@ import {
   type CheckInResult,
 } from '@tickethub/contracts';
 import { rpcRequest } from '@tickethub/rmq';
-import { OrganizerShowsService } from './shows.service';
+import { GatewayOrganizerOwnershipService } from './ownership.service';
 
 /**
  * The gate's guard.
  *
- * Ownership is proved here, for the one show being scanned, and Fulfillment is handed that single
+ * Ownership is proved here, for the one show being scanned, and Tickets is handed that single
  * id — so it never learns who owns what, and a scan can never widen to "any show this organizer
  * owns". That widening is what would let tonight's attendant burn next week's ticket.
  *
@@ -19,16 +19,16 @@ import { OrganizerShowsService } from './shows.service';
  * the interesting part and deserves tests without HTTP.
  */
 @Injectable()
-export class OrganizerCheckInService {
+export class GatewayOrganizerCheckInService {
   constructor(
     private readonly amqp: AmqpConnection,
-    private readonly myShows: OrganizerShowsService,
+    private readonly ownership: GatewayOrganizerOwnershipService,
   ) {}
 
   async checkIn(userId: string, dto: CheckInDto): Promise<CheckInResult> {
     // 404, not 403, and before anything else — an organizer must not be able to probe for a
     // competitor's show by id, and an organizer who owns nothing owns no gate either.
-    await this.myShows.assertOwnsShow(userId, dto.showId);
+    await this.ownership.assertOwnsShow(userId, dto.showId);
 
     return rpcRequest(this.amqp, ORGANIZER_TICKETS_MESSAGE_PATTERNS.CHECK_IN, {
       code: dto.code,

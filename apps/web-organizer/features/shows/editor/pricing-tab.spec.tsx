@@ -84,7 +84,7 @@ describe('PricingTab', () => {
     await addBand('Stalls', '19.99');
     await userEvent.click(screen.getByRole('button', { name: 'Save pricing' }));
 
-    await waitFor(() => expect(putBody(fetchMock).ticketTypes[0].priceCents).toBe(1999));
+    await waitFor(() => expect(putBody(fetchMock).priceBands[0].priceCents).toBe(1999));
   });
 
   // The reason `putPricingSchema` addresses bands by `key` rather than id.
@@ -100,9 +100,9 @@ describe('PricingTab', () => {
 
     await waitFor(() => {
       const body = putBody(fetchMock);
-      const key = body.ticketTypes[0].key;
+      const key = body.priceBands[0].key;
 
-      expect(body.assignments).toEqual([{ sectionId: SECTION_A_ID, ticketTypeKey: key }]);
+      expect(body.assignments).toEqual([{ sectionId: SECTION_A_ID, bandKey: key }]);
     });
   });
 
@@ -112,7 +112,6 @@ describe('PricingTab', () => {
     renderWithQuery(<PricingTab show={draftShow} />);
 
     await screen.findByDisplayValue('Front VIP');
-    // Parterre is on this band, so removing it has to take Parterre off sale too.
     expect(screen.getByText('1 OF 2 SECTIONS ON SALE · 4 SEATS')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Remove Front VIP' }));
@@ -124,8 +123,8 @@ describe('PricingTab', () => {
     await waitFor(() => {
       const body = putBody(fetchMock);
 
-      expect(body.ticketTypes).toEqual([]);
-      // No dangling ticketTypeKey — that body would be a 400 with nothing on screen to explain it.
+      expect(body.priceBands).toEqual([]);
+      // No dangling bandKey — that body would be a 400 with nothing on screen to explain it.
       expect(body.assignments).toEqual([]);
     });
   });
@@ -185,7 +184,7 @@ describe('PricingTab', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Save pricing' }));
 
-    await waitFor(() => expect(putBody(fetchMock).ticketTypes[0].priceCents).toBe(9000));
+    await waitFor(() => expect(putBody(fetchMock).priceBands[0].priceCents).toBe(9000));
   });
 
   it('renders read-only for a published show — plain text, not disabled inputs', async () => {

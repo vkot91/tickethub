@@ -24,12 +24,12 @@ import { PUBLIC_ORIGIN } from '../public-origin';
 function lines(checklist: PublishChecklist, show: OrganizerShow) {
   return [
     {
-      ok: checklist.hasTicketTypes,
+      ok: checklist.hasPriceBands,
       label: 'At least one price band',
       // The design's detail here is a band count, which `publishChecklistSchema` does not carry
       // — it answers the three booleans plus the section and seat counts. Saying "Added" beats
       // inventing a number, and the Pricing tab is one tab away if the organizer wants the list.
-      detail: checklist.hasTicketTypes ? 'Added' : 'No bands yet',
+      detail: checklist.hasPriceBands ? 'Added' : 'No bands yet',
     },
     {
       ok: checklist.hasPricedSections,

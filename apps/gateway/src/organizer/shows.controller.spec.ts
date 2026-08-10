@@ -47,7 +47,7 @@ describe('GatewayOrganizerShowsController', () => {
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.shows.names',
+        routingKey: 'organizer.shows.titles',
         payload: { userId: 'u1' },
       }),
     );
@@ -147,15 +147,15 @@ describe('GatewayOrganizerShowsController', () => {
 
   it('forwards pricing with the parsed dto', async () => {
     const dto = {
-      ticketTypes: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: 9000 }],
-      assignments: [{ sectionId: crypto.randomUUID(), ticketTypeKey: 'vip' }],
+      priceBands: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: 9000 }],
+      assignments: [{ sectionId: crypto.randomUUID(), bandKey: 'vip' }],
     };
 
     await controller.putPricing(req, 's1', dto);
 
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        routingKey: 'organizer.shows.putPricing',
+        routingKey: 'organizer.shows.updatePricing',
         payload: { userId: 'u1', showId: 's1', dto },
       }),
     );
@@ -164,7 +164,7 @@ describe('GatewayOrganizerShowsController', () => {
   it('rejects a negative price before it reaches the service', () => {
     expect(() =>
       controller.putPricing(req, 's1', {
-        ticketTypes: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: -1 }],
+        priceBands: [{ key: 'vip', name: 'VIP', tier: 'vip', priceCents: -1 }],
         assignments: [],
       }),
     ).toThrow(BadRequestException);

@@ -199,12 +199,12 @@ describe('Scanner', () => {
   });
 
   it('surfaces a failed check-in call', async () => {
-    mockCheckIn([{ status: 500, body: { message: 'Fulfillment is down' } }]);
+    mockCheckIn([{ status: 500, body: { message: 'Tickets is down' } }]);
     renderScanner();
 
     await checkInCode('TH-A1-1042');
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Fulfillment is down');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tickets is down');
   });
 
   it('says so when the browser cannot scan, leaving manual entry usable', async () => {

@@ -36,7 +36,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
     const ids = await seed(db);
     showId = ids.flashShowId;
     seatId = ids.flashSeatId;
-    ttId = ids.flashTicketTypeId;
+    ttId = ids.flashBandId;
     const orderRepository = new OrderRepository(
       new RedisService(redis),
       new OutboxRepository(db, ordersOutbox),
@@ -63,7 +63,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
     await redis.flushall();
   });
 
-  const dtoFor = () => ({ showId, seats: [{ seatId, ticketTypeId: ttId }] });
+  const dtoFor = () => ({ showId, seats: [{ seatId, bandId: ttId }] });
   const outboxKeys = async () => (await db.select().from(ordersOutbox)).map((r) => r.routingKey);
 
   it('markPaid confirms an awaiting_payment order and its seats', async () => {
@@ -88,7 +88,7 @@ describe('Orders saga transitions (integration: real Postgres + Redis)', () => {
 
   it('markPaid on an expired order auto-refunds instead of resurrecting (the race)', async () => {
     const order = await svc.create(buyer, 'pay-2', dtoFor() as never);
-    await saga.release(order.id); // expire it first
+    await saga.release(order.id);
 
     const messageId = uuid();
     await saga.markPaid({
