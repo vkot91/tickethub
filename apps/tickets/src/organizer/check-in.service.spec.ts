@@ -1,7 +1,7 @@
 import { tickets } from '@tickethub/db';
 import { getTestDb, type TestDb } from '@tickethub/db/testing';
 
-import { displayCode, signTicketToken } from '../qr';
+import { displayCode, signTicketToken } from '../utils/ticket-token';
 import { OrganizerCheckInService } from './check-in.service';
 
 const QR_SECRET = 'test-qr-secret';

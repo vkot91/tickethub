@@ -14,11 +14,11 @@ import {
 import { ticketsProcessedMessages, tickets as ticketsTable } from '@tickethub/db';
 import type { OutboxMessage } from '@tickethub/outbox';
 
-import { renderQrPng, verifyTicketToken } from './qr';
-import { renderTicketPdf } from './ticket-pdf';
 import { TicketsService } from './tickets.service';
+import { renderTicketPdf } from './utils/ticket-pdf';
+import { renderQrPng, verifyTicketToken } from './utils/ticket-token';
 
-jest.mock('./ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));
+jest.mock('./utils/ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));
 
 /**
  * Only `renderQrPng` is faked; the id derivation and the token signing stay real, because they are
@@ -27,8 +27,8 @@ jest.mock('./ticket-pdf', () => ({ renderTicketPdf: jest.fn() }));
  * assertion. The fake is derived from the token rather than constant, so "each seat gets its own
  * QR" and "a redelivery renders the identical one" both still mean something.
  */
-jest.mock('./qr', () => ({
-  ...jest.requireActual('./qr'),
+jest.mock('./utils/ticket-token', () => ({
+  ...jest.requireActual('./utils/ticket-token'),
   renderQrPng: jest.fn(),
 }));
 

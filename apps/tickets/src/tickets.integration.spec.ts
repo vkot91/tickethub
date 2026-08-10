@@ -16,8 +16,8 @@ import { loadEnv, requireEnv } from '@tickethub/env';
 import { InboxRepository, OutboxRepository } from '@tickethub/outbox';
 import { StorageClient } from '@tickethub/storage';
 
-import { verifyTicketToken } from './qr';
 import { TicketsService } from './tickets.service';
+import { verifyTicketToken } from './utils/ticket-token';
 
 jest.setTimeout(30_000);
 

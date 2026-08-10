@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { tickets, type Db } from '@tickethub/db';
 import type { CheckInScan } from '@tickethub/contracts';
-import { parseDisplayCode, verifyTicketToken } from '../qr';
+import { parseDisplayCode, verifyTicketToken } from '../utils/ticket-token';
 
 /**
  * The console's whole read/write surface on Tickets: the gate, and the dashboard's check-in

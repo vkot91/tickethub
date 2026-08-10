@@ -1,4 +1,4 @@
-import { deriveTicketId, renderQrPng, signTicketToken, verifyTicketToken } from './qr';
+import { deriveTicketId, renderQrPng, signTicketToken, verifyTicketToken } from './ticket-token';
 
 describe('signTicketToken / verifyTicketToken', () => {
   const secret = 'top-secret';

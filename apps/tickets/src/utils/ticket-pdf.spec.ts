@@ -1,7 +1,7 @@
 import { decodePDFRawStream, PDFDocument, PDFName, PDFRawStream } from 'pdf-lib';
 
-import { renderQrPng, signTicketToken } from './qr';
 import { renderTicketPdf } from './ticket-pdf';
+import { renderQrPng, signTicketToken } from './ticket-token';
 
 async function countEmbeddedImages(pdfBytes: Buffer): Promise<number> {
   const loadedDoc = await PDFDocument.load(pdfBytes);

@@ -16,8 +16,8 @@ import {
   type TicketList,
   type TicketPdfUrl,
 } from '@tickethub/contracts';
-import { signTicketToken, renderQrPng, deriveTicketId, displayCode } from './qr';
-import { renderTicketPdf } from './ticket-pdf';
+import { signTicketToken, renderQrPng, deriveTicketId, displayCode } from './utils/ticket-token';
+import { renderTicketPdf } from './utils/ticket-pdf';
 
 /** Long enough to follow one redirect, short enough that a leaked URL is worthless. */
 const PDF_URL_TTL_SECONDS = 60;

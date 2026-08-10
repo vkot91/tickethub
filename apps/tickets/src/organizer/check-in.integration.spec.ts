@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { createDb, tickets, type Db } from '@tickethub/db';
 import { loadEnv, requireEnv } from '@tickethub/env';
 
-import { signTicketToken } from '../qr';
+import { signTicketToken } from '../utils/ticket-token';
 import { OrganizerCheckInService } from './check-in.service';
 
 jest.setTimeout(30_000);
