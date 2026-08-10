@@ -33,6 +33,8 @@ transactions (saga + outbox), concurrency.
 - `packages/contracts` (Zod) is the single source of truth for DTOs and RMQ event shapes.
 - `design/` is the single source of truth for UI: `design/README.md` (screens, tokens, behavior)
   and `design/TicketHub.dc.html` (interactive prototype, source project on claude.ai/design).
+  It is a **local working folder, gitignored and not part of the published repo** — do not link
+  to it from any tracked file.
   Read it before building any frontend screen; recreate it at high fidelity shadcn-style —
   Radix primitive + `cva` variants + `cn`, hand-written in `packages/ui`. shadcn/ui itself is
   **not** a dependency: no `components.json`, no registry copies, no `npx shadcn add`. Nor is

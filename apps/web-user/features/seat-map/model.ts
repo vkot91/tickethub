@@ -41,8 +41,8 @@ export function rowLetter(rowNumber: number): string {
  * Tier and price are carried straight through from the endpoint — both come from the ticket
  * type covering the seat's section, and the UI invents neither.
  *
- * `statuses` is the live availability layer. The seat-map endpoint does not return it yet
- * (BACKEND-GAPS.md §2), so an absent entry means available — which is also exactly the
+ * `statuses` is the live availability layer. The seat-map endpoint does not return it yet,
+ * so an absent entry means available — which is also exactly the
  * behaviour we want once it does arrive and simply omits free seats.
  */
 export function toSeatMapView(

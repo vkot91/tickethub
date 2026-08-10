@@ -4,8 +4,8 @@
 @source './';
 
 /* Design tokens — the single source of truth for colour, type, radius and motion.
-   Values come from design/README.md "Design Tokens". Components use the semantic
-   utilities these generate (bg-surface, text-muted, rounded-card…), never raw hex. */
+   Components use the semantic utilities these generate (bg-surface, text-muted,
+   rounded-card…), never raw hex. */
 @theme {
   /* Surfaces */
   /* Named `page`, not `base`: a `--color-base` token would shadow Tailwind's

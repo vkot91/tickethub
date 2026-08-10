@@ -2,7 +2,7 @@ import { type OrderResponse } from '@tickethub/contracts';
 import { Card, formatPrice } from '@tickethub/ui';
 
 /**
- * `GET /orders/:id` returns totals only — no seat lines (BACKEND-GAPS.md §4). The design's
+ * `GET /orders/:id` returns totals only — no per-seat lines yet. The design's
  * per-seat rows and 8% service-fee split land when the endpoint carries them; until then the
  * summary shows the one number that is authoritative, which is the one being charged.
  */
