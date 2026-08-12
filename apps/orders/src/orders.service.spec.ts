@@ -117,6 +117,58 @@ describe('OrdersService.create', () => {
     expect(d.redis.acquireSeatLocks).not.toHaveBeenCalled();
   });
 
+  // A replayed click can lose either race to its own original — both must resolve to that
+  // original order, not a 409.
+  const winner = {
+    id: 'ord0',
+    status: 'awaiting_payment',
+    totalCents: 5000,
+    currency: 'usd',
+    expiresAt: new Date('2030-01-01'),
+  };
+  const held = [{ seatId: 's1', bandId: 'tt1' }];
+
+  // First lookup finds nothing (the original had not committed yet); the re-read finds it.
+  function selectRacing() {
+    let lookups = 0;
+
+    return (arg?: unknown) =>
+      arg
+        ? { from: () => ({ where: async () => held }) }
+        : {
+            from: () => ({
+              where: () => ({
+                limit: async () => (lookups++ === 0 ? [] : [winner]),
+                for: () => ({ limit: async () => [] }),
+              }),
+            }),
+          };
+  }
+
+  it('returns the original order when a replay loses the seat lock to it', async () => {
+    const d = deps({ select: selectRacing() });
+    d.redis.acquireSeatLocks.mockResolvedValue(false);
+
+    const res = await d.service.create('u1', 'idem1', dto as never);
+
+    expect(res.id).toBe('ord0');
+    expect(res.seats).toEqual(held);
+  });
+
+  it('returns the original order when a replay loses the idempotency unique to it', async () => {
+    const d = deps({
+      select: selectRacing(),
+      transaction: async () => {
+        throw { code: '23505' };
+      },
+    });
+
+    const res = await d.service.create('u1', 'idem1', dto as never);
+
+    expect(res.id).toBe('ord0');
+    expect(d.redis.releaseSeatLocks).toHaveBeenCalledWith(['seat-lock:e1:s1']);
+  });
+
   it('rejects a seat the show does not sell instead of pricing it as 0', async () => {
     const d = deps({
       transaction: async (fn: (tx: unknown) => Promise<unknown>) =>

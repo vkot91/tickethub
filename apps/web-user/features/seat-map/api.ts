@@ -27,10 +27,16 @@ export function createOrder(showId: string, seats: OrderSeat[]): Promise<OrderRe
     '/orders',
     {
       method: 'POST',
-      // Replays of the same click must not create a second order.
-      headers: { 'idempotency-key': crypto.randomUUID() },
+      // Derived, not random: a fresh key per call would make every replay a second order.
+      headers: { 'idempotency-key': orderIdempotencyKey(showId, seats) },
       body: { showId, seats },
     },
     orderResponseSchema,
   );
+}
+
+export function orderIdempotencyKey(showId: string, seats: OrderSeat[]): string {
+  const seatIds = seats.map((seat) => seat.seatId).sort();
+
+  return `${showId}:${seatIds.join(',')}`;
 }

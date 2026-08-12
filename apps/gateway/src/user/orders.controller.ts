@@ -45,10 +45,13 @@ export class GatewayUserOrdersController {
   @Post()
   @UsePipes(new ZodValidationPipe(createOrderSchema))
   create(
-    @Req() req: { user: { id: string }; headers: Record<string, string> },
+    @Req() req: { user: { id: string }; headers: Record<string, string | string[] | undefined> },
     @Body() dto: CreateOrderDto,
   ) {
-    const idempotencyKey = req.headers['idempotency-key'];
+    // Node hands back an array when a header is sent twice. First wins; the rest is a client bug.
+    const header = req.headers['idempotency-key'];
+    const idempotencyKey = Array.isArray(header) ? header[0] : header;
+
     if (!idempotencyKey) throw new BadRequestException('Idempotency-Key header is required');
     return rpcRequest(this.amqp, ORDERS_MESSAGE_PATTERNS.CREATE, {
       userId: req.user.id,

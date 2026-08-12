@@ -54,16 +54,17 @@ export class OrdersService {
     dto: CreateOrderDto,
   ): Promise<OrderResponse> {
     // 1. Idempotency — same (user, key) returns the same order, no re-locking.
-    const [existing] = await this.db
-      .select()
-      .from(orders)
-      .where(and(eq(orders.userId, userId), eq(orders.idempotencyKey, idempotencyKey)))
-      .limit(1);
+    const existing = await this.findByKey(userId, idempotencyKey);
     if (existing) return this.withSeats(existing);
 
     // 2. Redis seat locks — cheap rejection before touching Postgres.
     const keys = dto.seats.map((s) => seatLockKey(dto.showId, s.seatId));
     if (!(await this.redis.acquireSeatLocks(keys, this.ttlSec))) {
+      // A replay that raced its own original loses the lock to it — the same request, not a
+      // rival buyer. Re-read before calling it a conflict.
+      const winner = await this.findByKey(userId, idempotencyKey);
+      if (winner) return this.withSeats(winner);
+
       throw new ConflictException('One or more seats are being held by another buyer');
     }
 
@@ -131,8 +132,12 @@ export class OrdersService {
       });
     } catch (err) {
       await this.redis.releaseSeatLocks(keys); // compensate: drop locks on PG conflict
-      // 23505 = unique_violation → the partial-unique index caught a concurrent winner.
+      // 23505 = unique_violation, from either orders_user_idem_uq (a replay committed while we
+      // worked) or the partial-unique seat index (a real rival won the seat).
       if ((err as { code?: string }).code === '23505') {
+        const winner = await this.findByKey(userId, idempotencyKey);
+        if (winner) return this.withSeats(winner);
+
         throw new ConflictException('Seat already reserved');
       }
       throw err;
@@ -244,6 +249,16 @@ export class OrdersService {
   }
 
   // Every response carries the order's seats; `status` narrows to the confirmed ones once paid.
+  private async findByKey(userId: string, idempotencyKey: string): Promise<Order | undefined> {
+    const [order] = await this.db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.userId, userId), eq(orders.idempotencyKey, idempotencyKey)))
+      .limit(1);
+
+    return order;
+  }
+
   private async withSeats(order: Order, status?: 'confirmed'): Promise<OrderResponse> {
     const seats = await this.db
       .select({ seatId: seatReservations.seatId, bandId: seatReservations.bandId })
