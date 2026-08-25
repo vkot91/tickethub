@@ -18,3 +18,11 @@ describe('transport names', () => {
     }
   });
 });
+
+describe('EVENTS_QUEUES', () => {
+  it('names the gateway seat-map queues after their consumer and event', () => {
+    expect(EVENTS_QUEUES.GATEWAY_SEAT_HELD).toBe('gateway.seat-held');
+    expect(EVENTS_QUEUES.GATEWAY_SEAT_RELEASED).toBe('gateway.seat-released');
+    expect(EVENTS_QUEUES.GATEWAY_ORDER_PAID).toBe('gateway.order-paid');
+  });
+});

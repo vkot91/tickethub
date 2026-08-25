@@ -6,7 +6,10 @@ services:
     command:
       - --entrypoints.web.address=:80
       - --providers.file.filename=/etc/traefik/dynamic.yml
-    ports: ['8000:80', '8081:8080'] # 8000 = edge in, 8081 = traefik dashboard/api
+    # 8000 = edge in, 4000 = the buyer app's origin (app + /ws), 8081 = dashboard/api.
+    # Two host ports onto the same container port: both land on the `web` entrypoint, and the
+    # host rules in traefik-dynamic.yml decide what each one serves.
+    ports: ['8000:80', '4000:80', '8081:8080']
     extra_hosts: ['host.docker.internal:host-gateway'] # reach host apps/gateway on Linux
     volumes: ['./traefik-dynamic.yml:/etc/traefik/dynamic.yml:ro']
 

@@ -7,11 +7,18 @@ import { useState } from 'react';
 import { formatPrice, Skeleton, StatusPill, toast } from '@tickethub/ui';
 import { ApiError } from '@tickethub/web-kit';
 
-import { createOrder, fetchSeatMap, SEAT_MAP_POLL_MS, seatMapKeys, type OrderSeat } from './api';
+import {
+  createOrder,
+  fetchSeatMap,
+  SEAT_MAP_FALLBACK_POLL_MS,
+  seatMapKeys,
+  type OrderSeat,
+} from './api';
 import { findSeats, MAX_SEATS, toSeatMapView, type SeatView } from './model';
 import { Seat } from './seat';
 import { SeatLegend } from './seat-legend';
 import { SelectionSummary } from './selection-summary';
+import { useSeatMapSocket } from './use-seat-map-socket';
 
 const CONFLICT_MESSAGE = {
   title: 'Those seats just went',
@@ -26,11 +33,15 @@ export function SeatMap({ showId }: { showId: string }) {
   // server is the only thing that can turn it into a hold.
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  const isLive = useSeatMapSocket(showId);
+
   const { data, isPending } = useQuery({
     queryKey: seatMapKeys.byShow(showId),
     queryFn: () => fetchSeatMap(showId),
-    // Polling stands in for the seat socket until the gateway grows one.
-    refetchInterval: SEAT_MAP_POLL_MS,
+    // The socket is the update path; this is the safety net for a socket that stays down —
+    // a sleeping laptop, a wifi flap, a gateway redeploy — which would otherwise freeze the
+    // map with no visible symptom.
+    refetchInterval: isLive ? false : SEAT_MAP_FALLBACK_POLL_MS,
   });
 
   const order = useMutation({
@@ -50,7 +61,7 @@ export function SeatMap({ showId }: { showId: string }) {
 
   if (isPending || !data) return <SeatMapSkeleton />;
 
-  const sections = toSeatMapView(data);
+  const sections = toSeatMapView(data, data.statuses);
   const selectedSeats = findSeats(sections, selectedIds);
   const heldCount = sections
     .flatMap((section) => section.rows)
@@ -76,9 +87,17 @@ export function SeatMap({ showId }: { showId: string }) {
 
   return (
     <>
+      {/* Dimmed while the socket is down: this pill is the feature's only liveness signal,
+          and a stale count lies. */}
       {heldCount > 0 ? (
-        <StatusPill tone="warn" className="mb-6 gap-2 px-3 py-2 text-[11px]">
-          <span aria-hidden className="size-1.5 animate-live rounded-pill bg-warn" />
+        <StatusPill
+          tone="warn"
+          className={`mb-6 gap-2 px-3 py-2 text-[11px] ${isLive ? '' : 'opacity-50'}`}
+        >
+          <span
+            aria-hidden
+            className={`size-1.5 rounded-pill bg-warn ${isLive ? 'animate-live' : ''}`}
+          />
           {heldCount} {heldCount === 1 ? 'seat' : 'seats'} being chosen right now
         </StatusPill>
       ) : null}

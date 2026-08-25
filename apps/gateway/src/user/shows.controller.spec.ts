@@ -2,7 +2,10 @@ import { GatewayUserShowsController } from './shows.controller';
 
 describe('GatewayUserShowsController', () => {
   const amqp = { request: jest.fn().mockResolvedValue('result') };
-  const controller = new GatewayUserShowsController(amqp as never);
+  const seatMapService = {
+    get: jest.fn().mockResolvedValue({ showId: 'e1', sections: [], statuses: {} }),
+  };
+  const controller = new GatewayUserShowsController(amqp as never, seatMapService as never);
 
   it('parses the query and forwards catalog over RPC', async () => {
     await controller.catalog({ limit: '5' });
@@ -15,14 +18,16 @@ describe('GatewayUserShowsController', () => {
     expect(() => controller.catalog({ limit: '999' })).toThrow();
   });
 
-  it('forwards detail and seatMap by id', async () => {
+  it('forwards detail by id', async () => {
     await controller.detail('e1');
-    await controller.seatMap('e1');
     expect(amqp.request).toHaveBeenCalledWith(
       expect.objectContaining({ routingKey: 'user.shows.detail', payload: { id: 'e1' } }),
     );
-    expect(amqp.request).toHaveBeenCalledWith(
-      expect.objectContaining({ routingKey: 'user.shows.seatMap', payload: { id: 'e1' } }),
-    );
+  });
+
+  it('delegates the seat map to the stitching service', async () => {
+    await controller.seatMap('e1');
+
+    expect(seatMapService.get).toHaveBeenCalledWith('e1');
   });
 });

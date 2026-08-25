@@ -6,6 +6,7 @@ describe('OrdersController', () => {
     get: jest.fn().mockResolvedValue({ id: 'ord1' }),
     list: jest.fn().mockResolvedValue({ items: [], nextCursor: null }),
     requestRefund: jest.fn().mockResolvedValue({ id: 'ord1' }),
+    seatStatus: jest.fn().mockResolvedValue({ s1: 'held' }),
   };
   const controller = new OrdersController(ordersService as never);
 
@@ -35,5 +36,11 @@ describe('OrdersController', () => {
     controller.requestRefund({ userId: 'u1', orderId: 'ord1' });
 
     expect(ordersService.requestRefund).toHaveBeenCalledWith('u1', 'ord1');
+  });
+
+  it('routes seatStatus to the service', async () => {
+    await expect(controller.seatStatus({ showId: 'e1' })).resolves.toEqual({ s1: 'held' });
+
+    expect(ordersService.seatStatus).toHaveBeenCalledWith('e1');
   });
 });

@@ -41,12 +41,16 @@ describe('@tickethub/contracts barrel', () => {
 
   // A schema nobody `.parse()`s is not part of the surface — it stays in its own file so the
   // barrel lists only what a caller can actually run. These are the type-derivation inputs.
-  it.each(['orderPaidSchema', 'seatSchema', 'rowSchema', 'sectionSchema', 'showCancelledSchema'])(
-    'does not export the type-only %s',
-    (name) => {
-      expect(contracts).not.toHaveProperty(name);
-    },
-  );
+  it.each([
+    'orderPaidSchema',
+    'seatSchema',
+    'seatMapSchema',
+    'rowSchema',
+    'sectionSchema',
+    'showCancelledSchema',
+  ])('does not export the type-only %s', (name) => {
+    expect(contracts).not.toHaveProperty(name);
+  });
 
   // Every re-export is a getter onto another module: a path that no longer resolves yields
   // `undefined` here rather than at the first consumer's import.

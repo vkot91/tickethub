@@ -365,3 +365,26 @@ describe('OrdersService.list', () => {
     );
   });
 });
+
+describe('OrdersService.seatStatus', () => {
+  it('reports a held reservation as held and a confirmed one as sold', async () => {
+    const d = deps({}, [
+      { seatId: 's1', status: 'held' },
+      { seatId: 's2', status: 'confirmed' },
+    ]);
+
+    await expect(d.service.seatStatus('e1')).resolves.toEqual({ s1: 'held', s2: 'sold' });
+  });
+
+  it('returns an empty map when a show has no active reservations', async () => {
+    const d = deps({}, []);
+
+    await expect(d.service.seatStatus('e1')).resolves.toEqual({});
+  });
+
+  it('keeps an expired-but-unreleased hold held — the unique index still blocks that seat', async () => {
+    const d = deps({}, [{ seatId: 's1', status: 'held' }]);
+
+    await expect(d.service.seatStatus('e1')).resolves.toEqual({ s1: 'held' });
+  });
+});

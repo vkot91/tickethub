@@ -28,6 +28,12 @@ export const EVENTS_QUEUES = {
   PAYMENTS_ORDER_EXPIRED: 'payments.order-expired',
   TICKETS_ORDER_PAID: 'tickets.order-paid',
   TICKETS_PDF_READY: 'tickets.pdf-ready',
+  // The gateway's seat-map broadcaster. Three queues rather than one queue with three bindings:
+  // per the rule above, each event type gets its own DLX, and a fourth subscriber later binds its
+  // own queue without touching these.
+  GATEWAY_SEAT_HELD: 'gateway.seat-held',
+  GATEWAY_SEAT_RELEASED: 'gateway.seat-released',
+  GATEWAY_ORDER_PAID: 'gateway.order-paid',
 } as const;
 
 /** The name of any event queue — what `eventSub` accepts as its queue argument. */

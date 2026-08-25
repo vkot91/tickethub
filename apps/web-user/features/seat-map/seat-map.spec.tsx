@@ -10,11 +10,23 @@ const push = vi.fn();
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 
+// No real socket in a component test: the hook's own behaviour is covered in
+// use-seat-map-socket.spec.tsx. Never connecting also leaves the fallback poll on, which is what
+// these tests exercise.
+vi.mock('socket.io-client', () => ({
+  io: () => ({ on: vi.fn(), emit: vi.fn(), disconnect: vi.fn() }),
+}));
+
 const SHOW_ID = '11111111-1111-4111-8111-111111111111';
 const BAND_ID = '77777777-7777-4777-8777-777777777771';
 
+const SEAT_A1 = '44444444-4444-4444-8444-444444444441';
+const SEAT_A2 = '44444444-4444-4444-8444-444444444442';
+
 const seatMap = {
   showId: SHOW_ID,
+  // The gateway stitches availability in; a seat absent from `statuses` is available.
+  statuses: {} as Record<string, string>,
   sections: [
     {
       id: '22222222-2222-4222-8222-222222222222',
@@ -51,9 +63,10 @@ interface Reply {
 }
 
 /** Routes by URL so the seat-map poll and the order POST can answer differently. */
-function mockGateway(orderReply: Reply) {
+function mockGateway(orderReply: Reply, statuses: Record<string, string> = {}) {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
-    const reply: Reply = init?.method === 'POST' ? orderReply : { status: 200, body: seatMap };
+    const reply: Reply =
+      init?.method === 'POST' ? orderReply : { status: 200, body: { ...seatMap, statuses } };
 
     return Promise.resolve({
       ok: reply.status < 400,
@@ -229,14 +242,30 @@ describe('SeatMap', () => {
     );
   });
 
-  it('does not let a sold or held seat be picked', async () => {
+  it('leaves a seat with no reservation selectable', async () => {
     mockGateway({ status: 200, body: {} });
     renderSeatMap();
 
     await waitFor(() => expect(seatA2()).toBeInTheDocument());
 
-    // Every seat is available today; this guards the disabled wiring itself.
     expect(seatA2()).toBeEnabled();
+  });
+
+  it('renders held and sold seats from the endpoint statuses', async () => {
+    mockGateway({ status: 200, body: {} }, { [SEAT_A1]: 'held', [SEAT_A2]: 'sold' });
+    renderSeatMap();
+
+    await waitFor(() => expect(seatA1()).toBeInTheDocument());
+
+    expect(seatA1()).toBeDisabled();
+    expect(seatA2()).toBeDisabled();
+  });
+
+  it('shows the live pill counting only held seats', async () => {
+    mockGateway({ status: 200, body: {} }, { [SEAT_A1]: 'held', [SEAT_A2]: 'sold' });
+    renderSeatMap();
+
+    expect(await screen.findByText(/1 seat being chosen right now/)).toBeInTheDocument();
   });
 });
 
