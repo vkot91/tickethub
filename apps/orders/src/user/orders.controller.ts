@@ -31,4 +31,11 @@ export class OrdersController {
   requestRefund(payload: { userId: string; orderId: string }) {
     return this.ordersService.requestRefund(payload.userId, payload.orderId);
   }
+
+  // The one key here that is not scoped to a buyer: it answers about a show, which is the same
+  // public question the unguarded `GET /shows/:id/seat-map` already answers.
+  @RabbitRPC(rpcSub(ORDERS_MESSAGE_PATTERNS.SEAT_STATUS))
+  seatStatus(payload: { showId: string }) {
+    return this.ordersService.seatStatus(payload.showId);
+  }
 }

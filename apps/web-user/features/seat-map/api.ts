@@ -1,8 +1,8 @@
-import { orderResponseSchema, seatMapSchema, type OrderResponse } from '@tickethub/contracts';
+import { orderResponseSchema, seatMapViewSchema, type OrderResponse } from '@tickethub/contracts';
 import { clientApi } from '@tickethub/web-kit';
 
-/** Polling cadence while the socket gateway does not exist yet. */
-export const SEAT_MAP_POLL_MS = 3_000;
+/** How often to refetch while the socket is down. Zero traffic while it is up. */
+export const SEAT_MAP_FALLBACK_POLL_MS = 5_000;
 
 export const seatMapKeys = {
   all: ['seat-map'] as const,
@@ -14,7 +14,7 @@ export function seatMapPath(showId: string): string {
 }
 
 export function fetchSeatMap(showId: string) {
-  return clientApi(seatMapPath(showId), {}, seatMapSchema);
+  return clientApi(seatMapPath(showId), {}, seatMapViewSchema);
 }
 
 export interface OrderSeat {

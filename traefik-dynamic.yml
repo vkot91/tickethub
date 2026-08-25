@@ -1,13 +1,36 @@
 # Traefik dynamic config (file provider). Routes edge :8000 -> host apps/gateway :3000
 # with a coarse per-IP rate limit. ponytail: IP-level flood guard only; business
 # limits (per-user, per-route) stay in apps/gateway RateLimitGuard.
+#
+# :4000 is the buyer app's origin. Traefik owns that port so `/ws` and the Next app share one
+# origin — a Next route handler cannot perform a protocol upgrade, so the seat-map socket has to
+# reach the gateway directly, and doing that cross-origin would mean CORS plus a token in
+# browser-readable JS, which is exactly what the BFF exists to avoid.
+#
+# Every router carries an explicit `priority`. Traefik's default is the rule's *length*, so the
+# catch-all `PathPrefix('/')` below silently out-ranks a shorter host rule.
 http:
   routers:
     gateway:
       rule: 'PathPrefix(`/`)'
+      priority: 1
       entryPoints: [web]
       service: gateway
       middlewares: [ratelimit]
+
+    # The seat-map socket. Must out-rank web-user, or the upgrade lands on the Next dev server.
+    web-user-ws:
+      rule: 'Host(`app.localhost`) && PathPrefix(`/ws`)'
+      priority: 100
+      entryPoints: [web]
+      service: gateway
+      middlewares: [ratelimit]
+
+    web-user:
+      rule: 'Host(`app.localhost`)'
+      priority: 10
+      entryPoints: [web]
+      service: web-user
 
   middlewares:
     ratelimit:
@@ -21,3 +44,11 @@ http:
       loadBalancer:
         servers:
           - url: 'http://host.docker.internal:3000'
+
+    # The Next dev server, moved off 4000 so Traefik can own the buyer app's origin. The
+    # documented dev URL (http://app.localhost:4000) is unchanged. The organizer console stays on
+    # admin.localhost:4001 served directly by Next until it needs a socket of its own.
+    web-user:
+      loadBalancer:
+        servers:
+          - url: 'http://host.docker.internal:4100'

@@ -56,3 +56,13 @@ export const orderListSchema = z.object({
   nextCursor: uuid.nullable(),
 });
 export type OrderList = z.infer<typeof orderListSchema>;
+
+// Availability as the buyer sees it. `available` is deliberately not a member: a seat with no
+// active reservation has no row to report, so a free seat is the *absence* of a key rather than a
+// value. That keeps the payload proportional to sales instead of to venue size, and matches the
+// shape `toSeatMapView` in apps/web-user already accepts.
+export const seatStatusSchema = z.enum(['held', 'sold']);
+export type SeatStatus = z.infer<typeof seatStatusSchema>;
+
+export const seatStatusMapSchema = z.record(uuid, seatStatusSchema);
+export type SeatStatusMap = z.infer<typeof seatStatusMapSchema>;

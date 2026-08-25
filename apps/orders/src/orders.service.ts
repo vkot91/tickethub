@@ -24,6 +24,7 @@ import {
   type OrderListQuery,
   type OrderResponse,
   type OrderSummaryPage,
+  type SeatStatusMap,
 } from '@tickethub/contracts';
 import { OrderRepository, seatLockKey, type Order } from './orders.repository';
 
@@ -213,6 +214,34 @@ export class OrdersService {
     });
 
     return this.withSeats(order, 'confirmed');
+  }
+
+  /**
+   * Which seats of a show are unavailable, for the buyer seat map the gateway stitches. Keyed by
+   * seat id; a seat with no active reservation is simply absent, so the payload grows with sales
+   * rather than with venue size.
+   *
+   * Classification is by reservation status alone, never by wall clock. An order past its
+   * `expires_at` keeps `status = 'held'` until the release job runs, and `seat_res_active_uq`
+   * still counts it — so reporting that seat available would offer the buyer a seat that a
+   * competing order is guaranteed to lose with a 409.
+   */
+  async seatStatus(showId: string): Promise<SeatStatusMap> {
+    // `seat_res_active_uq` is a partial unique index on exactly this predicate, so this is one
+    // index scan and needs no migration of its own.
+    const reserved = await this.db
+      .select({ seatId: seatReservations.seatId, status: seatReservations.status })
+      .from(seatReservations)
+      .where(
+        and(
+          eq(seatReservations.showId, showId),
+          inArray(seatReservations.status, ['held', 'confirmed']),
+        ),
+      );
+
+    return Object.fromEntries(
+      reserved.map(({ seatId, status }) => [seatId, status === 'confirmed' ? 'sold' : 'held']),
+    );
   }
 
   // The cursor is an order id the caller owns; anything else is a client bug, not an empty page.

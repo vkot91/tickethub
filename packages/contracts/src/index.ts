@@ -51,6 +51,7 @@ export type * from './tickets/events';
 export type * from './tickets/user/schema';
 export type * from './tickets/organizer/schema';
 export type * from './gateway/organizer/schema';
+export type * from './gateway/user/schema';
 
 export { PAYMENT_ROUTING_KEYS } from './payments/events';
 export { SHOW_ROUTING_KEYS } from './shows/events';
@@ -67,12 +68,9 @@ export {
 export { venueDetailSchema, venueSummarySchema } from './venues/schema';
 export { createPaymentIntentSchema, paymentIntentResponseSchema } from './payments/schema';
 export { SEAT_TIERS, showSummarySchema } from './shows/schema';
-export {
-  catalogPageSchema,
-  catalogQuerySchema,
-  seatMapSchema,
-  showDetailSchema,
-} from './shows/user/schema';
+// `seatMapSchema` is deliberately absent: the buyer parses the gateway's stitched
+// `seatMapViewSchema` instead, and nothing outside this package runs the bare geometry schema.
+export { catalogPageSchema, catalogQuerySchema, showDetailSchema } from './shows/user/schema';
 export {
   becomeOrganizerSchema,
   createShowSchema,
@@ -101,3 +99,4 @@ export {
   showStatsQuerySchema,
   showStatsSchema,
 } from './gateway/organizer/schema';
+export { seatMapViewSchema } from './gateway/user/schema';

@@ -11,6 +11,10 @@ import { AppLoggerModule } from '@tickethub/common';
 import { RequestIdMiddleware, rmqRootModule } from '@tickethub/rmq';
 import { GatewayAuthController } from './auth/auth.controller';
 import { GatewayUserShowsController } from './user/shows.controller';
+import { GatewayUserSeatMapService } from './user/seat-map.service';
+import { SeatMapBroadcaster } from './seat-map/seat-map.broadcaster';
+import { SeatMapGateway } from './seat-map/seat-map.gateway';
+import { SeatMapEventsController } from './seat-map/seat-map.controller';
 import { GatewayUserOrdersController } from './user/orders.controller';
 import { GatewayUserPaymentsController } from './user/payments.controller';
 import { GatewayUserTicketsController } from './user/tickets.controller';
@@ -68,12 +72,21 @@ const queueDashboardImports =
     GatewayOrganizerShowsController,
     GatewayOrganizerStatsController,
     GatewayOrganizerCheckInController,
+    SeatMapEventsController,
     HealthController,
   ],
   // No UserModule/OrganizerModule: Nest cannot scope a guard to a module (only APP_GUARD, which
   // is global), so a module per audience would be grouping for its own sake. The folders group.
   providers: [
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    GatewayUserSeatMapService,
+    SeatMapGateway,
+    {
+      provide: SeatMapBroadcaster,
+      inject: [SeatMapGateway],
+      useFactory: (seatMapGateway: SeatMapGateway) =>
+        new SeatMapBroadcaster((showId) => seatMapGateway.broadcast(showId)),
+    },
     GatewayOrganizerOwnershipService,
     GatewayOrganizerShowsService,
     GatewayOrganizerStatsService,
